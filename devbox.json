@@ -13,7 +13,10 @@
     ],
     "scripts": {
       "start-nats": "nats-server -p 4222",
-      "nats-info": "nats info"
+      "nats-info": "nats info",
+      "ui-dev": "npm run dev",
+      "ui-build": "npm run build",
+      "ui-start": "npm run start"
     }
   }
 }

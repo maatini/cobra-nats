@@ -20,32 +20,25 @@ import {
 import {
     Form,
     FormControl,
-    FormDescription,
     FormField,
     FormItem,
     FormLabel,
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import type { KvOptions, StorageType } from "nats";
+import type { KvOptions } from "nats";
 import { useNatsStore } from "@/store/useNatsStore";
 import { createKVBucket } from "@/app/actions/kv-actions";
 
 const kvSchema = z.object({
     bucket: z.string().min(1, "Bucket name is required").regex(/^[a-zA-Z0-9_-]+$/, "Only alphanumeric, dash and underscore allowed"),
     description: z.string().optional(),
-    history: z.coerce.number().min(1).max(64).default(1),
-    max_age: z.coerce.number().default(0),
-    replicas: z.coerce.number().min(1).max(5).default(1),
+    history: z.number().min(1).max(64),
+    max_age: z.number(),
+    replicas: z.number().min(1).max(5),
 });
 
-type KVFormValues = {
-    bucket: string;
-    description?: string;
-    history: number;
-    max_age: number;
-    replicas: number;
-};
+type KVFormValues = z.infer<typeof kvSchema>;
 
 interface CreateKVDialogProps {
     onCreated?: () => void;
@@ -58,7 +51,7 @@ export function CreateKVDialog({ onCreated }: CreateKVDialogProps) {
     const activeConnection = connections.find((c) => c.id === activeConnectionId);
 
     const form = useForm<KVFormValues>({
-        resolver: zodResolver(kvSchema) as any,
+        resolver: zodResolver(kvSchema),
         defaultValues: {
             bucket: "",
             description: "",
@@ -75,7 +68,7 @@ export function CreateKVDialog({ onCreated }: CreateKVDialogProps) {
         }
 
         setIsSubmitting(true);
-        const cleanOptions: any = {
+        const cleanOptions: Partial<KvOptions & { bucket: string }> = {
             bucket: values.bucket,
             history: values.history,
             replicas: values.replicas,

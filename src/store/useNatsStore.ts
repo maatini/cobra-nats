@@ -1,15 +1,8 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { NatsConnectionConfig } from "@/lib/nats/nats-types";
 
-export interface NatsConnectionConfig {
-    id: string;
-    name: string;
-    servers: string[];
-    user?: string;
-    pass?: string;
-    token?: string;
-    authType: "none" | "user_pass" | "token";
-}
+export type { NatsConnectionConfig };
 
 interface NatsState {
     connections: NatsConnectionConfig[];

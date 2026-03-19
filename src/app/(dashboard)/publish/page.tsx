@@ -31,19 +31,19 @@ const publishSchema = z.object({
         key: z.string(),
         value: z.string(),
     })),
-    isRequest: z.boolean().default(false),
+    isRequest: z.boolean(),
 });
 
 type PublishFormValues = z.infer<typeof publishSchema>;
 
 export default function PublishPage() {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const [reply, setReply] = React.useState<any>(null);
+    const [reply, setReply] = React.useState<{data: string, headers?: Record<string, string>} | null>(null);
     const { connections, activeConnectionId } = useNatsStore();
     const activeConnection = connections.find((c) => c.id === activeConnectionId);
 
     const form = useForm<PublishFormValues>({
-        resolver: zodResolver(publishSchema) as any,
+        resolver: zodResolver(publishSchema),
         defaultValues: {
             subject: "",
             payload: '{\n  "msg": "hello nats"\n}',
@@ -233,7 +233,7 @@ export default function PublishPage() {
                                     {reply.headers && Object.keys(reply.headers).length > 0 && (
                                         <div className="mt-2 space-y-1">
                                             <span className="text-[10px] text-slate-500">Headers:</span>
-                                            {Object.entries(reply.headers).map(([k, v]: any) => (
+                                            {Object.entries(reply.headers || {}).map(([k, v]) => (
                                                 <div key={k} className="text-[9px] text-slate-400 flex gap-2">
                                                     <span className="font-bold">{k}:</span>
                                                     <span>{v}</span>

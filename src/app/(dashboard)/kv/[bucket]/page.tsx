@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useNatsStore } from "@/store/useNatsStore";
 import { getKVKeys, getKVEntry, deleteKVBucket } from "@/app/actions/kv-actions";
 import type { KvEntry } from "nats";
+import type { KvEntryResult } from "@/lib/nats/nats-types";
 import { toast } from "sonner";
 import {
     Database,
@@ -43,7 +44,7 @@ export default function KVDetailPage() {
     const [keys, setKeys] = React.useState<string[]>([]);
     const [filter, setFilter] = React.useState("");
     const [isLoading, setIsLoading] = React.useState(true);
-    const [selectedEntry, setSelectedEntry] = React.useState<any>(null);
+    const [selectedEntry, setSelectedEntry] = React.useState<KvEntryResult | null>(null);
     const [isFetchingEntry, setIsFetchingEntry] = React.useState(false);
 
     const fetchKeys = React.useCallback(async () => {
@@ -68,7 +69,7 @@ export default function KVDetailPage() {
         setIsFetchingEntry(true);
         const result = await getKVEntry(activeConnection, bucket as string, key);
         if (result.success) {
-            setSelectedEntry(result.data.entry as unknown as any);
+            setSelectedEntry(result.data.entry);
         } else {
             toast.error("Failed to load entry data");
         }

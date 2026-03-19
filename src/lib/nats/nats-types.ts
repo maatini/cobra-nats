@@ -1,3 +1,36 @@
+/**
+ * Shared NATS types used across server actions and client components.
+ */
+
+export interface NatsConnectionConfig {
+    id: string;
+    name: string;
+    servers: string[];
+    user?: string;
+    pass?: string;
+    token?: string;
+    authType: "none" | "user_pass" | "token";
+}
+
+/**
+ * Standardized response shape for all server actions.
+ */
+export type ActionResponse<T> =
+    | { success: true; data: T }
+    | { success: false; error: string };
+
+/**
+ * Serializable KV entry returned from server actions.
+ */
+export interface KvEntryResult {
+    key: string;
+    value: string;
+    revision: number;
+    created: Date;
+    delta?: number;
+    operation: "PUT" | "DEL" | "PURGE";
+}
+
 export enum RetentionPolicy {
     Limits = "limits",
     Interest = "interest",

@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { Plus, Server, Loader2, CheckCircle2, AlertCircle, Zap } from "lucide-react";
+import { Plus, Loader2, CheckCircle2, AlertCircle, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -86,6 +86,7 @@ export function ConnectDialog({ trigger, editingConfig, onOpenChange }: ConnectD
         const result = await testConnection({
             name: values.name,
             servers: values.servers.split(",").map(s => s.trim()),
+            authType: values.authType,
             user: values.user,
             pass: values.pass,
             token: values.token,
@@ -95,7 +96,7 @@ export function ConnectDialog({ trigger, editingConfig, onOpenChange }: ConnectD
 
         if (result.success) {
             toast.success("Connection successful!", {
-                description: `Connected to ${values.name} (${result.serverInfo?.version})`,
+                description: `Connected to ${values.name} (${result.data.serverInfo?.version})`,
                 icon: <CheckCircle2 className="size-4 text-emerald-500" />,
             });
         } else {

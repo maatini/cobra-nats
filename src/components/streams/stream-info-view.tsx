@@ -17,7 +17,7 @@ import {
 import { format } from "date-fns";
 
 export function StreamInfoView({ info }: { info: StreamInfo }) {
-    const renderValue = (label: string, value: any, icon: any) => (
+    const renderValue = (label: string, value: string | number, icon: React.ReactNode) => (
         <div className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0">
             <div className="flex items-center gap-2 text-slate-400 text-xs">
                 {icon}
@@ -39,8 +39,8 @@ export function StreamInfoView({ info }: { info: StreamInfo }) {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-1">
-                    {renderValue("Retention", (info.config.retention as any).toString().toUpperCase(), <Shield className="size-3" />)}
-                    {renderValue("Storage", (info.config.storage as any) === StorageType.File ? "FILE" : "MEMORY", <HardDrive className="size-3" />)}
+                    {renderValue("Retention", (info.config.retention as unknown as string).toString().toUpperCase(), <Shield className="size-3" />)}
+                    {renderValue("Storage", info.config.storage === StorageType.File ? "FILE" : "MEMORY", <HardDrive className="size-3" />)}
                     {renderValue("Max Messages", info.config.max_msgs, <Activity className="size-3" />)}
                     {renderValue("Max Bytes", info.config.max_bytes === -1 ? -1 : `${(info.config.max_bytes / (1024 * 1024)).toFixed(1)} MB`, <Database className="size-3" />)}
                     {renderValue("Max Age", info.config.max_age === 0 ? 0 : `${(info.config.max_age / 1e9 / 3600).toFixed(1)} hours`, <Clock className="size-3" />)}

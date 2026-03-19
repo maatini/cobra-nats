@@ -1,7 +1,7 @@
 "use server";
 
-import { NatsConnectionConfig } from "@/store/useNatsStore";
-import { headers, Msg, JSONCodec } from "nats";
+import { NatsConnectionConfig } from "@/lib/nats/nats-types";
+import { headers, JSONCodec, PublishOptions } from "nats";
 import { withNatsConnection, ActionResponse } from "./action-helpers";
 
 export async function publishMessage(
@@ -13,7 +13,7 @@ export async function publishMessage(
     return withNatsConnection(config, "publishMessage", async (nc) => {
         const jc = JSONCodec();
 
-        const opts: any = {};
+        const opts: PublishOptions = {};
         if (msgHeaders && Object.keys(msgHeaders).length > 0) {
             const h = headers();
             for (const [k, v] of Object.entries(msgHeaders)) {
@@ -23,7 +23,7 @@ export async function publishMessage(
         }
 
         // Attempt to parse JSON if possible, otherwise use as string
-        let data: any = payload;
+        let data: string | Uint8Array | Record<string, unknown> = payload;
         try {
             data = JSON.parse(payload);
             nc.publish(subject, jc.encode(data), opts);
@@ -43,7 +43,7 @@ export async function requestMessage(
         const jc = JSONCodec();
 
         // Attempt to parse JSON if possible, otherwise use as string
-        let data: any = payload;
+        let data: string | Uint8Array | Record<string, unknown> = payload;
         try {
             data = JSON.parse(payload);
         } catch { }

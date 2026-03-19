@@ -1,6 +1,6 @@
 "use server";
 
-import { NatsConnectionConfig } from "@/store/useNatsStore";
+import { NatsConnectionConfig } from "@/lib/nats/nats-types";
 import { ConsumerConfig, ConsumerInfo } from "nats";
 import { withJetStream, ActionResponse } from "./action-helpers";
 

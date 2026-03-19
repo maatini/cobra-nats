@@ -47,6 +47,15 @@ Cobra NATS is a web-based administration dashboard for [NATS](https://nats.io), 
 - **Export** captured messages as JSON
 - Keeps the last 500 messages in memory
 
+### 👥 Consumer Management
+- **List** all consumers on a JetStream stream
+- **Create** new push/pull consumers
+- **Delete** consumers
+
+### 🎨 Settings & Theming
+- **Dark/Light Mode** toggle
+- Preferences and connection settings via a dedicated screen
+
 ---
 
 ## 🚀 Quick Start
@@ -210,7 +219,9 @@ npx playwright test tests/functional-streams.spec.ts tests/functional-messaging.
 | `streams.spec.ts` | Stream list and table UI |
 | `kv.spec.ts` | KV store UI |
 | `messaging.spec.ts` | Publish page UI |
+| `settings.spec.ts` | Application settings and theme toggle UI |
 | `functional-streams.spec.ts` | **Real** stream creation via NATS |
+| `functional-kv.spec.ts` | **Real** KV bucket operations via NATS |
 | `functional-messaging.spec.ts` | **Real** publish and request-reply via NATS |
 
 ---
@@ -238,10 +249,8 @@ npx playwright test tests/functional-streams.spec.ts tests/functional-messaging.
 ## 🗺️ Roadmap
 
 - [ ] Live dashboard with real-time stream stats
-- [ ] Consumer management (create, pause, delete)
 - [ ] NATS Cluster topology view
 - [ ] Object Store support
-- [ ] Dark/light theme toggle
 - [ ] Multi-tab message comparison
 
 ---

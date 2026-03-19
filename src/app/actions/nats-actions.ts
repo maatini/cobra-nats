@@ -1,24 +1,30 @@
 "use server";
 
-import { natsManager, NatsConfig } from "@/lib/nats/NatsManager";
+import { natsManager } from "@/lib/nats/NatsManager";
+import { ActionResponse, NatsConnectionConfig } from "@/lib/nats/nats-types";
+import { getErrorMessage, withNatsConnection } from "@/app/actions/action-helpers";
+import { type ServerInfo } from "nats";
 
-export async function testConnection(config: Omit<NatsConfig, "id">) {
+/**
+ * Tests connectivity to a NATS server without persisting the connection.
+ */
+export async function testConnection(config: Omit<NatsConnectionConfig, "id">): Promise<ActionResponse<{ serverInfo: ServerInfo }>> {
     const tempId = `test-${Date.now()}`;
     try {
-        const nc = await natsManager.getConnection({ ...config, id: tempId });
-        const serverInfo = nc.info;
+        const nc = await natsManager.getConnection({ ...config, id: tempId } as NatsConnectionConfig);
+        const serverInfo = nc.info!;
         await natsManager.closeConnection(tempId);
-        return { success: true, serverInfo };
-    } catch (err: any) {
-        return { success: false, error: err.message || "Failed to connect to NATS" };
+        return { success: true, data: { serverInfo } };
+    } catch (err: unknown) {
+        return { success: false, error: getErrorMessage(err) || "Failed to connect to NATS" };
     }
 }
 
-export async function getServerInfo(config: NatsConfig) {
-    try {
-        const nc = await natsManager.getConnection(config);
-        return { success: true, info: nc.info };
-    } catch (err: any) {
-        return { success: false, error: err.message || "Failed to fetch server info" };
-    }
+/**
+ * Retrieves server info from an active NATS connection.
+ */
+export async function getServerInfo(config: NatsConnectionConfig): Promise<ActionResponse<{ info: ServerInfo }>> {
+    return withNatsConnection(config, "getServerInfo", async (nc) => {
+        return { info: nc.info! };
+    });
 }

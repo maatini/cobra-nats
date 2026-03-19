@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { natsManager } from "@/lib/nats/NatsManager";
-import { StringCodec, JSONCodec } from "nats";
+import { NatsConnection } from "nats";
+import { getErrorMessage } from "@/app/actions/action-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -15,12 +16,10 @@ export async function GET(req: NextRequest) {
     }
 
     const encoder = new TextEncoder();
-    const sc = StringCodec();
-    const jc = JSONCodec();
 
     const stream = new ReadableStream({
         async start(controller) {
-            let nc;
+            let nc: NatsConnection | undefined;
             try {
                 // We use a dedicated connection for monitoring to avoid blocking other operations
                 // and because we need to handle subscriptions in a specific way for SSE
@@ -28,6 +27,7 @@ export async function GET(req: NextRequest) {
                     id: `monitor-${connectionId}-${Date.now()}`,
                     name: `Monitor - ${subject}`,
                     servers: servers,
+                    authType: "none",
                 });
 
                 const sub = nc.subscribe(subject);
@@ -67,15 +67,19 @@ export async function GET(req: NextRequest) {
                 req.signal.addEventListener("abort", async () => {
                     clearInterval(heartbeat);
                     sub.unsubscribe();
-                    // We don't close the shared connection here if it's managed by NatsManager instance
-                    // but since we created a dedicated one with a unique ID, we should probably close it
-                    // await nc.close(); 
+                    if (nc) {
+                        try {
+                            await nc.close();
+                        } catch (e) {
+                            console.error("Error closing dedicated monitor connection:", e);
+                        }
+                    }
                     controller.close();
                 });
 
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error("SSE NATS Error:", err);
-                controller.enqueue(encoder.encode(`event: error\ndata: ${err.message}\n\n`));
+                controller.enqueue(encoder.encode(`event: error\ndata: ${getErrorMessage(err)}\n\n`));
                 controller.close();
             }
         },

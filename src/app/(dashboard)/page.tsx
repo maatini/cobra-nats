@@ -69,7 +69,7 @@ export default function DashboardPage() {
                 </Card>
                 <Card className="bg-slate-900 border-slate-800 hover:border-rose-500/50 transition-colors group">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-sm font-medium text-slate-400">Total Throughtput</CardTitle>
+                        <CardTitle className="text-sm font-medium text-slate-400">Total Throughput</CardTitle>
                         <Zap className="size-4 text-rose-400 group-hover:scale-110 transition-transform" />
                     </CardHeader>
                     <CardContent>

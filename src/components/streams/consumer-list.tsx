@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trash2, Activity, PlayCircle, Clock } from "lucide-react";
+import { Trash2, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export function ConsumerList({

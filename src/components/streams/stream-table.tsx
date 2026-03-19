@@ -270,6 +270,6 @@ export function StreamTable({ data, onDelete, onRefresh, isLoading }: StreamTabl
     );
 }
 
-function cn(...inputs: any[]) {
+function cn(...inputs: (string | undefined | null | false)[]) {
     return inputs.filter(Boolean).join(" ");
 }

@@ -1,9 +1,5 @@
-import { ConnectionOptions, connect, NatsConnection, JSONCodec, JetStreamManager, JetStreamClient } from "nats";
-
-export interface NatsConfig extends ConnectionOptions {
-  name: string;
-  id: string;
-}
+import { connect, NatsConnection, JSONCodec, JetStreamManager, JetStreamClient } from "nats";
+import { NatsConnectionConfig } from "./nats-types";
 
 export class NatsManager {
   private static instance: NatsManager;
@@ -21,7 +17,7 @@ export class NatsManager {
     return NatsManager.instance;
   }
 
-  async getConnection(config: NatsConfig): Promise<NatsConnection> {
+  async getConnection(config: NatsConnectionConfig): Promise<NatsConnection> {
     const existing = this.connections.get(config.id);
     if (existing && !existing.isClosed()) {
       return existing;
@@ -44,7 +40,7 @@ export class NatsManager {
     }
   }
 
-  async getJetStreamManager(config: NatsConfig): Promise<JetStreamManager> {
+  async getJetStreamManager(config: NatsConnectionConfig): Promise<JetStreamManager> {
     const nc = await this.getConnection(config);
     let manager = this.jsm.get(config.id);
     if (!manager) {
@@ -54,7 +50,7 @@ export class NatsManager {
     return manager;
   }
 
-  async getJetStreamContext(config: NatsConfig): Promise<JetStreamClient> {
+  async getJetStreamContext(config: NatsConnectionConfig): Promise<JetStreamClient> {
     const nc = await this.getConnection(config);
     let js = this.js.get(config.id);
     if (!js) {

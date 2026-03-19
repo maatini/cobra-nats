@@ -8,14 +8,12 @@ import { listConsumers, deleteConsumer } from "@/app/actions/consumer-actions";
 import type { StreamInfo, ConsumerInfo } from "nats";
 import { toast } from "sonner";
 import {
-    Layers,
     ChevronLeft,
     RefreshCcw,
     Trash2,
     Info,
     Users,
-    MessageSquare,
-    ArrowRight
+    MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -152,7 +150,7 @@ export default function StreamDetailPage() {
                             <MessageSquare className="size-12 text-slate-700 mb-4" />
                             <h3 className="text-lg font-medium text-slate-400">Message Browser</h3>
                             <p className="text-sm text-slate-600 mt-2 max-w-sm">
-                                Feature coming soon. You'll be able to peek at messages by sequence number or timestamp.
+                                Feature coming soon. You&apos;ll be able to peek at messages by sequence number or timestamp.
                             </p>
                         </CardContent>
                     </Card>

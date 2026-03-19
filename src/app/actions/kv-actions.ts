@@ -1,15 +1,12 @@
 "use server";
 
-import { natsManager } from "@/lib/nats/NatsManager";
-import { NatsConnectionConfig } from "@/store/useNatsStore";
+import { NatsConnectionConfig, KvEntryResult } from "@/lib/nats/nats-types";
 import { KvOptions, KvStatus } from "nats";
 import { withJetStream, ActionResponse } from "./action-helpers";
 
 export async function listKVBuckets(config: NatsConnectionConfig): Promise<ActionResponse<{ buckets: KvStatus[] }>> {
     return withJetStream(config, "listKVBuckets", async ({ js, jsm }) => {
-        // NATS doesn't provide a simple list of buckets easily via views.list() in all envs
-        // Alternative: check streams that start with "KV_"
-        const streams = await jsm.streams.list().next();
+        // List all streams that start with "KV_" to discover KV buckets
         const bucketNames: string[] = [];
         const iter = await jsm.streams.list();
         for await (const s of iter) {
@@ -18,7 +15,7 @@ export async function listKVBuckets(config: NatsConnectionConfig): Promise<Actio
             }
         }
 
-        const bucketStatuses: any[] = [];
+        const bucketStatuses: Partial<KvStatus>[] = [];
         for (const name of bucketNames) {
             const kv = await js.views.kv(name);
             const status = await kv.status();
@@ -75,7 +72,7 @@ export async function getKVKeys(config: NatsConnectionConfig, bucket: string): P
     });
 }
 
-export async function getKVEntry(config: NatsConnectionConfig, bucket: string, key: string): Promise<ActionResponse<{ entry: any }>> {
+export async function getKVEntry(config: NatsConnectionConfig, bucket: string, key: string): Promise<ActionResponse<{ entry: KvEntryResult }>> {
     return withJetStream(config, "getKVEntry", async ({ js }) => {
         const kv = await js.views.kv(bucket);
         const entry = await kv.get(key);

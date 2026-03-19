@@ -1,10 +1,13 @@
 import { natsManager } from "@/lib/nats/NatsManager";
-import { NatsConnectionConfig } from "@/store/useNatsStore";
+import { NatsConnectionConfig, ActionResponse } from "@/lib/nats/nats-types";
 import { NatsConnection, JetStreamClient, JetStreamManager } from "nats";
 
-export type ActionResponse<T> =
-    | { success: true; data: T }
-    | { success: false; error: string };
+export type { ActionResponse };
+
+export function getErrorMessage(err: unknown): string {
+    if (err instanceof Error) return err.message;
+    return String(err);
+}
 
 /**
  * Wraps a NATS operation with standard error handling and connection retrieval.
@@ -18,9 +21,9 @@ export async function withNatsConnection<T>(
         const nc = await natsManager.getConnection(config);
         const result = await operation(nc);
         return { success: true, data: result };
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error(`[NATS Action Error] ${operationName}:`, err);
-        return { success: false, error: err.message || `Failed to execute ${operationName}` };
+        return { success: false, error: getErrorMessage(err) || `Failed to execute ${operationName}` };
     }
 }
 
@@ -38,8 +41,8 @@ export async function withJetStream<T>(
         const jsm = await nc.jetstreamManager();
         const result = await operation({ js, jsm });
         return { success: true, data: result };
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error(`[JetStream Action Error] ${operationName}:`, err);
-        return { success: false, error: err.message || `Failed to execute ${operationName}` };
+        return { success: false, error: getErrorMessage(err) || `Failed to execute ${operationName}` };
     }
 }

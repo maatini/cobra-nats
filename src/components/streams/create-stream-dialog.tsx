@@ -43,11 +43,11 @@ const streamSchema = z.object({
     subjects: z.string().min(1, "At least one subject is required"),
     retention: z.nativeEnum(RetentionPolicy),
     storage: z.nativeEnum(StorageType),
-    max_msgs: z.coerce.number().default(-1),
-    max_bytes: z.coerce.number().default(-1),
-    max_age: z.coerce.number().default(0), // in nanoseconds, 0 is infinite
+    max_msgs: z.number(),
+    max_bytes: z.number(),
+    max_age: z.number(), // in nanoseconds, 0 is infinite
     discard: z.nativeEnum(DiscardPolicy),
-    replicas: z.coerce.number().min(1).max(5).default(1),
+    replicas: z.number().min(1).max(5),
 });
 
 type StreamFormValues = z.infer<typeof streamSchema>;
@@ -63,7 +63,7 @@ export function CreateStreamDialog({ onCreated }: CreateStreamDialogProps) {
     const activeConnection = connections.find((c) => c.id === activeConnectionId);
 
     const form = useForm<StreamFormValues>({
-        resolver: zodResolver(streamSchema) as any,
+        resolver: zodResolver(streamSchema),
         defaultValues: {
             name: "",
             subjects: "",
@@ -87,14 +87,14 @@ export function CreateStreamDialog({ onCreated }: CreateStreamDialogProps) {
         const result = await createStream(activeConnection, {
             name: values.name,
             subjects: values.subjects.split(",").map(s => s.trim()),
-            retention: values.retention as any,
-            storage: values.storage as any,
+            retention: values.retention as unknown as import("nats").RetentionPolicy,
+            storage: values.storage as unknown as import("nats").StorageType,
             max_msgs: Number(values.max_msgs),
             max_bytes: Number(values.max_bytes),
             max_age: Number(values.max_age),
-            discard: values.discard as any,
+            discard: values.discard as unknown as import("nats").DiscardPolicy,
             num_replicas: Number(values.replicas),
-        } as any);
+        } as unknown as import("nats").StreamConfig);
 
         setIsSubmitting(false);
 
