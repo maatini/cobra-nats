@@ -1,5 +1,12 @@
 # Cobra NATS
 
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
+[![NATS](https://img.shields.io/badge/NATS-2.10+-27AAE1?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJMMiAyMmgyMEwxMiAyeiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=)](https://nats.io/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Playwright](https://img.shields.io/badge/Playwright-E2E_Tests-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev/)
+[![Devbox](https://img.shields.io/badge/Devbox-reproducible_env-7C3AED?logo=nixos&logoColor=white)](https://www.jetpack.io/devbox/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > **v0.2.0** — A modern, professional management UI for NATS and JetStream.
 
@@ -92,14 +99,35 @@ This will expose:
 
 Data is persisted in a Docker volume (`nats_data`).
 
-### Option B: Devbox
+### Option B: Devbox (Recommended for Development)
 
-If you use [Devbox](https://www.jetpack.io/devbox/), a reproducible shell environment is included:
+[Devbox](https://www.jetpack.io/devbox/) provides a fully reproducible, Nix-based development environment — no global installations needed.
+
+#### Included Packages
+
+| Package | Purpose |
+|---------|---------|
+| `nats-server` | NATS server with JetStream |
+| `natscli` | Official NATS CLI (`nats` command) |
+| `nodejs_20` | Node.js 20 runtime |
+| `jq` | JSON processing |
+| `curl` | HTTP requests |
+
+#### Getting Started
 
 ```bash
-devbox shell
-devbox run start-nats   # starts nats-server on port 4222
+devbox shell                  # enter the environment
 ```
+
+#### Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `devbox run start-nats` | Start NATS server with JetStream on port 4222 |
+| `devbox run nats-info` | Show NATS server info via CLI |
+| `devbox run ui-dev` | Start Next.js dev server |
+| `devbox run ui-build` | Build production bundle |
+| `devbox run ui-start` | Start production server |
 
 ### Option C: Manual NATS Server
 
