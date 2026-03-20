@@ -26,7 +26,7 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useNatsStore } from "@/store/useNatsStore";
+import { useActiveConnection } from "@/hooks/use-active-connection";
 import { putKVEntry } from "@/app/actions/kv-actions";
 
 const entrySchema = z.object({
@@ -47,8 +47,7 @@ interface PutEntryDialogProps {
 export function PutEntryDialog({ bucket, initialKey = "", initialValue = "", onSuccess, trigger }: PutEntryDialogProps) {
     const [open, setOpen] = React.useState(false);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const { connections, activeConnectionId } = useNatsStore();
-    const activeConnection = connections.find((c) => c.id === activeConnectionId);
+    const activeConnection = useActiveConnection();
 
     const form = useForm<EntryFormValues>({
         resolver: zodResolver(entrySchema),

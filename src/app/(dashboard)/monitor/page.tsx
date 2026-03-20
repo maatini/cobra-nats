@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useNatsStore } from "@/store/useNatsStore";
+import { useActiveConnection } from "@/hooks/use-active-connection";
 import {
     Monitor,
     Play,
@@ -42,8 +42,7 @@ export default function MonitorPage() {
 
     const eventSourceRef = React.useRef<EventSource | null>(null);
     const messagesEndRef = React.useRef<HTMLDivElement>(null);
-    const { activeConnectionId, connections } = useNatsStore();
-    const activeConnection = connections.find((c) => c.id === activeConnectionId);
+    const activeConnection = useActiveConnection();
 
     const toggleSubscription = () => {
         if (isSubscribed) {
@@ -58,7 +57,7 @@ export default function MonitorPage() {
             }
 
             const servers = activeConnection.servers.join(",");
-            const url = `/api/monitor?connectionId=${activeConnectionId}&subject=${encodeURIComponent(subject)}&servers=${encodeURIComponent(servers)}`;
+            const url = `/api/monitor?connectionId=${activeConnection.id}&subject=${encodeURIComponent(subject)}&servers=${encodeURIComponent(servers)}`;
 
             const es = new EventSource(url);
             eventSourceRef.current = es;

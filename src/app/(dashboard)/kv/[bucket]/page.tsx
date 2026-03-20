@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useNatsStore } from "@/store/useNatsStore";
+import { useActiveConnection } from "@/hooks/use-active-connection";
 import { getKVKeys, getKVEntry, deleteKVBucket } from "@/app/actions/kv-actions";
 import type { KvEntry } from "nats";
 import type { KvEntryResult } from "@/lib/nats/nats-types";
@@ -38,8 +38,7 @@ import { format } from "date-fns";
 export default function KVDetailPage() {
     const { bucket } = useParams();
     const router = useRouter();
-    const { activeConnectionId, connections } = useNatsStore();
-    const activeConnection = connections.find((c) => c.id === activeConnectionId);
+    const activeConnection = useActiveConnection();
 
     const [keys, setKeys] = React.useState<string[]>([]);
     const [filter, setFilter] = React.useState("");

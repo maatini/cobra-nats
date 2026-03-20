@@ -118,3 +118,51 @@ export interface ConsumerInfo {
     num_waiting: number;
     num_headers_only: number;
 }
+
+/**
+ * Serializable Object Store bucket info returned from server actions.
+ */
+export interface OsBucketInfo {
+    bucket: string;
+    description: string;
+    size: number;
+    storage: string;
+    replicas: number;
+    sealed: boolean;
+    objectCount: number;
+}
+
+/**
+ * Serializable Object Store object info returned from server actions.
+ */
+export interface OsObjectInfo {
+    name: string;
+    size: number;
+    chunks: number;
+    modified: string;
+    digest: string;
+    deleted: boolean;
+    metadata?: Record<string, string>;
+}
+
+/**
+ * Serializable stream message returned from server actions.
+ */
+export interface StreamMessage {
+    seq: number;
+    subject: string;
+    timestamp: string;
+    data: string;
+    headers: Record<string, string[]>;
+    size: number;
+}
+
+/**
+ * Options for fetching stream messages.
+ */
+export interface GetStreamMessagesOptions {
+    startSeq?: number;
+    endSeq?: number;
+    subjectFilter?: string;
+    batchSize?: number;
+}

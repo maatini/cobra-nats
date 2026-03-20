@@ -12,7 +12,7 @@
       "echo 'Welcome to the NATS-UI development environment!'"
     ],
     "scripts": {
-      "start-nats": "nats-server -p 4222",
+      "start-nats": "nats-server -js -p 4222",
       "nats-info": "nats info",
       "ui-dev": "npm run dev",
       "ui-build": "npm run build",

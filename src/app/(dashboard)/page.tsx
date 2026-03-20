@@ -1,5 +1,6 @@
 "use client";
 
+import { useActiveConnection } from "@/hooks/use-active-connection";
 import { useNatsStore } from "@/store/useNatsStore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -12,16 +13,116 @@ import {
     Info,
     ArrowRight,
     Send,
-    Monitor
+    Monitor,
+    Loader2,
+    AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { ConnectDialog } from "@/components/connections/connect-dialog";
+import { useEffect, useState, useCallback } from "react";
+import { listStreams } from "@/app/actions/stream-actions";
+import { listKVBuckets } from "@/app/actions/kv-actions";
+import { getServerInfo } from "@/app/actions/nats-actions";
+import type { NatsConnectionConfig } from "@/lib/nats/nats-types";
+
+interface DashboardStats {
+    streamCount: number | null;
+    kvBucketCount: number | null;
+    serverName: string | null;
+    serverVersion: string | null;
+    jetstream: boolean;
+    host: string | null;
+    port: number | null;
+}
 
 export default function DashboardPage() {
-    const { connections, activeConnectionId } = useNatsStore();
-    const activeConnection = connections.find((c) => c.id === activeConnectionId);
+    const activeConnection = useActiveConnection();
+    const { connections } = useNatsStore();
+    const [stats, setStats] = useState<DashboardStats>({
+        streamCount: null,
+        kvBucketCount: null,
+        serverName: null,
+        serverVersion: null,
+        jetstream: false,
+        host: null,
+        port: null,
+    });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchDashboardData = useCallback(async (connection: NatsConnectionConfig) => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            // Fetch server info and JetStream data in parallel
+            const [serverResult, streamsResult, kvResult] = await Promise.allSettled([
+                getServerInfo(connection),
+                listStreams(connection),
+                listKVBuckets(connection),
+            ]);
+
+            const newStats: DashboardStats = {
+                streamCount: null,
+                kvBucketCount: null,
+                serverName: null,
+                serverVersion: null,
+                jetstream: false,
+                host: null,
+                port: null,
+            };
+
+            // Process server info
+            if (serverResult.status === "fulfilled" && serverResult.value.success && serverResult.value.data) {
+                const info = serverResult.value.data.info;
+                newStats.serverName = info.server_name;
+                newStats.serverVersion = info.version;
+                newStats.jetstream = !!info.jetstream;
+                newStats.host = info.host;
+                newStats.port = info.port;
+            }
+
+            // Process streams (may fail if JetStream not enabled)
+            if (streamsResult.status === "fulfilled" && streamsResult.value.success && streamsResult.value.data) {
+                newStats.streamCount = streamsResult.value.data.length;
+            } else {
+                newStats.streamCount = 0;
+            }
+
+            // Process KV (may fail if JetStream not enabled)
+            if (kvResult.status === "fulfilled" && kvResult.value.success && kvResult.value.data) {
+                newStats.kvBucketCount = kvResult.value.data.buckets.length;
+            } else {
+                newStats.kvBucketCount = 0;
+            }
+
+            setStats(newStats);
+        } catch {
+            setError("Failed to fetch dashboard data");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    // Fetch data when connection changes
+    useEffect(() => {
+        if (activeConnection) {
+            fetchDashboardData(activeConnection as NatsConnectionConfig);
+        } else {
+            // Reset stats when no connection
+            setStats({
+                streamCount: null,
+                kvBucketCount: null,
+                serverName: null,
+                serverVersion: null,
+                jetstream: false,
+                host: null,
+                port: null,
+            });
+        }
+    }, [activeConnection, fetchDashboardData]);
 
     return (
         <div className="flex flex-col gap-6 animate-in fade-in duration-500">
@@ -63,21 +164,46 @@ export default function DashboardPage() {
                         <Layers className="size-4 text-amber-400 group-hover:scale-110 transition-transform" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-slate-100">--</div>
-                        <p className="text-xs text-slate-500">JetStream stats</p>
+                        <div className="text-2xl font-bold text-slate-100">
+                            {loading ? (
+                                <Loader2 className="size-5 animate-spin text-slate-500" />
+                            ) : stats.streamCount !== null ? (
+                                stats.streamCount
+                            ) : (
+                                "--"
+                            )}
+                        </div>
+                        <p className="text-xs text-slate-500">
+                            {stats.jetstream ? "JetStream enabled" : "JetStream stats"}
+                        </p>
                     </CardContent>
                 </Card>
                 <Card className="bg-slate-900 border-slate-800 hover:border-rose-500/50 transition-colors group">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-sm font-medium text-slate-400">Total Throughput</CardTitle>
-                        <Zap className="size-4 text-rose-400 group-hover:scale-110 transition-transform" />
+                        <CardTitle className="text-sm font-medium text-slate-400">KV Buckets</CardTitle>
+                        <Database className="size-4 text-rose-400 group-hover:scale-110 transition-transform" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-slate-100">0 B/s</div>
-                        <p className="text-xs text-slate-500">Across all subjects</p>
+                        <div className="text-2xl font-bold text-slate-100">
+                            {loading ? (
+                                <Loader2 className="size-5 animate-spin text-slate-500" />
+                            ) : stats.kvBucketCount !== null ? (
+                                stats.kvBucketCount
+                            ) : (
+                                "--"
+                            )}
+                        </div>
+                        <p className="text-xs text-slate-500">Key-Value stores</p>
                     </CardContent>
                 </Card>
             </div>
+
+            {error && (
+                <div className="flex items-center gap-2 text-sm text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-2">
+                    <AlertCircle className="size-4" />
+                    {error}
+                </div>
+            )}
 
             <div className="grid gap-6 md:grid-cols-2">
                 <Card className="bg-slate-900 border-slate-800 overflow-hidden">
@@ -107,7 +233,13 @@ export default function DashboardPage() {
                                             <div className="text-xs text-slate-500">{activeConnection.name}</div>
                                         </div>
                                     </div>
-                                    <div className="text-sm text-slate-300">nats-main-01</div>
+                                    <div className="text-sm text-slate-300">
+                                        {loading ? (
+                                            <Loader2 className="size-4 animate-spin text-slate-500" />
+                                        ) : (
+                                            stats.serverName || "–"
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="flex items-center justify-between p-4">
                                     <div className="flex items-center gap-3">
@@ -115,11 +247,43 @@ export default function DashboardPage() {
                                             <Activity className="size-4 text-amber-400" />
                                         </div>
                                         <div>
-                                            <div className="text-sm font-medium text-slate-200">Uptime</div>
-                                            <div className="text-xs text-slate-500">Time since last restart</div>
+                                            <div className="text-sm font-medium text-slate-200">Version</div>
+                                            <div className="text-xs text-slate-500">NATS server version</div>
                                         </div>
                                     </div>
-                                    <div className="text-sm text-slate-300">4d 12h 30m</div>
+                                    <div className="text-sm text-slate-300">
+                                        {loading ? (
+                                            <Loader2 className="size-4 animate-spin text-slate-500" />
+                                        ) : stats.serverVersion ? (
+                                            `v${stats.serverVersion}`
+                                        ) : (
+                                            "–"
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between p-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="rounded-md bg-emerald-500/10 p-2">
+                                            <Zap className="size-4 text-emerald-400" />
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-medium text-slate-200">JetStream</div>
+                                            <div className="text-xs text-slate-500">Persistence engine</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-sm">
+                                        {loading ? (
+                                            <Loader2 className="size-4 animate-spin text-slate-500" />
+                                        ) : stats.jetstream ? (
+                                            <Badge variant="outline" className="text-emerald-500 border-emerald-500/20 bg-emerald-500/5">
+                                                Enabled
+                                            </Badge>
+                                        ) : (
+                                            <Badge variant="outline" className="text-slate-500 border-slate-700">
+                                                Disabled
+                                            </Badge>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="flex items-center justify-between p-4 text-sm">
                                     <div className="text-slate-400">Servers</div>

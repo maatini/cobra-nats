@@ -20,7 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useNatsStore } from "@/store/useNatsStore";
+import { useActiveConnection } from "@/hooks/use-active-connection";
 import { publishMessage, requestMessage } from "@/app/actions/publish-actions";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -39,8 +39,7 @@ type PublishFormValues = z.infer<typeof publishSchema>;
 export default function PublishPage() {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [reply, setReply] = React.useState<{data: string, headers?: Record<string, string>} | null>(null);
-    const { connections, activeConnectionId } = useNatsStore();
-    const activeConnection = connections.find((c) => c.id === activeConnectionId);
+    const activeConnection = useActiveConnection();
 
     const form = useForm<PublishFormValues>({
         resolver: zodResolver(publishSchema),

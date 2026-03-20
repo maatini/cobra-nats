@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useNatsStore } from "@/store/useNatsStore";
+import { useActiveConnection } from "@/hooks/use-active-connection";
 import { getStreamInfo, deleteStream } from "@/app/actions/stream-actions";
 import { listConsumers, deleteConsumer } from "@/app/actions/consumer-actions";
 import type { StreamInfo, ConsumerInfo } from "nats";
@@ -26,8 +26,7 @@ import { Card, CardContent } from "@/components/ui/card";
 export default function StreamDetailPage() {
     const { name } = useParams();
     const router = useRouter();
-    const { activeConnectionId, connections } = useNatsStore();
-    const activeConnection = connections.find((c) => c.id === activeConnectionId);
+    const activeConnection = useActiveConnection();
 
     const [streamInfo, setStreamInfo] = React.useState<StreamInfo | null>(null);
     const [consumers, setConsumers] = React.useState<ConsumerInfo[]>([]);

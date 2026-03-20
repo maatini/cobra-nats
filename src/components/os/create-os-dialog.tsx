@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { Plus, Database, Loader2, Info } from "lucide-react";
+import { Plus, HardDrive, Loader2, Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,67 +26,63 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import type { KvOptions } from "nats";
 import { useActiveConnection } from "@/hooks/use-active-connection";
-import { createKVBucket } from "@/app/actions/kv-actions";
+import { createOSBucket } from "@/app/actions/os-actions";
 
-const kvSchema = z.object({
+const osSchema = z.object({
     bucket: z.string().min(1, "Bucket name is required").regex(/^[a-zA-Z0-9_-]+$/, "Only alphanumeric, dash and underscore allowed"),
     description: z.string().optional(),
-    history: z.number().min(1).max(64),
-    max_age: z.number(),
     replicas: z.number().min(1).max(5),
+    maxChunkSize: z.number().min(0),
 });
 
-type KVFormValues = z.infer<typeof kvSchema>;
+type OSFormValues = z.infer<typeof osSchema>;
 
-interface CreateKVDialogProps {
+interface CreateOSDialogProps {
     onCreated?: () => void;
 }
 
-export function CreateKVDialog({ onCreated }: CreateKVDialogProps) {
+export function CreateOSDialog({ onCreated }: CreateOSDialogProps) {
     const [open, setOpen] = React.useState(false);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const activeConnection = useActiveConnection();
 
-    const form = useForm<KVFormValues>({
-        resolver: zodResolver(kvSchema),
+    const form = useForm<OSFormValues>({
+        resolver: zodResolver(osSchema),
         defaultValues: {
             bucket: "",
             description: "",
-            history: 1,
-            max_age: 0,
             replicas: 1,
+            maxChunkSize: 0,
         },
     });
 
-    async function onSubmit(values: KVFormValues) {
+    async function onSubmit(values: OSFormValues) {
         if (!activeConnection) {
             toast.error("No active connection");
             return;
         }
 
         setIsSubmitting(true);
-        const cleanOptions: Partial<KvOptions & { bucket: string }> = {
-            bucket: values.bucket,
-            history: values.history,
+
+        const opts: Record<string, unknown> = {
             replicas: values.replicas,
             timeout: 5000,
         };
-        if (values.description?.trim()) cleanOptions.description = values.description.trim();
-        if (values.max_age > 0) cleanOptions.ttl = values.max_age;
+        if (values.description?.trim()) opts.description = values.description.trim();
+        if (values.maxChunkSize > 0) opts.max_chunk_size = values.maxChunkSize;
 
-        const result = await createKVBucket(activeConnection, cleanOptions);
+        const result = await createOSBucket(activeConnection, values.bucket, opts);
 
         setIsSubmitting(false);
 
         if (result.success) {
-            toast.success(`KV Bucket "${values.bucket}" created successfully`);
+            toast.success(`Object Store "${values.bucket}" created successfully`);
             setOpen(false);
             form.reset();
             onCreated?.();
         } else {
-            toast.error("Failed to create bucket", {
+            toast.error("Failed to create Object Store", {
                 description: result.error,
             });
         }
@@ -95,19 +91,19 @@ export function CreateKVDialog({ onCreated }: CreateKVDialogProps) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+                <Button className="bg-cyan-600 hover:bg-cyan-700 text-white gap-2">
                     <Plus className="size-4" />
-                    Create KV Bucket
+                    Create Object Store
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px] bg-slate-950 border-slate-800 text-slate-100">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <Database className="size-5 text-emerald-500" />
-                        Create New KV Bucket
+                        <HardDrive className="size-5 text-cyan-500" />
+                        Create New Object Store
                     </DialogTitle>
                     <DialogDescription className="text-slate-400">
-                        A KeyValue bucket provides a simple key-value store backed by JetStream.
+                        An Object Store provides large binary file storage backed by JetStream.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -120,7 +116,7 @@ export function CreateKVDialog({ onCreated }: CreateKVDialogProps) {
                                 <FormItem>
                                     <FormLabel>Bucket Name</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="settings" {...field} className="bg-slate-900 border-slate-800" />
+                                        <Input placeholder="my-assets" {...field} className="bg-slate-900 border-slate-800" />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -133,26 +129,13 @@ export function CreateKVDialog({ onCreated }: CreateKVDialogProps) {
                                 <FormItem>
                                     <FormLabel>Description</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Application settings" {...field} className="bg-slate-900 border-slate-800" />
+                                        <Input placeholder="Static assets storage" {...field} className="bg-slate-900 border-slate-800" />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
                         <div className="grid grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="history"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>History (Revisions)</FormLabel>
-                                        <FormControl>
-                                            <Input type="number" {...field} className="bg-slate-900 border-slate-800" />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
                             <FormField
                                 control={form.control}
                                 name="replicas"
@@ -166,12 +149,25 @@ export function CreateKVDialog({ onCreated }: CreateKVDialogProps) {
                                     </FormItem>
                                 )}
                             />
+                            <FormField
+                                control={form.control}
+                                name="maxChunkSize"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Max Chunk Size</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" placeholder="0 = default" {...field} className="bg-slate-900 border-slate-800" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                         </div>
 
-                        <div className="rounded-md bg-indigo-500/10 p-3 border border-indigo-500/20 flex gap-3">
-                            <Info className="size-5 text-indigo-400 shrink-0" />
-                            <div className="text-xs text-indigo-300 leading-relaxed">
-                                KV buckets use JetStream under the hood. The bucket name will be prefixed with <code>KV_</code> in NATS.
+                        <div className="rounded-md bg-cyan-500/10 p-3 border border-cyan-500/20 flex gap-3">
+                            <Info className="size-5 text-cyan-400 shrink-0" />
+                            <div className="text-xs text-cyan-300 leading-relaxed">
+                                Object Store buckets use JetStream under the hood. The bucket name will be prefixed with <code>OBJ_</code> in NATS.
                             </div>
                         </div>
 
@@ -179,12 +175,12 @@ export function CreateKVDialog({ onCreated }: CreateKVDialogProps) {
                             <Button
                                 type="submit"
                                 disabled={isSubmitting || !activeConnection}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white w-full"
+                                className="bg-cyan-600 hover:bg-cyan-700 text-white w-full"
                             >
                                 {isSubmitting ? (
                                     <Loader2 className="size-4 animate-spin" />
                                 ) : (
-                                    "Create Bucket"
+                                    "Create Object Store"
                                 )}
                             </Button>
                         </DialogFooter>

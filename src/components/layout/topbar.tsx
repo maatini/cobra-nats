@@ -1,6 +1,7 @@
 "use client";
 
 import { useNatsStore } from "@/store/useNatsStore";
+import { useActiveConnection } from "@/hooks/use-active-connection";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -17,7 +18,7 @@ import { ConnectDialog } from "@/components/connections/connect-dialog";
 
 export function Topbar() {
     const { connections, activeConnectionId, setActiveConnection } = useNatsStore();
-    const activeConnection = connections.find((c) => c.id === activeConnectionId);
+    const activeConnection = useActiveConnection();
 
     return (
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-slate-800 bg-slate-950/80 px-4 backdrop-blur-md lg:px-6">

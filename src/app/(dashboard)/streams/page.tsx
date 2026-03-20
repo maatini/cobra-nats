@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useNatsStore } from "@/store/useNatsStore";
+import { useActiveConnection } from "@/hooks/use-active-connection";
 import { listStreams, deleteStream } from "@/app/actions/stream-actions";
+import { getStreamConsumerStats, type ConsumerStats } from "@/app/actions/stream-consumer-stats";
 import type { StreamInfo } from "nats";
 import { toast } from "sonner";
 import { StreamTable } from "@/components/streams/stream-table";
@@ -12,25 +13,36 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function StreamsPage() {
     const [streams, setStreams] = React.useState<StreamInfo[]>([]);
+    const [consumerStats, setConsumerStats] = React.useState<Record<string, ConsumerStats> | undefined>();
     const [isLoading, setIsLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
-    const { activeConnectionId, connections } = useNatsStore();
-
-    const activeConnection = connections.find((c) => c.id === activeConnectionId);
+    const activeConnection = useActiveConnection();
 
     const fetchStreams = React.useCallback(async () => {
         if (!activeConnection) {
             setStreams([]);
+            setConsumerStats(undefined);
             setIsLoading(false);
             return;
         }
 
         setIsLoading(true);
         setError(null);
+        setConsumerStats(undefined);
         const result = await listStreams(activeConnection);
 
         if (result.success) {
-            setStreams(result.data || []);
+            const streamData = result.data || [];
+            setStreams(streamData);
+
+            // Fetch consumer stats asynchronously after streams load
+            if (streamData.length > 0) {
+                const names = streamData.map((s) => s.config.name);
+                const statsResult = await getStreamConsumerStats(activeConnection, names);
+                if (statsResult.success && statsResult.data) {
+                    setConsumerStats(statsResult.data);
+                }
+            }
         } else {
             setError(result.error || "Failed to fetch streams");
             toast.error("Failed to load streams", {
@@ -91,6 +103,7 @@ export default function StreamsPage() {
             ) : (
                 <StreamTable
                     data={streams}
+                    consumerStats={consumerStats}
                     onDelete={handleDelete}
                     onRefresh={fetchStreams}
                     isLoading={isLoading}

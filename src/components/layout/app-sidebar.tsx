@@ -4,6 +4,7 @@ import {
     LayoutDashboard,
     Layers,
     Database,
+    HardDrive,
     Send,
     Monitor,
     Settings,
@@ -41,6 +42,11 @@ const items = [
         title: "KV Stores",
         url: "/kv",
         icon: Database,
+    },
+    {
+        title: "Object Store",
+        url: "/os",
+        icon: HardDrive,
     },
     {
         title: "Publish",

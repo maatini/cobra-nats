@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import type { ConsumerStats } from "@/app/actions/stream-consumer-stats";
 import {
     ColumnDef,
     flexRender,
@@ -44,12 +45,13 @@ import Link from "next/link";
 
 interface StreamTableProps {
     data: StreamInfo[];
+    consumerStats?: Record<string, ConsumerStats>;
     onDelete: (name: string) => void;
     onRefresh: () => void;
     isLoading: boolean;
 }
 
-export function StreamTable({ data, onDelete, onRefresh, isLoading }: StreamTableProps) {
+export function StreamTable({ data, consumerStats, onDelete, onRefresh, isLoading }: StreamTableProps) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [filter, setFilter] = React.useState("");
 
@@ -103,6 +105,49 @@ export function StreamTable({ data, onDelete, onRefresh, isLoading }: StreamTabl
                     {row.original.state.messages.toLocaleString()}
                 </span>
             ),
+        },
+        {
+            id: "consumers",
+            header: "Consumers",
+            cell: ({ row }) => {
+                const name = row.original.config.name;
+                const stats = consumerStats?.[name];
+                return (
+                    <span className="text-slate-400 tabular-nums">
+                        {stats != null ? stats.consumers.toLocaleString() : "–"}
+                    </span>
+                );
+            },
+        },
+        {
+            id: "pending",
+            header: "Pending",
+            cell: ({ row }) => {
+                const name = row.original.config.name;
+                const stats = consumerStats?.[name];
+                return (
+                    <span className="text-slate-400 tabular-nums">
+                        {stats != null ? stats.pending.toLocaleString() : "–"}
+                    </span>
+                );
+            },
+        },
+        {
+            id: "ackPending",
+            header: "Ack Pending",
+            cell: ({ row }) => {
+                const name = row.original.config.name;
+                const stats = consumerStats?.[name];
+                if (stats == null) return <span className="text-slate-500 tabular-nums">–</span>;
+                return (
+                    <span className={cn(
+                        "tabular-nums",
+                        stats.ackPending > 0 ? "text-amber-400" : "text-slate-400"
+                    )}>
+                        {stats.ackPending.toLocaleString()}
+                    </span>
+                );
+            },
         },
         {
             accessorKey: "state.bytes",

@@ -35,7 +35,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { useNatsStore } from "@/store/useNatsStore";
+import { useActiveConnection } from "@/hooks/use-active-connection";
 import { createStream } from "@/app/actions/stream-actions";
 
 const streamSchema = z.object({
@@ -59,8 +59,7 @@ interface CreateStreamDialogProps {
 export function CreateStreamDialog({ onCreated }: CreateStreamDialogProps) {
     const [open, setOpen] = React.useState(false);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const { connections, activeConnectionId } = useNatsStore();
-    const activeConnection = connections.find((c) => c.id === activeConnectionId);
+    const activeConnection = useActiveConnection();
 
     const form = useForm<StreamFormValues>({
         resolver: zodResolver(streamSchema),
