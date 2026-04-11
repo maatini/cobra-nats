@@ -19,14 +19,17 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StreamInfoView } from "@/components/streams/stream-info-view";
 import { ConsumerList } from "@/components/streams/consumer-list";
+import { CreateConsumerDialog } from "@/components/streams/create-consumer-dialog";
+import { MessageBrowser } from "@/components/streams/message-browser";
 import { Badge } from "@/components/ui/badge";
+import { useConfirm } from "@/components/providers/confirm-provider";
 import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
 
 export default function StreamDetailPage() {
     const { name } = useParams();
     const router = useRouter();
     const activeConnection = useActiveConnection();
+    const confirm = useConfirm();
 
     const [streamInfo, setStreamInfo] = React.useState<StreamInfo | null>(null);
     const [consumers, setConsumers] = React.useState<ConsumerInfo[]>([]);
@@ -60,7 +63,12 @@ export default function StreamDetailPage() {
 
     const handleDeleteStream = async () => {
         if (!activeConnection || !name) return;
-        if (!confirm(`Are you sure you want to delete stream "${name}"?`)) return;
+        const ok = await confirm({
+            title: `Delete stream "${name}"?`,
+            description: "This permanently removes the stream and all its messages. This action cannot be undone.",
+            confirmText: "Delete Stream",
+        });
+        if (!ok) return;
 
         const result = await deleteStream(activeConnection, name as string);
         if (result.success) {
@@ -137,22 +145,24 @@ export default function StreamDetailPage() {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-lg font-medium text-slate-200">Processing Consumers</h3>
-                            <Button size="sm" className="bg-indigo-600 text-white hover:bg-indigo-700">Add Consumer</Button>
+                            <CreateConsumerDialog streamName={name as string} onCreated={fetchData} />
                         </div>
-                        <ConsumerList consumers={consumers} onDelete={handleDeleteConsumer} />
+                        <ConsumerList
+                            consumers={consumers}
+                            streamName={name as string}
+                            onDelete={handleDeleteConsumer}
+                            onCreated={fetchData}
+                        />
                     </div>
                 </TabsContent>
 
                 <TabsContent value="messages" className="outline-none">
-                    <Card className="bg-slate-900 border-slate-800 border-dashed border-2">
-                        <CardContent className="flex flex-col items-center justify-center py-24 text-center">
-                            <MessageSquare className="size-12 text-slate-700 mb-4" />
-                            <h3 className="text-lg font-medium text-slate-400">Message Browser</h3>
-                            <p className="text-sm text-slate-600 mt-2 max-w-sm">
-                                Feature coming soon. You&apos;ll be able to peek at messages by sequence number or timestamp.
-                            </p>
-                        </CardContent>
-                    </Card>
+                    <MessageBrowser
+                        config={activeConnection}
+                        streamName={name as string}
+                        firstSeq={streamInfo.state.first_seq}
+                        lastSeq={streamInfo.state.last_seq}
+                    />
                 </TabsContent>
             </Tabs>
         </div>

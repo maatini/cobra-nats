@@ -31,6 +31,8 @@ import {
     TableRow
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { JsonViewer } from "@/components/ui/json-viewer";
+import { useConfirm } from "@/components/providers/confirm-provider";
 import { PutEntryDialog } from "@/components/kv/put-entry-dialog";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -39,6 +41,7 @@ export default function KVDetailPage() {
     const { bucket } = useParams();
     const router = useRouter();
     const activeConnection = useActiveConnection();
+    const confirm = useConfirm();
 
     const [keys, setKeys] = React.useState<string[]>([]);
     const [filter, setFilter] = React.useState("");
@@ -77,7 +80,12 @@ export default function KVDetailPage() {
 
     const handleDeleteBucket = async () => {
         if (!activeConnection || !bucket) return;
-        if (!confirm(`Are you sure you want to delete the entire bucket "${bucket}"?`)) return;
+        const ok = await confirm({
+            title: `Delete bucket "${bucket}"?`,
+            description: "All keys and their history will be permanently removed.",
+            confirmText: "Delete Bucket",
+        });
+        if (!ok) return;
 
         const result = await deleteKVBucket(activeConnection, bucket as string);
         if (result.success) {
@@ -212,9 +220,12 @@ export default function KVDetailPage() {
                                     <span className="text-[10px] text-slate-600 font-mono">Size: {(selectedEntry.value.length / 1024).toFixed(2)} KB</span>
                                 </div>
                                 <ScrollArea className="flex-1 p-4">
-                                    <pre className="text-sm font-mono text-indigo-300 whitespace-pre-wrap break-all leading-relaxed">
-                                        {selectedEntry.value}
-                                    </pre>
+                                    <JsonViewer
+                                        value={selectedEntry.value}
+                                        className="text-sm"
+                                        rawClassName="text-sm text-indigo-300 leading-relaxed"
+                                        showBadge
+                                    />
                                 </ScrollArea>
                             </div>
                         </div>

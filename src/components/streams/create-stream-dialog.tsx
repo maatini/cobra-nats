@@ -38,6 +38,16 @@ import {
 import { useActiveConnection } from "@/hooks/use-active-connection";
 import { createStream } from "@/app/actions/stream-actions";
 
+// Time units supported for max_age. Values are nanoseconds per unit.
+const MAX_AGE_UNITS = {
+    s: { label: "Seconds", ns: 1_000_000_000 },
+    m: { label: "Minutes", ns: 60 * 1_000_000_000 },
+    h: { label: "Hours", ns: 3600 * 1_000_000_000 },
+    d: { label: "Days", ns: 86400 * 1_000_000_000 },
+} as const;
+
+type MaxAgeUnit = keyof typeof MAX_AGE_UNITS;
+
 const streamSchema = z.object({
     name: z.string().min(1, "Name is required").regex(/^[a-zA-Z0-9_-]+$/, "Only alphanumeric, dash and underscore allowed"),
     subjects: z.string().min(1, "At least one subject is required"),
@@ -45,7 +55,8 @@ const streamSchema = z.object({
     storage: z.nativeEnum(StorageType),
     max_msgs: z.number(),
     max_bytes: z.number(),
-    max_age: z.number(), // in nanoseconds, 0 is infinite
+    max_age_value: z.number().min(0),
+    max_age_unit: z.enum(["s", "m", "h", "d"] as const),
     discard: z.nativeEnum(DiscardPolicy),
     replicas: z.number().min(1).max(5),
 });
@@ -70,7 +81,8 @@ export function CreateStreamDialog({ onCreated }: CreateStreamDialogProps) {
             storage: StorageType.File,
             max_msgs: -1,
             max_bytes: -1,
-            max_age: 0,
+            max_age_value: 0,
+            max_age_unit: "h",
             discard: DiscardPolicy.Old,
             replicas: 1,
         },
@@ -82,6 +94,11 @@ export function CreateStreamDialog({ onCreated }: CreateStreamDialogProps) {
             return;
         }
 
+        // Convert user-friendly value + unit into nanoseconds (0 = infinite).
+        const maxAgeNs = values.max_age_value > 0
+            ? values.max_age_value * MAX_AGE_UNITS[values.max_age_unit].ns
+            : 0;
+
         setIsSubmitting(true);
         const result = await createStream(activeConnection, {
             name: values.name,
@@ -90,7 +107,7 @@ export function CreateStreamDialog({ onCreated }: CreateStreamDialogProps) {
             storage: values.storage as unknown as import("nats").StorageType,
             max_msgs: Number(values.max_msgs),
             max_bytes: Number(values.max_bytes),
-            max_age: Number(values.max_age),
+            max_age: maxAgeNs,
             discard: values.discard as unknown as import("nats").DiscardPolicy,
             num_replicas: Number(values.replicas),
         } as unknown as import("nats").StreamConfig);
@@ -244,6 +261,56 @@ export function CreateStreamDialog({ onCreated }: CreateStreamDialogProps) {
                                         <FormControl>
                                             <Input type="number" {...field} className="bg-slate-900 border-slate-800" />
                                         </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="max_age_value"
+                                render={({ field }) => (
+                                    <FormItem className="col-span-2">
+                                        <FormLabel>Max Age</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                {...field}
+                                                onChange={e => field.onChange(Number(e.target.value))}
+                                                className="bg-slate-900 border-slate-800"
+                                            />
+                                        </FormControl>
+                                        <FormDescription className="text-[10px]">0 = infinite retention</FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="max_age_unit"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Unit</FormLabel>
+                                        <Select
+                                            onValueChange={v => field.onChange(v as MaxAgeUnit)}
+                                            value={field.value}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="bg-slate-900 border-slate-800">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="bg-slate-900 border-slate-800">
+                                                {(Object.keys(MAX_AGE_UNITS) as MaxAgeUnit[]).map(u => (
+                                                    <SelectItem key={u} value={u}>
+                                                        {MAX_AGE_UNITS[u].label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                         <FormMessage />
                                     </FormItem>
                                 )}

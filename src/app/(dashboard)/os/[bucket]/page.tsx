@@ -21,12 +21,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ObjectList } from "@/components/os/object-list";
 import { UploadObjectDialog } from "@/components/os/upload-object-dialog";
+import { useConfirm } from "@/components/providers/confirm-provider";
 import Link from "next/link";
 
 export default function OSDetailPage() {
     const { bucket } = useParams();
     const router = useRouter();
     const activeConnection = useActiveConnection();
+    const confirm = useConfirm();
 
     const [objects, setObjects] = React.useState<OsObjectInfo[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
@@ -85,7 +87,12 @@ export default function OSDetailPage() {
     /** Delete a single object. */
     const handleDeleteObject = async (name: string) => {
         if (!activeConnection || !bucket) return;
-        if (!confirm(`Delete object "${name}"?`)) return;
+        const ok = await confirm({
+            title: `Delete object "${name}"?`,
+            description: "The object will be removed from this Object Store.",
+            confirmText: "Delete Object",
+        });
+        if (!ok) return;
 
         const result = await deleteObject(activeConnection, bucket as string, name);
         if (result.success) {
@@ -99,7 +106,12 @@ export default function OSDetailPage() {
     /** Delete the entire bucket. */
     const handleDeleteBucket = async () => {
         if (!activeConnection || !bucket) return;
-        if (!confirm(`Are you sure you want to delete the entire bucket "${bucket}"?`)) return;
+        const ok = await confirm({
+            title: `Delete bucket "${bucket}"?`,
+            description: "All objects and their chunks will be permanently removed.",
+            confirmText: "Delete Bucket",
+        });
+        if (!ok) return;
 
         const result = await deleteOSBucket(activeConnection, bucket as string);
         if (result.success) {

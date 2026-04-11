@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { JsonViewer, tryParseJson } from "@/components/ui/json-viewer";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -200,7 +201,13 @@ export default function MonitorPage() {
                                                 <span className="tabular-nums font-mono">{format(msg.timestamp, "HH:mm:ss.SSS")}</span>
                                             </div>
                                             <div className="font-mono font-medium text-amber-400 truncate">{msg.subject}</div>
-                                            <div className="text-slate-300 truncate font-mono opacity-80">{msg.data}</div>
+                                            <div className="truncate font-mono opacity-80">
+                                                {tryParseJson(msg.data) ? (
+                                                    <span className="text-emerald-300">{msg.data}</span>
+                                                ) : (
+                                                    <span className="text-slate-300">{msg.data}</span>
+                                                )}
+                                            </div>
                                             <div className="text-right text-slate-500 tabular-nums">{(msg.size / 1024).toFixed(2)} KB</div>
                                         </div>
                                         {isExpanded && (
@@ -212,9 +219,14 @@ export default function MonitorPage() {
                                                             <Copy className="size-3" />
                                                         </Button>
                                                     </div>
-                                                    <pre className="text-xs text-indigo-300 font-mono whitespace-pre-wrap break-all overflow-auto max-h-[300px]">
-                                                        {msg.data}
-                                                    </pre>
+                                                    <div className="overflow-auto max-h-[300px]">
+                                                        <JsonViewer
+                                                            value={msg.data}
+                                                            className="text-xs"
+                                                            rawClassName="text-xs text-indigo-300"
+                                                            showBadge
+                                                        />
+                                                    </div>
 
                                                     {msg.headers && Object.keys(msg.headers).length > 0 && (
                                                         <div className="pt-4 border-t border-slate-800 space-y-2">

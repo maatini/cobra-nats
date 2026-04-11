@@ -101,15 +101,18 @@ test.describe('Functional KV Stores', () => {
         await keyRow.click();
 
         // Verify value is displayed correctly in the editor view (simplified check)
-        await expect(page.getByText(testValue, { exact: false })).toBeVisible();
         await expect(page.getByText('Viewing Key', { exact: true })).toBeVisible();
 
-        // Delete Bucket
-        await page.getByRole('button', { name: 'Delete Bucket' }).click();
+        // The saved payload is valid JSON, so the JsonViewer should render a JSON badge
+        // and highlight the "message" key. Locate inside the value editor region.
+        await expect(page.getByText('JSON', { exact: true }).first()).toBeVisible();
+        await expect(page.getByText('"message"', { exact: false })).toBeVisible();
 
-        // We use window.confirm in the UI, so we need to handle the dialog
-        page.once('dialog', dialog => dialog.accept());
+        // Delete Bucket — Radix confirm dialog replaces window.confirm.
         await page.getByRole('button', { name: 'Delete Bucket' }).click();
+        const confirmDialog = page.getByRole('dialog');
+        await expect(confirmDialog.getByText(/Delete bucket/)).toBeVisible();
+        await confirmDialog.getByRole('button', { name: 'Delete Bucket' }).click();
 
         // Wait for successful deletion and redirection
         const deleteSuccessToast = page.getByText('Bucket deleted');

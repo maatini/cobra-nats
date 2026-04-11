@@ -7,16 +7,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ConnectDialog } from "@/components/connections/connect-dialog";
+import { useConfirm } from "@/components/providers/confirm-provider";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
     const { connections, activeConnectionId, removeConnection, setActiveConnection } = useNatsStore();
+    const confirm = useConfirm();
 
-    const handleDeleteConnection = (id: string, name: string) => {
-        if (confirm(`Are you sure you want to remove the connection "${name}"?`)) {
-            removeConnection(id);
-            toast.success("Connection removed");
-        }
+    const handleDeleteConnection = async (id: string, name: string) => {
+        const ok = await confirm({
+            title: `Remove connection "${name}"?`,
+            description: "This only removes it from the UI — the NATS server itself is untouched.",
+            confirmText: "Remove",
+        });
+        if (!ok) return;
+        removeConnection(id);
+        toast.success("Connection removed");
     };
 
     return (

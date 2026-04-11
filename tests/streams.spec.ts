@@ -46,4 +46,25 @@ test.describe('JetStream Streams', () => {
         // but we verify the button is enabled after filling required fields
         await expect(page.getByRole('button', { name: 'Create Stream', exact: true })).toBeEnabled();
     });
+
+    test('max_age input accepts a value and unit', async ({ page }) => {
+        await page.goto('/streams');
+        await page.getByRole('button', { name: 'Create Stream' }).click();
+
+        // Value field accepts a plain number, unit defaults to Hours
+        const maxAgeInput = page.getByLabel('Max Age');
+        await expect(maxAgeInput).toBeVisible();
+        await maxAgeInput.fill('7');
+        await expect(maxAgeInput).toHaveValue('7');
+
+        // Switch unit to Days via the Select trigger (no raw nanosecond input)
+        await page.getByLabel('Unit').click();
+        await page.getByRole('option', { name: 'Days' }).click();
+        await expect(page.getByLabel('Unit')).toContainText('Days');
+
+        // Submit button still enabled with required fields filled
+        await page.getByLabel('Stream Name').fill('TEST_STREAM_MA');
+        await page.getByLabel('Subjects').fill('test.>');
+        await expect(page.getByRole('button', { name: 'Create Stream', exact: true })).toBeEnabled();
+    });
 });

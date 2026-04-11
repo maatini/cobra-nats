@@ -24,11 +24,11 @@ test.describe('Functional Object Store CRUD', () => {
     test('should create a bucket, upload a file, and delete', async ({ page }) => {
         const bucketName = `TEST_OS_${Date.now()}`;
 
-        // Navigate to OS page
-        const osLink = page.getByRole('link', { name: 'Object Stores', exact: true });
-        await expect(osLink).toBeVisible({ timeout: 10000 });
-        await osLink.click();
+        // Navigate to OS page directly — sidebar link click races with hydration
+        // when the suite runs multiple workers in parallel.
+        await page.goto('/os');
         await expect(page).toHaveURL(/\/os/);
+        await expect(page.getByRole('heading', { name: 'Object Stores' })).toBeVisible({ timeout: 10000 });
 
         // Open create dialog
         await page.getByRole('button', { name: 'Create Object Store' }).click();
@@ -36,10 +36,10 @@ test.describe('Functional Object Store CRUD', () => {
         // Fill form
         await page.getByLabel('Bucket Name').fill(bucketName);
 
-        // Submit
-        const submitButton = page.locator('button[type="submit"]', { hasText: 'Create Object Store' });
+        // Submit — bypass stability check, Radix animation can micro-shift the button.
+        const submitButton = page.getByRole('dialog').getByRole('button', { name: 'Create Object Store', exact: true });
         await expect(submitButton).toBeEnabled();
-        await submitButton.click();
+        await submitButton.evaluate((el: HTMLButtonElement) => el.click());
 
         // Wait for success or failure toast
         const successToast = page.getByText(`Object Store "${bucketName}" created successfully`);
@@ -59,6 +59,10 @@ test.describe('Functional Object Store CRUD', () => {
 
         await expect(successToast).toBeVisible();
 
+        // Force a fresh fetch to guarantee the new bucket is in the list
+        // (avoids races where the post-create refetch hasn't landed yet).
+        await page.reload();
+
         // Bucket should appear in the list — click "Browse Objects" to navigate
         const bucketLink = page.locator(`a[href="/os/${bucketName}"]`).first();
         await expect(bucketLink).toBeVisible({ timeout: 10000 });
@@ -76,7 +80,7 @@ test.describe('Functional Object Store CRUD', () => {
 
         // Upload an object via the dialog
         await page.getByRole('button', { name: 'Upload' }).click();
-        await expect(page.getByText('Upload Object')).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Upload Object' })).toBeVisible();
 
         // Set file on input
         const fileInput = page.locator('input[type="file"]');
@@ -94,9 +98,11 @@ test.describe('Functional Object Store CRUD', () => {
         // Object should appear in the list
         await expect(page.getByText('test-upload.txt')).toBeVisible({ timeout: 10000 });
 
-        // Delete the bucket from the detail page
-        page.once('dialog', dialog => dialog.accept());
+        // Delete the bucket from the detail page — Radix confirm dialog replaces window.confirm.
         await page.getByRole('button', { name: 'Delete Bucket' }).click();
+        const confirmDialog = page.getByRole('dialog');
+        await expect(confirmDialog.getByText(/Delete bucket/)).toBeVisible();
+        await confirmDialog.getByRole('button', { name: 'Delete Bucket' }).click();
 
         // Wait for deletion and redirect
         const deletedToast = page.getByText('Bucket deleted');

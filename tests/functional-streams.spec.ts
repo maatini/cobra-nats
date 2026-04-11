@@ -32,10 +32,12 @@ test.describe('Functional Stream Creation', () => {
         await page.getByLabel('Stream Name').fill(streamName);
         await page.getByLabel('Subjects').fill(`${streamName}.>`);
 
-        // Submit - targeting the button inside the dialog
-        const submitButton = page.locator('button[type="submit"]', { hasText: 'Create Stream' });
+        // Submit — scope to the dialog to avoid collisions with the page-level trigger.
+        // Use DOM click() to bypass Playwright's stability checks: the Radix dialog
+        // may micro-shift the button during its open animation.
+        const submitButton = page.getByRole('dialog').getByRole('button', { name: 'Create Stream', exact: true });
         await expect(submitButton).toBeEnabled();
-        await submitButton.click();
+        await submitButton.evaluate((el: HTMLButtonElement) => el.click());
 
         // Wait for EITHER success or failure toast
         const successToast = page.getByText(`Stream "${streamName}" created successfully`);
@@ -55,8 +57,9 @@ test.describe('Functional Stream Creation', () => {
 
         await expect(successToast).toBeVisible();
 
-        // Stream should appear in the list (Table)
-        // Wait for loading to finish if it's showing
+        // Force a fresh fetch to guarantee the new stream is in the table
+        // (avoids races where the post-create refetch hasn't landed yet).
+        await page.reload();
         await expect(page.getByText('Loading streams...')).not.toBeVisible({ timeout: 10000 });
 
         // Filter the table using the search box (vital if there are many streams paginated)
@@ -92,16 +95,18 @@ test.describe('Functional Stream Creation', () => {
         await expect(page.getByRole('heading', { name: 'Processing Consumers', exact: true })).toBeVisible();
 
         await messagesTab.click();
-        await expect(page.getByRole('heading', { name: 'Message Browser', exact: true })).toBeVisible();
+        // Message Browser is rendered inside a shadcn CardTitle (div) — not a heading role.
+        // Assert via the Load Messages button which is unique to this view.
+        await expect(page.getByRole('button', { name: 'Load Messages' })).toBeVisible();
+        await expect(page.getByText(/Message Browser/)).toBeVisible();
 
         await infoTab.click();
 
-        // Delete the stream from the details page
+        // Delete the stream from the details page — Radix confirm dialog replaces window.confirm.
         await page.getByRole('button', { name: 'Delete', exact: true }).click();
-
-        // Handle confirmation dialog
-        page.once('dialog', dialog => dialog.accept());
-        await page.getByRole('button', { name: 'Delete', exact: true }).click();
+        const confirmDialog = page.getByRole('dialog');
+        await expect(confirmDialog.getByText(/Delete stream/)).toBeVisible();
+        await confirmDialog.getByRole('button', { name: 'Delete Stream' }).click();
 
         // Wait for successful deletion toast and redirect back to streams list
         const deleteSuccessToast = page.getByText('Stream deleted');

@@ -13,13 +13,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trash2, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { CreateConsumerDialog } from "./create-consumer-dialog";
 
 export function ConsumerList({
     consumers,
-    onDelete
+    streamName,
+    onDelete,
+    onCreated,
 }: {
-    consumers: ConsumerInfo[],
-    onDelete: (name: string) => void
+    consumers: ConsumerInfo[];
+    streamName: string;
+    onDelete: (name: string) => void;
+    onCreated?: () => void;
 }) {
     return (
         <div className="rounded-md border border-slate-800 bg-slate-900/50">
@@ -70,8 +75,11 @@ export function ConsumerList({
                         ))
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={6} className="h-24 text-center text-slate-500">
-                                No consumers found for this stream.
+                            <TableCell colSpan={6} className="h-28 text-center text-slate-500">
+                                <div className="flex flex-col items-center gap-3">
+                                    <span>No consumers found for this stream.</span>
+                                    <CreateConsumerDialog streamName={streamName} onCreated={onCreated} />
+                                </div>
                             </TableCell>
                         </TableRow>
                     )}
