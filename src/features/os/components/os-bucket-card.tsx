@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface OSBucketCardProps {
     bucket: OsBucketInfo;
@@ -35,8 +36,12 @@ function formatBytes(bytes: number): string {
 }
 
 export function OSBucketCard({ bucket, onDelete }: OSBucketCardProps) {
+    const router = useRouter();
     return (
-        <Card className="bg-card border-border hover:border-cyan-500/50 transition-colors group">
+        <Card
+            onClick={() => router.push(`/os/${bucket.bucket}`)}
+            className="bg-card border-border hover:border-cyan-500/50 transition-colors group cursor-pointer"
+        >
             <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="rounded-md bg-cyan-500/10 p-2 shrink-0">
@@ -52,12 +57,12 @@ export function OSBucketCard({ bucket, onDelete }: OSBucketCardProps) {
                     </div>
                 </div>
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
                             <MoreVertical className="size-4" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
+                    <DropdownMenuContent align="end" className="bg-card border-border text-foreground" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenuItem asChild className="focus:bg-cyan-600">
                             <Link href={`/os/${bucket.bucket}`} className="flex items-center gap-2 cursor-pointer">
                                 <Eye className="size-4" />
@@ -65,7 +70,7 @@ export function OSBucketCard({ bucket, onDelete }: OSBucketCardProps) {
                             </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                            onClick={() => onDelete(bucket.bucket)}
+                            onClick={(e) => { e.stopPropagation(); onDelete(bucket.bucket); }}
                             className="flex items-center gap-2 text-rose-500 focus:bg-rose-600 focus:text-white cursor-pointer"
                         >
                             <Trash2 className="size-4" />

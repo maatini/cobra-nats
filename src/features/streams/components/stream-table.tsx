@@ -42,6 +42,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useUrlState } from "@/hooks/use-url-state";
 
 interface StreamTableProps {
@@ -55,6 +56,7 @@ interface StreamTableProps {
 const URL_DEFAULTS = { q: "", sort: "", dir: "asc", page: 0 };
 
 export function StreamTable({ data, consumerStats, onDelete, onRefresh, isLoading }: StreamTableProps) {
+    const router = useRouter();
     const [urlState, setUrlState] = useUrlState(URL_DEFAULTS);
     const filter = urlState.q;
     const setFilter = (q: string) => setUrlState({ q, page: 0 });
@@ -199,13 +201,13 @@ export function StreamTable({ data, consumerStats, onDelete, onRefresh, isLoadin
 
                 return (
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
                                 <span className="sr-only">Open menu</span>
                                 <MoreHorizontal className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
+                        <DropdownMenuContent align="end" className="bg-card border-border text-foreground" onClick={(e) => e.stopPropagation()}>
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem asChild className="focus:bg-indigo-600">
                                 <Link href={`/streams/${stream.config.name}`} className="flex items-center gap-2 cursor-pointer">
@@ -215,7 +217,7 @@ export function StreamTable({ data, consumerStats, onDelete, onRefresh, isLoadin
                             </DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-muted" />
                             <DropdownMenuItem
-                                onClick={() => onDelete(stream.config.name)}
+                                onClick={(e) => { e.stopPropagation(); onDelete(stream.config.name); }}
                                 className="flex items-center gap-2 text-rose-500 focus:bg-rose-600 focus:text-white cursor-pointer"
                             >
                                 <Trash2 className="size-4" />
@@ -294,7 +296,8 @@ export function StreamTable({ data, consumerStats, onDelete, onRefresh, isLoadin
                             table.getRowModel().rows.map((row) => (
                                 <TableRow
                                     key={row.id}
-                                    className="border-border hover:bg-muted/50 transition-colors"
+                                    onClick={() => router.push(`/streams/${row.original.config.name}`)}
+                                    className="border-border hover:bg-muted/50 transition-colors cursor-pointer"
                                 >
                                     {row.getVisibleCells().map((cell) => (
                                         <TableCell key={cell.id} className="py-3">
