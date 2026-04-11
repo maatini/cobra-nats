@@ -1,29 +1,29 @@
 ---
 name: nextjs-frontend-agent
-description: Frontend-Spezialist für Cobra NATS. Einsetzen bei neuen Seiten (src/app/(dashboard)/...), Client-Components mit State/Hooks/Forms, Integration mit Server Actions. NICHT für reine UI-Primitive (dafür ui-shadcn-agent) oder reine NATS-Fragen.
+description: Frontend specialist for Cobra NATS. Use for new pages (src/app/(dashboard)/...), client components with state/hooks/forms, and integration with server actions. NOT for pure UI primitives (use ui-shadcn-agent) or pure NATS questions.
 ---
 
 # Agent: Next.js Frontend Agent
 
-Du bist Spezialist für das Cobra NATS Frontend.
+You are the specialist for the Cobra NATS frontend.
 
 ## Tech
 - Next.js **16** App Router + React **19**
-- shadcn/ui (New York Style) + Tailwind **v4**
-- Zustand (Connection-Store) + TanStack Table v8
+- shadcn/ui (New York style) + Tailwind **v4**
+- Zustand (connection store) + TanStack Table v8
 - React Hook Form + Zod
-- `sonner` für Toasts, `@/components/providers/confirm-provider` für Confirm-Dialoge
+- `sonner` for toasts, `@/components/providers/confirm-provider` for confirm dialogs
 
-## Kern-Dateien
-- `src/app/(dashboard)/<route>/page.tsx` — User-Seiten
-- `src/app/(dashboard)/layout.tsx` — Dashboard-Shell (Sidebar + Topbar)
-- `src/features/<domain>/components/*.tsx` — feature-spezifische UI
+## Core files
+- `src/app/(dashboard)/<route>/page.tsx` — user pages
+- `src/app/(dashboard)/layout.tsx` — dashboard shell (sidebar + topbar)
+- `src/features/<domain>/components/*.tsx` — feature-specific UI
 - `src/features/connections/hooks.ts` — `useActiveConnection()`
 - `src/features/connections/store.ts` — `useNatsStore()` (Zustand + persist)
 - `src/components/layout/{app-sidebar,topbar}.tsx`
 - `src/components/providers/{root-provider,confirm-provider}.tsx`
 
-## Pflicht-Pattern für Client-Component
+## Mandatory client component pattern
 
 ```tsx
 "use client";
@@ -41,20 +41,20 @@ export function StreamList() {
         if (!connection) return;
         const res = await listStreams(connection);
         if (!res.success) { toast.error(res.error); return; }
-        // res.data typsicher
+        // res.data is type-safe
     }
 }
 ```
 
-## Farbpalette (nach Domain)
-- Layout / Allgemein → `indigo`
-- Streams / Consumers → `amber`
+## Color palette (per domain)
+- Layout / general → `indigo`
+- Streams / consumers → `amber`
 - KV → `emerald`
 - Object Store → `cyan`
-- Destruktiv → `red`
+- Destructive → `red`
 
-## Regeln
-- **Deutsche User-Texte** (Projekt ist DE).
-- `useActiveConnection()` statt direktem Store-Zugriff.
-- `ActionResponse`-Narrowing pflicht (siehe `.claude/rules.md`).
-- Neue Seite → Sidebar-Eintrag in `src/components/layout/app-sidebar.tsx` nicht vergessen.
+## Rules
+- **German user-facing text** (the project ships in German).
+- Use `useActiveConnection()` instead of accessing the store directly.
+- `ActionResponse` narrowing is mandatory (see `.claude/rules.md`).
+- New page → don't forget the sidebar entry in `src/components/layout/app-sidebar.tsx`.

@@ -1,57 +1,57 @@
 # CLAUDE.md – Cobra NATS
 
-**Was**: Web-UI für NATS/JetStream (Streams, Consumers, KV, Object Store, Publish/Request, Live-Monitor).
+**What**: Web UI for NATS/JetStream (Streams, Consumers, KV, Object Store, Publish/Request, Live Monitor).
 **Stack**: Next.js 16 App Router · React 19 · TypeScript 5 strict · Tailwind v4 · shadcn/ui (New York) · Zustand · Playwright · `nats` v2.29.
 
-## Projektstruktur (Kurzfassung)
+## Project structure (short version)
 
 ```
 src/
-├── app/                    # Next.js Routing + Layouts. Nichts anderes hier rein!
-│   ├── (dashboard)/        # Alle User-Seiten (/, streams, kv, os, publish, monitor, settings)
-│   └── api/monitor/        # Einziger REST-Endpoint (SSE für Live-Monitor)
+├── app/                    # Next.js routing + layouts. Nothing else goes here!
+│   ├── (dashboard)/        # All user-facing pages (/, streams, kv, os, publish, monitor, settings)
+│   └── api/monitor/        # The only REST endpoint (SSE for the live monitor)
 │
-├── features/               # Domain-Module — ALLES zu einem Feature an EINEM Ort
-│   ├── connections/        # NATS-Verbindungs-Store, Hook, Actions, Connect-Dialog
-│   ├── dashboard/          # Dashboard-Overview (nur Komponente, keine Actions)
-│   ├── streams/            # Streams + Consumers + Stats (actions.ts ist konsolidiert)
-│   ├── kv/                 # Key-Value Buckets
-│   ├── os/                 # Object Store Buckets + Upload/Download
-│   ├── publish/            # Publish + Request-Reply Actions
-│   └── monitor/            # Live-Subject-Monitor (stream.ts statt actions.ts, nutzt SSE)
+├── features/               # Domain modules — EVERYTHING for one feature in ONE place
+│   ├── connections/        # NATS connection store, hook, actions, connect dialog
+│   ├── dashboard/          # Dashboard overview (component only, no actions)
+│   ├── streams/            # Streams + consumers + stats (actions.ts is consolidated)
+│   ├── kv/                 # Key-Value buckets
+│   ├── os/                 # Object Store buckets + upload/download
+│   ├── publish/            # Publish + request-reply actions
+│   └── monitor/            # Live subject monitor (stream.ts instead of actions.ts, uses SSE)
 │
 ├── components/
-│   ├── ui/                 # shadcn primitives — NIE direkt editieren, per `shadcn add`
+│   ├── ui/                 # shadcn primitives — NEVER edit directly, use `shadcn add`
 │   ├── layout/             # app-sidebar, topbar, theme-toggle, auto-breadcrumbs,
 │   │                       # command-palette, global-shortcuts, help-dialog,
 │   │                       # no-connection-banner
-│   └── providers/          # Root-Provider, Confirm-Provider
+│   └── providers/          # Root provider, confirm provider
 │
 ├── lib/
-│   ├── nats/manager.ts     # Singleton Connection-Pool (NatsManager)
+│   ├── nats/manager.ts     # Singleton connection pool (NatsManager)
 │   ├── server-action.ts    # withNatsConnection / withJetStream / ActionResponse
-│   └── utils.ts            # cn() und generische Helpers
+│   └── utils.ts            # cn() and generic helpers
 │
-├── hooks/                  # App-weite Hooks
+├── hooks/                  # App-wide hooks
 │   ├── use-mobile.ts
 │   ├── use-keyboard-shortcuts.ts
 │   ├── use-local-storage.ts
 │   ├── use-auto-refresh.ts
 │   └── use-url-state.ts
-└── types/nats.ts           # Alle geteilten Domain-Types (NatsConnectionConfig, StreamMessage, ...)
+└── types/nats.ts           # All shared domain types (NatsConnectionConfig, StreamMessage, ...)
 ```
 
-## Kernregeln (Pflicht)
+## Core rules (mandatory)
 
-1. **Alle NATS-Operationen laufen über Server Actions** in `src/features/<domain>/actions.ts`. Credentials niemals an den Client.
-2. **Jede Action nutzt `withNatsConnection` oder `withJetStream`** aus `@/lib/server-action` und gibt `ActionResponse<T>` zurück.
-3. **Feature-Isolation**: UI, Actions, Store und Types eines Features liegen in `src/features/<domain>/`. Kein Cross-Feature-Import ohne Grund.
-4. **Types zentral**: Domain-Types gehören in `src/types/nats.ts`, nicht pro Feature verteilt.
-5. **shadcn/ui strikt**: Neue UI nur mit shadcn-Komponenten (New York Style). Keine eigenen Button-Varianten.
-6. **TypeScript strict + Zod**: Alle Formulare mit React Hook Form + Zod-Schema.
-7. **Playwright-Tests** für neue Features unter `tests/`.
+1. **All NATS operations go through Server Actions** in `src/features/<domain>/actions.ts`. Never ship credentials to the client.
+2. **Every action uses `withNatsConnection` or `withJetStream`** from `@/lib/server-action` and returns `ActionResponse<T>`.
+3. **Feature isolation**: UI, actions, store, and types for a feature live in `src/features/<domain>/`. No cross-feature imports without a reason.
+4. **Types stay central**: domain types belong in `src/types/nats.ts`, not scattered per feature.
+5. **Strict shadcn/ui**: new UI only with shadcn components (New York style). No custom button variants.
+6. **TypeScript strict + Zod**: all forms use React Hook Form + a Zod schema.
+7. **Playwright tests** for new features under `tests/`.
 
-## Standard-Imports (cheat-sheet)
+## Standard imports (cheat sheet)
 
 ```ts
 import type { NatsConnectionConfig, StreamMessage } from "@/types/nats";
@@ -61,9 +61,9 @@ import { useNatsStore } from "@/features/connections/store";
 import { Button } from "@/components/ui/button";
 ```
 
-## Weiterführende Doku
+## Further documentation
 
-- **`.claude/architecture.md`** — "Wo liegt was?" + Feature-Blaupause für neue Features
-- **`.claude/project.md`** — Feature-Map, Routen, Farbpalette, NATS-Konventionen
-- **`.claude/rules.md`** — Do's & Don'ts mit Code-Beispielen
-- **`.claude/agents/*.md`** — Spezialisierte Agent-Profile
+- **`.claude/architecture.md`** — "Where does what live?" + blueprint for adding a new feature
+- **`.claude/project.md`** — Feature map, routes, color palette, NATS conventions
+- **`.claude/rules.md`** — Do's & don'ts with code examples
+- **`.claude/agents/*.md`** — Specialized agent profiles

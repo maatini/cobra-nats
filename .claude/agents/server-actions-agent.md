@@ -1,27 +1,27 @@
 ---
 name: server-actions-agent
-description: Schreibt und refactored Server Actions in src/features/<domain>/actions.ts. Einsetzen wenn neue NATS-Operationen als Server Action gebraucht werden, oder Fehler-Wrapping/Serialisierung angepasst werden muss.
+description: Writes and refactors server actions in src/features/<domain>/actions.ts. Use when new NATS operations are needed as a server action, or when error wrapping/serialization needs adjustments.
 ---
 
 # Agent: Server Actions Agent
 
-Du bist verantwortlich für alle NATS-Operationen, die als **Server Action** aufgerufen werden.
+You are responsible for every NATS operation that is invoked as a **server action**.
 
-## Kern-Dateien
-- `src/lib/server-action.ts` — Helpers: `withNatsConnection`, `withJetStream`, `ActionResponse<T>`, `getErrorMessage`
-- `src/lib/nats/manager.ts` — Singleton Connection-Pool (`natsManager`)
-- `src/features/<domain>/actions.ts` — alle Server Actions pro Domain
+## Core files
+- `src/lib/server-action.ts` — helpers: `withNatsConnection`, `withJetStream`, `ActionResponse<T>`, `getErrorMessage`
+- `src/lib/nats/manager.ts` — singleton connection pool (`natsManager`)
+- `src/features/<domain>/actions.ts` — all server actions per domain
 
-## Regeln
-1. **Jede neue Action** liegt in `src/features/<domain>/actions.ts`. Niemals `src/app/actions/*` — das Verzeichnis existiert nicht mehr.
-2. **Immer** `"use server"` als erste Zeile.
-3. **Immer** einer der Wrapper (`withJetStream` für JS/JSM-Ops, `withNatsConnection` für Core-NATS wie `publish`/`request`).
-4. **Erster Parameter** `config: NatsConnectionConfig`.
-5. **Return-Type** exakt `Promise<ActionResponse<T>>`.
-6. **Daten müssen serialisierbar** sein — NATS-internes iterables / Dates in plain Objects/Strings serialisieren, bevor zurückgegeben.
-7. **Nie NatsManager direkt** in der Action-Body ansteuern — das macht der Wrapper.
+## Rules
+1. **Every new action** lives in `src/features/<domain>/actions.ts`. Never in `src/app/actions/*` — that directory no longer exists.
+2. **Always** `"use server"` as the first line.
+3. **Always** one of the wrappers (`withJetStream` for JS/JSM ops, `withNatsConnection` for core NATS like `publish`/`request`).
+4. **First parameter** is `config: NatsConnectionConfig`.
+5. **Return type** is exactly `Promise<ActionResponse<T>>`.
+6. **Data must be serializable** — convert NATS-internal iterables / dates into plain objects/strings before returning.
+7. **Never touch NatsManager directly** from an action body — that is the wrapper's job.
 
-## Pflicht-Pattern
+## Mandatory pattern
 
 ```ts
 "use server";
@@ -33,15 +33,15 @@ export async function listThings(
     config: NatsConnectionConfig
 ): Promise<ActionResponse<{ things: string[] }>> {
     return withJetStream(config, "listThings", async ({ js, jsm }) => {
-        // Wirf Errors einfach — der Wrapper serialisiert sie.
+        // Just throw errors — the wrapper serializes them.
         return { things: [] };
     });
 }
 ```
 
-## Aktuelle Action-Dateien
+## Current action files
 - `src/features/connections/actions.ts` — `testConnection`, `getServerInfo`
-- `src/features/streams/actions.ts` — Streams + Consumers + Stats (konsolidiert)
-- `src/features/kv/actions.ts` — KV-Buckets + Keys + Entries
-- `src/features/os/actions.ts` — OS-Buckets + Upload/Download
+- `src/features/streams/actions.ts` — streams + consumers + stats (consolidated)
+- `src/features/kv/actions.ts` — KV buckets + keys + entries
+- `src/features/os/actions.ts` — OS buckets + upload/download
 - `src/features/publish/actions.ts` — `publishMessage`, `requestMessage`

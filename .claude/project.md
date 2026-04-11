@@ -1,81 +1,81 @@
-# Cobra NATS – Projekt-Kontext
+# Cobra NATS – Project context
 
-**Version**: 0.5.0
-**Ziel**: Die schnellste und schönste NATS/JetStream Verwaltungsoberfläche.
+**Version**: 0.5.2
+**Goal**: The fastest and most beautiful NATS/JetStream management UI.
 
-## Features & Routen
+## Features & routes
 
-| Feature | Route | Feature-Ordner | Kurzbeschreibung |
+| Feature | Route | Feature folder | Short description |
 |---|---|---|---|
-| Dashboard | `/` | `features/dashboard/` | Server-Info, Connection-Übersicht, Quick-Stats (nur UI, nutzt fremde Actions) |
-| Streams | `/streams`, `/streams/[name]` | `features/streams/` | JetStream Streams + Consumers + Message-Browser |
-| KV | `/kv`, `/kv/[bucket]` | `features/kv/` | Key-Value Buckets, Keys browsen, Put/Delete |
-| Object Store | `/os`, `/os/[bucket]` | `features/os/` | OS-Buckets, Upload/Download/Seal |
-| Publish | `/publish` | `features/publish/` | Publish + Request-Reply |
-| Monitor | `/monitor` | `features/monitor/` + `api/monitor` SSE | Live-Subject-Monitor (eigene Connection, `stream.ts` statt `actions.ts`) |
-| Settings | `/settings` | `features/connections/` | Connections verwalten |
+| Dashboard | `/` | `features/dashboard/` | Server info, connection overview, quick stats (UI only, consumes actions from other features) |
+| Streams | `/streams`, `/streams/[name]` | `features/streams/` | JetStream streams + consumers + message browser |
+| KV | `/kv`, `/kv/[bucket]` | `features/kv/` | Key-Value buckets, browse keys, put/delete |
+| Object Store | `/os`, `/os/[bucket]` | `features/os/` | OS buckets, upload/download/seal |
+| Publish | `/publish` | `features/publish/` | Publish + request-reply |
+| Monitor | `/monitor` | `features/monitor/` + `api/monitor` SSE | Live subject monitor (dedicated connection, `stream.ts` instead of `actions.ts`) |
+| Settings | `/settings` | `features/connections/` | Manage connections |
 
-## NATS-Konventionen
+## NATS conventions
 
-Der Server legt für KV und OS automatisch Streams mit Prefix an:
+The server automatically creates prefixed streams for KV and OS:
 
-| NATS-Typ | Stream-Prefix | Discovery |
+| NATS type | Stream prefix | Discovery |
 |---|---|---|
-| KV-Bucket `myBucket` | `KV_myBucket` | `listKVBuckets` filtert Streams auf `KV_` |
-| Object Store `myOs` | `OBJ_myOs` | `listOSBuckets` filtert Streams auf `OBJ_` |
+| KV bucket `myBucket` | `KV_myBucket` | `listKVBuckets` filters streams on `KV_` |
+| Object Store `myOs` | `OBJ_myOs` | `listOSBuckets` filters streams on `OBJ_` |
 
-⚠️ **Nats.js Client-Bug Workaround** in `features/os/actions.ts::createOSBucket`: `opts.replicas` muss non-enumerable gesetzt werden, sonst landet das Feld ungemappt im Raw-Stream-Config (Server rejektet). Kommentar im Code nicht entfernen.
+⚠️ **nats.js client bug workaround** in `features/os/actions.ts::createOSBucket`: `opts.replicas` has to be set non-enumerable, otherwise the field ends up unmapped in the raw stream config (and the server rejects it). Do not remove the code comment.
 
-## Connection-Management
+## Connection management
 
-- **Store**: `src/features/connections/store.ts` (Zustand + `persist`, localStorage-Key `cobra-nats-storage`).
-- **Aktive Connection**: `useActiveConnection()` Hook.
-- **Auth-Arten**: `none` | `user_pass` | `token`.
-- **Singleton Pool**: `natsManager` in `src/lib/nats/manager.ts` — hält NC, JSM und JS pro Connection-ID.
-- **Monitor-Connection**: Nutzt eine **eigene** Connection (`monitor-${id}-${ts}`), um nicht mit anderen Operations zu kollidieren.
+- **Store**: `src/features/connections/store.ts` (Zustand + `persist`, localStorage key `cobra-nats-storage`).
+- **Active connection**: `useActiveConnection()` hook.
+- **Auth types**: `none` | `user_pass` | `token`.
+- **Singleton pool**: `natsManager` in `src/lib/nats/manager.ts` — holds NC, JSM, and JS per connection ID.
+- **Monitor connection**: uses a **dedicated** connection (`monitor-${id}-${ts}`) so it does not collide with other operations.
 
-## Farbpalette (Design-System)
+## Color palette (design system)
 
-| Domain | Tailwind-Farbe |
+| Domain | Tailwind color |
 |---|---|
-| Allgemein / Layout | `indigo` |
+| General / Layout | `indigo` |
 | Streams / Consumers | `amber` |
 | Key-Value | `emerald` |
 | Object Store | `cyan` |
-| Destruktiv / Fehler | `red` (shadcn default) |
+| Destructive / Error | `red` (shadcn default) |
 
-shadcn/ui **New York Style** mit Tailwind v4. Tailwind-Config in `globals.css` (v4 inline).
+shadcn/ui **New York style** with Tailwind v4. Tailwind config lives in `globals.css` (v4 inline).
 
-## App-weite UI-Features (ab v0.5.0)
+## App-wide UI features (since v0.5.0)
 
-- **Command Palette** (`components/layout/command-palette.tsx`) — Cmd/Ctrl+K öffnet Quick-Navigation.
-- **Global Shortcuts** (`components/layout/global-shortcuts.tsx`) — zentrale Keyboard-Shortcut-Registrierung.
-- **Auto-Breadcrumbs** (`components/layout/auto-breadcrumbs.tsx`) — leitet sich aus dem Next-Pfad ab.
-- **Help-Dialog** (`components/layout/help-dialog.tsx`) — `?`-Shortcut listet aktive Hotkeys.
-- **No-Connection-Banner** (`components/layout/no-connection-banner.tsx`) — Hinweis wenn keine aktive Connection.
-- **Theme-Toggle** (`components/layout/theme-toggle.tsx`) — Light/Dark via semantische Color-Tokens.
-- **Auto-Refresh** (`hooks/use-auto-refresh.ts` + `components/ui/auto-refresh-select.tsx`) — konfigurierbare Intervalle für Listen.
-- **URL-State** (`hooks/use-url-state.ts`) — synchronisiert Filter/Selection mit der URL.
+- **Command palette** (`components/layout/command-palette.tsx`) — Cmd/Ctrl+K opens quick navigation.
+- **Global shortcuts** (`components/layout/global-shortcuts.tsx`) — central keyboard shortcut registration.
+- **Auto-breadcrumbs** (`components/layout/auto-breadcrumbs.tsx`) — derived from the Next.js path.
+- **Help dialog** (`components/layout/help-dialog.tsx`) — `?` shortcut lists active hotkeys.
+- **No-connection banner** (`components/layout/no-connection-banner.tsx`) — shown when there is no active connection.
+- **Theme toggle** (`components/layout/theme-toggle.tsx`) — light/dark via semantic color tokens.
+- **Auto-refresh** (`hooks/use-auto-refresh.ts` + `components/ui/auto-refresh-select.tsx`) — configurable intervals for list views.
+- **URL state** (`hooks/use-url-state.ts`) — synchronizes filters/selection with the URL.
 
-## Tech-Versionen (Stand v0.5.0)
+## Tech versions (as of v0.5.2)
 
-- Next.js **16.1.6** (App Router)
-- React **19.2.3**
+- Next.js **16.2.3** (App Router)
+- React **19.2.5**
 - TypeScript **^5** (strict)
 - `nats` **^2.29.3**
 - Tailwind **v4**
-- `zustand` **^5.0.11**
-- `@tanstack/react-query` **^5.90**, `@tanstack/react-table` **^8.21**
-- `react-hook-form` **^7.71.2** + `zod` **^4.3.6** + `@hookform/resolvers` **^5**
-- Playwright **^1.58.2**
+- `zustand` **^5.0.12**
+- `@tanstack/react-query` **^5.97**, `@tanstack/react-table` **^8.21**
+- `react-hook-form` **^7.72** + `zod` **^4.3.6** + `@hookform/resolvers` **^5**
+- Playwright **^1.59**
 
-## Entwicklungs-Setup
+## Development setup
 
-- NATS-Server: `docker-compose up` (Port 4222, monitor 8222)
-- Dev: `npm run dev` (Port 3000)
-- Devbox: `devbox shell` (Node, NATS CLI vorinstalliert)
+- NATS server: `docker-compose up` (port 4222, monitor 8222)
+- Dev: `npm run dev` (port 3000)
+- Devbox: `devbox shell` (Node and NATS CLI preinstalled)
 
-## Externe Referenzen
+## External references
 
-- NATS JetStream Client Docs: https://github.com/nats-io/nats.js
+- NATS JetStream client docs: https://github.com/nats-io/nats.js
 - shadcn/ui New York: https://ui.shadcn.com/docs

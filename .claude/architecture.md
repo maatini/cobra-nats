@@ -1,8 +1,8 @@
-# Architektur – Cobra NATS
+# Architecture – Cobra NATS
 
-Dieses Dokument ist die **"Wo liegt was?"-Karte** für KI-Agenten. Lies das zuerst, bevor du Code schreibst.
+This document is the **"where does what live?" map** for AI agents. Read it first, before you write code.
 
-## Data-Flow
+## Data flow
 
 ```
 ┌──────────────┐   import    ┌──────────────────┐   call    ┌──────────────────┐
@@ -20,37 +20,37 @@ Dieses Dokument ist die **"Wo liegt was?"-Karte** für KI-Agenten. Lies das zuer
                            └──────────────────────┘
 ```
 
-Der Client **ruft niemals NATS direkt** auf. Er importiert Server Actions; Next.js marshalt den Aufruf, die Action nutzt den Singleton `natsManager`, und gibt ein serialisierbares `ActionResponse<T>` zurück.
+The client **never calls NATS directly**. It imports server actions; Next.js marshals the call, the action uses the singleton `natsManager`, and returns a serializable `ActionResponse<T>`.
 
-## Vollständige Ordner-Map
+## Full folder map
 
-| Pfad | Rolle | Wer bearbeitet? |
+| Path | Role | Who edits it? |
 |---|---|---|
-| `src/app/(dashboard)/<route>/page.tsx` | User-Seiten | `@nextjs-frontend-agent` |
-| `src/app/(dashboard)/layout.tsx` | Dashboard-Layout (Sidebar + Topbar + Breadcrumbs + Command Palette) | `@nextjs-frontend-agent` |
-| `src/app/api/monitor/route.ts` | SSE-Endpoint für Live-Subject-Monitor (einziger REST-Endpoint) | `@server-actions-agent` |
-| `src/features/<domain>/actions.ts` | Alle Server Actions des Features | `@server-actions-agent` |
-| `src/features/<domain>/components/*.tsx` | Feature-spezifische UI | `@nextjs-frontend-agent` / `@ui-shadcn-agent` |
-| `src/features/connections/store.ts` | Zustand-Store für Connections (persist) | `@nextjs-frontend-agent` |
+| `src/app/(dashboard)/<route>/page.tsx` | User pages | `@nextjs-frontend-agent` |
+| `src/app/(dashboard)/layout.tsx` | Dashboard layout (sidebar + topbar + breadcrumbs + command palette) | `@nextjs-frontend-agent` |
+| `src/app/api/monitor/route.ts` | SSE endpoint for the live subject monitor (the only REST endpoint) | `@server-actions-agent` |
+| `src/features/<domain>/actions.ts` | All server actions for the feature | `@server-actions-agent` |
+| `src/features/<domain>/components/*.tsx` | Feature-specific UI | `@nextjs-frontend-agent` / `@ui-shadcn-agent` |
+| `src/features/connections/store.ts` | Zustand store for connections (persist) | `@nextjs-frontend-agent` |
 | `src/features/connections/hooks.ts` | `useActiveConnection()` | `@nextjs-frontend-agent` |
-| `src/features/dashboard/dashboard-overview.tsx` | Startseite — reine Aggregation, keine eigenen Actions | `@nextjs-frontend-agent` |
-| `src/features/monitor/monitor-view.tsx` + `stream.ts` | Live-Monitor: `stream.ts` kapselt den SSE-Client (nicht `actions.ts`!) | `@nextjs-frontend-agent` / `@server-actions-agent` |
-| `src/components/ui/*` | shadcn Primitives — nur via `shadcn add` | – |
+| `src/features/dashboard/dashboard-overview.tsx` | Landing page — pure aggregation, no own actions | `@nextjs-frontend-agent` |
+| `src/features/monitor/monitor-view.tsx` + `stream.ts` | Live monitor: `stream.ts` encapsulates the SSE client (not `actions.ts`!) | `@nextjs-frontend-agent` / `@server-actions-agent` |
+| `src/components/ui/*` | shadcn primitives — only via `shadcn add` | – |
 | `src/components/layout/*` | app-sidebar, topbar, theme-toggle, auto-breadcrumbs, command-palette, global-shortcuts, help-dialog, no-connection-banner | `@nextjs-frontend-agent` |
-| `src/components/providers/*` | Root-Provider + Confirm-Dialog-Provider | `@nextjs-frontend-agent` |
-| `src/hooks/*` | App-weite Hooks: `use-mobile`, `use-keyboard-shortcuts`, `use-local-storage`, `use-auto-refresh`, `use-url-state` | `@nextjs-frontend-agent` |
-| `src/lib/nats/manager.ts` | Singleton `NatsManager` — Connection-Pool | `@nats-jetstream-expert` |
+| `src/components/providers/*` | Root provider + confirm-dialog provider | `@nextjs-frontend-agent` |
+| `src/hooks/*` | App-wide hooks: `use-mobile`, `use-keyboard-shortcuts`, `use-local-storage`, `use-auto-refresh`, `use-url-state` | `@nextjs-frontend-agent` |
+| `src/lib/nats/manager.ts` | Singleton `NatsManager` — connection pool | `@nats-jetstream-expert` |
 | `src/lib/server-action.ts` | `withNatsConnection`, `withJetStream`, `ActionResponse<T>` | `@server-actions-agent` |
-| `src/types/nats.ts` | Alle geteilten Domain-Types + Enums | `@nats-jetstream-expert` |
-| `tests/*.spec.ts` | Playwright E2E (flach, inkl. `functional-*.spec.ts`) | `@playwright-testing-agent` |
+| `src/types/nats.ts` | All shared domain types + enums | `@nats-jetstream-expert` |
+| `tests/*.spec.ts` | Playwright E2E (flat, including `functional-*.spec.ts`) | `@playwright-testing-agent` |
 
-## Blaupause: Neues Feature hinzufügen
+## Blueprint: add a new feature
 
-Beispiel: Du willst ein **"Subjects"**-Feature hinzufügen.
+Example: you want to add a **"Subjects"** feature.
 
-1. **Types** (falls neu) → `src/types/nats.ts` erweitern.
-2. **Ordner anlegen** → `src/features/subjects/{actions.ts, components/}`
-3. **Action schreiben** → `src/features/subjects/actions.ts`:
+1. **Types** (if new) → extend `src/types/nats.ts`.
+2. **Create the folder** → `src/features/subjects/{actions.ts, components/}`
+3. **Write the action** → `src/features/subjects/actions.ts`:
    ```ts
    "use server";
    import type { NatsConnectionConfig } from "@/types/nats";
@@ -60,53 +60,53 @@ Beispiel: Du willst ein **"Subjects"**-Feature hinzufügen.
        config: NatsConnectionConfig
    ): Promise<ActionResponse<string[]>> {
        return withNatsConnection(config, "listSubjects", async (nc) => {
-           // … NATS-Operationen
+           // … NATS operations
            return [];
        });
    }
    ```
-4. **UI-Komponenten** → `src/features/subjects/components/subject-list.tsx`:
+4. **UI components** → `src/features/subjects/components/subject-list.tsx`:
    ```tsx
    "use client";
    import { useActiveConnection } from "@/features/connections/hooks";
    import { listSubjects } from "@/features/subjects/actions";
    // ...
    ```
-5. **Route** → `src/app/(dashboard)/subjects/page.tsx` (rendert Komponenten aus `features/subjects/components/`).
-6. **Sidebar-Eintrag** → `src/components/layout/app-sidebar.tsx` erweitern.
-7. **Playwright-Test** → `tests/subjects.spec.ts`.
+5. **Route** → `src/app/(dashboard)/subjects/page.tsx` (renders components from `features/subjects/components/`).
+6. **Sidebar entry** → extend `src/components/layout/app-sidebar.tsx`.
+7. **Playwright test** → `tests/subjects.spec.ts`.
 
-**Wichtig**: Niemals eine `src/app/actions/` Datei anlegen — das Verzeichnis existiert nicht mehr. Actions leben pro Feature.
+**Important**: Never create a `src/app/actions/` file — that directory no longer exists. Actions live per feature.
 
-## Blaupause: Neue Action zu bestehendem Feature
+## Blueprint: add a new action to an existing feature
 
-Beispiel: Neue KV-Operation `purgeKVKey`.
+Example: a new KV operation `purgeKVKey`.
 
-1. Öffne `src/features/kv/actions.ts`.
-2. Füge die Funktion **am Ende** hinzu (Reihenfolge: List → Create → Get → Mutate → Delete).
-3. Keine neue Datei anlegen — alles zu einem Feature bleibt in `actions.ts`.
-4. UI: Neue Komponente oder bestehende erweitern unter `src/features/kv/components/`.
+1. Open `src/features/kv/actions.ts`.
+2. Append the function **at the end** (order: List → Create → Get → Mutate → Delete).
+3. Do not create a new file — everything for one feature stays in `actions.ts`.
+4. UI: add a new component or extend an existing one under `src/features/kv/components/`.
 
-## Blaupause: Neue shadcn-Komponente
+## Blueprint: new shadcn component
 
 ```bash
 npx shadcn@latest add <component-name>
 ```
-Landet automatisch in `src/components/ui/`. **Nicht manuell** editieren — bei nächstem `add` überschrieben.
+Lands automatically in `src/components/ui/`. **Do not edit manually** — it gets overwritten on the next `add`.
 
-## Häufige "Wo liegt was?"-Antworten
+## Common "where does what live?" answers
 
-| Frage | Antwort |
+| Question | Answer |
 |---|---|
-| Connection-State / localStorage | `src/features/connections/store.ts` (Zustand + persist) |
-| Active Connection holen | `useActiveConnection()` aus `@/features/connections/hooks` |
-| Fehler-Wrapping einer Action | `withJetStream(config, "opName", async ({js, jsm}) => {...})` |
-| Neue NATS Auth-Art | `NatsConnectionConfig` in `types/nats.ts` + `connect-dialog.tsx` |
-| Farbpalette pro Domain | `.claude/project.md` → Farbpalette |
-| Sidebar-Navigation | `src/components/layout/app-sidebar.tsx` |
-| Confirm-Dialog öffnen | `useConfirm()` aus `@/components/providers/confirm-provider` |
-| Toast | `toast()` aus `sonner` (Provider in `root-provider.tsx`) |
-| Keyboard-Shortcut registrieren | `useKeyboardShortcuts()` aus `@/hooks/use-keyboard-shortcuts` oder global in `components/layout/global-shortcuts.tsx` |
-| Auto-Refresh einer Liste | `useAutoRefresh()` aus `@/hooks/use-auto-refresh` + `<AutoRefreshSelect />` |
-| Filter/Selection in URL halten | `useUrlState()` aus `@/hooks/use-url-state` |
-| Command-Palette-Eintrag | `src/components/layout/command-palette.tsx` erweitern |
+| Connection state / localStorage | `src/features/connections/store.ts` (Zustand + persist) |
+| Get the active connection | `useActiveConnection()` from `@/features/connections/hooks` |
+| Error wrapping for an action | `withJetStream(config, "opName", async ({js, jsm}) => {...})` |
+| New NATS auth type | `NatsConnectionConfig` in `types/nats.ts` + `connect-dialog.tsx` |
+| Color palette per domain | `.claude/project.md` → Color palette |
+| Sidebar navigation | `src/components/layout/app-sidebar.tsx` |
+| Open a confirm dialog | `useConfirm()` from `@/components/providers/confirm-provider` |
+| Toast | `toast()` from `sonner` (provider in `root-provider.tsx`) |
+| Register a keyboard shortcut | `useKeyboardShortcuts()` from `@/hooks/use-keyboard-shortcuts` or globally in `components/layout/global-shortcuts.tsx` |
+| Auto-refresh a list | `useAutoRefresh()` from `@/hooks/use-auto-refresh` + `<AutoRefreshSelect />` |
+| Keep filter/selection in URL | `useUrlState()` from `@/hooks/use-url-state` |
+| Add a command palette entry | extend `src/components/layout/command-palette.tsx` |

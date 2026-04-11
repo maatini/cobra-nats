@@ -1,17 +1,17 @@
-# Cobra NATS – Coding Rules
+# Cobra NATS – Coding rules
 
-Du bist ein präziser Senior Fullstack-Entwickler mit tiefem NATS/JetStream-Wissen. Halte dich strikt an diese Regeln.
+You are a precise senior full-stack developer with deep NATS/JetStream knowledge. Follow these rules strictly.
 
-## Grundprinzipien
+## Core principles
 
-- **TypeScript strict** — keine `any`, keine `@ts-ignore`. Bei Drittbibliothek-Untypisierung: `unknown` + Narrowing.
-- **Server-first** — NATS-Credentials und -Connections verlassen niemals den Server.
-- **Feature-Isolation** — Code eines Domains lebt in `src/features/<domain>/`.
-- **shadcn/ui strikt** — keine eigenen Button-/Input-Varianten. Add per CLI.
+- **TypeScript strict** — no `any`, no `@ts-ignore`. For untyped third-party libraries: `unknown` + narrowing.
+- **Server-first** — NATS credentials and connections never leave the server.
+- **Feature isolation** — code for one domain lives in `src/features/<domain>/`.
+- **Strict shadcn/ui** — no custom button/input variants. Add via CLI.
 
-## Server Actions — Pflicht-Pattern
+## Server actions — mandatory pattern
 
-Jede Server Action folgt diesem Schema:
+Every server action follows this schema:
 
 ```ts
 "use server";
@@ -24,19 +24,19 @@ export async function doSomething(
     arg: string
 ): Promise<ActionResponse<{ result: string }>> {
     return withJetStream(config, "doSomething", async ({ js, jsm }) => {
-        // Business Logic hier. Wirf Errors einfach — der Wrapper fängt sie ab.
+        // Business logic here. Just throw errors — the wrapper catches them.
         return { result: "ok" };
     });
 }
 ```
 
-**Regeln**:
-- Erster Param ist **immer** `NatsConnectionConfig`.
-- Rückgabe **immer** `ActionResponse<T>` (via Wrapper).
-- `operationName` (String) wird für Fehler-Logging genutzt — sprechend benennen.
-- Für reine Core-NATS-Operationen (publish, request): `withNatsConnection` statt `withJetStream`.
+**Rules**:
+- The first parameter is **always** `NatsConnectionConfig`.
+- The return value is **always** `ActionResponse<T>` (via the wrapper).
+- `operationName` (string) is used for error logging — make it descriptive.
+- For pure core NATS operations (publish, request): use `withNatsConnection` instead of `withJetStream`.
 
-## Client-Komponenten — Pflicht-Pattern
+## Client components — mandatory pattern
 
 ```tsx
 "use client";
@@ -59,70 +59,70 @@ export function StreamList() {
             toast.error(res.error);
             return;
         }
-        // res.data ist typsicher
+        // res.data is type-safe
         setLoading(false);
     }
     // ...
 }
 ```
 
-**Regeln**:
-- **Immer** `"use client"` bei Client-Components mit State/Effects/Handlers.
-- **Immer** `useActiveConnection()` für den Zugriff auf die aktive Connection, nie direkt aus dem Store.
-- **ActionResponse-Narrowing pflicht**: `if (!res.success) { toast.error(res.error); return; }` vor Zugriff auf `res.data`.
-- **Toast auf Fehler**, nicht stillschweigend ignorieren.
+**Rules**:
+- **Always** add `"use client"` for client components with state/effects/handlers.
+- **Always** use `useActiveConnection()` to access the active connection, never the store directly.
+- **ActionResponse narrowing is mandatory**: `if (!res.success) { toast.error(res.error); return; }` before touching `res.data`.
+- **Toast on error** — do not silently ignore failures.
 
-## Import-Reihenfolge
+## Import order
 
 ```ts
 // 1. React / Next
 import { useState } from "react";
 import Link from "next/link";
 
-// 2. Drittbibliotheken
+// 2. Third-party libraries
 import { toast } from "sonner";
 
-// 3. Types (mit `import type`)
+// 3. Types (using `import type`)
 import type { NatsConnectionConfig } from "@/types/nats";
 
-// 4. Lib / Feature-Code
+// 4. Lib / feature code
 import { withJetStream } from "@/lib/server-action";
 import { listStreams } from "@/features/streams/actions";
 import { useActiveConnection } from "@/features/connections/hooks";
 
-// 5. UI-Components
+// 5. UI components
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 ```
 
-## Formulare
+## Forms
 
-- **Immer** React Hook Form + Zod-Schema + `zodResolver`.
-- Schema **neben der Komponente** definieren (nicht in extra Datei — bleibt zusammen).
-- Shadcn-Form-Primitives (`FormField`, `FormItem`, `FormLabel`, `FormMessage`) verwenden.
+- **Always** React Hook Form + Zod schema + `zodResolver`.
+- Define the schema **next to the component** (not in a separate file — keeps things together).
+- Use shadcn form primitives (`FormField`, `FormItem`, `FormLabel`, `FormMessage`).
 
-## Do's & Don'ts
+## Do's & don'ts
 
 | ✅ Do | ❌ Don't |
 |---|---|
-| Action pro Feature in `features/<d>/actions.ts` | Neue Datei `src/app/actions/*` anlegen |
-| `import type { ... } from "@/types/nats"` | `nats-types` oder `NatsManager` Pfad |
-| `withJetStream` / `withNatsConnection` | NatsManager direkt in einer Action aufrufen |
-| Farbpalette pro Domain (amber/emerald/cyan) | Zufällige Farben, eigene CSS-Klassen |
-| Fehler-Toast + `return` bei `!res.success` | `res.data!` (Non-null assertion) |
-| `shadcn add ...` für neue Primitives | Button/Input selber schreiben |
-| Playwright-Test für neue Features | Nur manuell klicken |
-| Deutsche User-Texte / Labels | Englische Labels (Projekt ist DE) |
+| Action per feature in `features/<d>/actions.ts` | Create a new `src/app/actions/*` file |
+| `import type { ... } from "@/types/nats"` | Use a `nats-types` or `NatsManager` path |
+| `withJetStream` / `withNatsConnection` | Call `NatsManager` directly from an action |
+| Color palette per domain (amber/emerald/cyan) | Random colors or custom CSS classes |
+| Error toast + `return` on `!res.success` | `res.data!` (non-null assertion) |
+| `shadcn add ...` for new primitives | Write your own Button/Input |
+| Playwright test for new features | Only click through manually |
+| German user-facing text / labels | English labels (the project ships in German) |
 
 ## Playwright
 
-- Real NATS-Server auf `localhost:4222` (via `docker-compose up`).
-- Connection-Setup via `page.evaluate()` → `localStorage.setItem("cobra-nats-storage", ...)`.
-- Toast und Confirm-Dialog per `page.getByRole("dialog")` / `page.getByText(...)` handlen.
-- Tests liegen flach in `tests/*.spec.ts`, **nicht** unter `tests/features/`.
+- Real NATS server on `localhost:4222` (via `docker-compose up`).
+- Connection setup via `page.evaluate()` → `localStorage.setItem("cobra-nats-storage", ...)`.
+- Handle toasts and confirm dialogs via `page.getByRole("dialog")` / `page.getByText(...)`.
+- Tests live flat in `tests/*.spec.ts`, **not** under `tests/features/`.
 
-## Kommentierung
+## Comments
 
-- JSDoc auf **exportierten Server Actions** mit Zweck und ggf. Quirks (z. B. OS-Bucket-Workaround).
-- **Kein** Was-Code-Tut-Kommentar bei selbst-sprechenden Funktionen.
-- **Warum**-Kommentare bei NATS-spezifischen Workarounds pflicht (künftige Agenten verstehen sonst nicht, warum der Code so ist).
+- JSDoc on **exported server actions** with purpose and any quirks (e.g. the OS bucket workaround).
+- **No** "what the code does" comments on self-explanatory functions.
+- **Why** comments are mandatory for NATS-specific workarounds (otherwise future agents won't understand why the code is written that way).
