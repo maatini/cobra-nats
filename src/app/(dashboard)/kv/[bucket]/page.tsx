@@ -197,7 +197,10 @@ export default function KVDetailPage() {
                                         bucket={bucket as string}
                                         initialKey={selectedEntry.key}
                                         initialValue={selectedEntry.value}
-                                        onSuccess={fetchKeys}
+                                        onSuccess={() => {
+                                            fetchKeys();
+                                            handleFetchEntry(selectedEntry.key);
+                                        }}
                                         trigger={
                                             <Button variant="outline" size="sm" className="bg-muted border-border hover:bg-muted">
                                                 Edit Value
