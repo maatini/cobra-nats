@@ -1,7 +1,7 @@
 "use client";
 
-import { useNatsStore } from "@/store/useNatsStore";
-import { useActiveConnection } from "@/hooks/use-active-connection";
+import { useNatsStore } from "@/features/connections/store";
+import { useActiveConnection } from "@/features/connections/hooks";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, Plus, Server, Wifi, WifiOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { ConnectDialog } from "@/components/connections/connect-dialog";
+import { ConnectDialog } from "@/features/connections/components/connect-dialog";
 
 export function Topbar() {
     const { connections, activeConnectionId, setActiveConnection } = useNatsStore();

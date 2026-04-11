@@ -20,8 +20,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useActiveConnection } from "@/hooks/use-active-connection";
-import { publishMessage, requestMessage } from "@/app/actions/publish-actions";
+import { useActiveConnection } from "@/features/connections/hooks";
+import { publishMessage, requestMessage } from "@/features/publish/actions";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const publishSchema = z.object({

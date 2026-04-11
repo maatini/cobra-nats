@@ -61,7 +61,9 @@ test.describe('Consumer Creation + Message Browser', () => {
         await page.getByPlaceholder('Search streams...').fill(streamName);
         const row = page.locator('tr', { hasText: streamName });
         await row.getByRole('button', { name: 'Open menu' }).click();
-        await page.getByRole('menuitem', { name: 'View Details' }).click();
+        await page
+            .getByRole('menuitem', { name: 'View Details' })
+            .evaluate((el: HTMLElement) => el.click());
         await expect(page).toHaveURL(new RegExp(`\/streams\/${streamName}`));
 
         // --- 4. Message Browser: load and verify the published message ---
@@ -135,11 +137,15 @@ test.describe('Consumer Creation + Message Browser', () => {
             .evaluate((el: HTMLButtonElement) => el.click());
         await expect(page.getByText(`Stream "${streamName}" created successfully`)).toBeVisible({ timeout: 15000 });
 
-        // Open it
+        // Open it — dropdown menu animation can micro-shift the menuitem,
+        // tripping Playwright's stability check. Dispatch a direct click.
         await page.getByPlaceholder('Search streams...').fill(streamName);
         const row = page.locator('tr', { hasText: streamName });
         await row.getByRole('button', { name: 'Open menu' }).click();
-        await page.getByRole('menuitem', { name: 'View Details' }).click();
+        await page
+            .getByRole('menuitem', { name: 'View Details' })
+            .evaluate((el: HTMLElement) => el.click());
+        await expect(page).toHaveURL(new RegExp(`\/streams\/${streamName}`));
 
         // Open confirm dialog then cancel
         await page.getByRole('button', { name: 'Delete', exact: true }).click();

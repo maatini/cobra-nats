@@ -24,9 +24,14 @@ test.describe('Functional KV Stores', () => {
         const testKey = 'test.key.1';
         const testValue = '{"message":"hello world"}';
 
-        // Navigate to KV page
-        await page.getByRole('link', { name: 'KV Stores', exact: true }).click();
-        await expect(page).toHaveURL(/\/kv/);
+        // Navigate directly — sidebar soft-nav has been flaky here when
+        // hydration races with the route transition.
+        await page.goto('/kv');
+        await expect(page.getByRole('heading', { name: 'KeyValue Stores' })).toBeVisible();
+
+        // Wait for the search input — it only renders on the success branch of
+        // the page's loading ternary, so it's a reliable "page stable" signal.
+        await expect(page.getByPlaceholder('Search buckets...')).toBeVisible({ timeout: 10000 });
 
         // Open create dialog
         await page.getByRole('button', { name: 'Create KV Bucket' }).click();

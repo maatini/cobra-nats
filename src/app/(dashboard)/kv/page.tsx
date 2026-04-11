@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { useActiveConnection } from "@/hooks/use-active-connection";
-import { listKVBuckets, deleteKVBucket } from "@/app/actions/kv-actions";
+import { useActiveConnection } from "@/features/connections/hooks";
+import { listKVBuckets, deleteKVBucket } from "@/features/kv/actions";
 import type { KvStatus } from "nats";
 import { toast } from "sonner";
-import { KVBucketCard } from "@/components/kv/kv-bucket-card";
-import { CreateKVDialog } from "@/components/kv/create-kv-dialog";
+import { KVBucketCard } from "@/features/kv/components/kv-bucket-card";
+import { CreateKVDialog } from "@/features/kv/components/create-kv-dialog";
 import { Database, AlertCircle, RefreshCcw, Search } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";

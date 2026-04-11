@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { useActiveConnection } from "@/hooks/use-active-connection";
-import { listOSBuckets, deleteOSBucket } from "@/app/actions/os-actions";
-import type { OsBucketInfo } from "@/lib/nats/nats-types";
+import { useActiveConnection } from "@/features/connections/hooks";
+import { listOSBuckets, deleteOSBucket } from "@/features/os/actions";
+import type { OsBucketInfo } from "@/types/nats";
 import { toast } from "sonner";
-import { OSBucketCard } from "@/components/os/os-bucket-card";
-import { CreateOSDialog } from "@/components/os/create-os-dialog";
+import { OSBucketCard } from "@/features/os/components/os-bucket-card";
+import { CreateOSDialog } from "@/features/os/components/create-os-dialog";
 import { HardDrive, AlertCircle, RefreshCcw, Search } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";

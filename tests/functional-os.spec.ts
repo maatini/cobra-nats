@@ -95,8 +95,8 @@ test.describe('Functional Object Store CRUD', () => {
         const uploadSuccess = page.getByText('uploaded successfully');
         await expect(uploadSuccess).toBeVisible({ timeout: 15000 });
 
-        // Object should appear in the list
-        await expect(page.getByText('test-upload.txt')).toBeVisible({ timeout: 10000 });
+        // Object should appear in the list (exact match — avoid collision with toast text)
+        await expect(page.getByText('test-upload.txt', { exact: true })).toBeVisible({ timeout: 10000 });
 
         // Delete the bucket from the detail page — Radix confirm dialog replaces window.confirm.
         await page.getByRole('button', { name: 'Delete Bucket' }).click();

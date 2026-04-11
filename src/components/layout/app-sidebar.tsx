@@ -11,7 +11,7 @@ import {
     Plus,
 } from "lucide-react";
 import * as React from "react";
-import { ConnectDialog } from "@/components/connections/connect-dialog";
+import { ConnectDialog } from "@/features/connections/components/connect-dialog";
 
 import {
     Sidebar,

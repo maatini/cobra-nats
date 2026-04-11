@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { useNatsStore } from "@/store/useNatsStore";
+import { useNatsStore } from "@/features/connections/store";
 import { Settings, Server, Plus, Trash2, Edit2, Shield, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ConnectDialog } from "@/components/connections/connect-dialog";
+import { ConnectDialog } from "@/features/connections/components/connect-dialog";
 import { useConfirm } from "@/components/providers/confirm-provider";
 import { toast } from "sonner";
 

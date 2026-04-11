@@ -20,9 +20,9 @@ test.describe('JetStream Streams', () => {
     });
 
     test('should navigate to streams page and show empty state if no streams', async ({ page }) => {
-        await page.click('text=Streams');
+        await page.getByRole('link', { name: 'Streams', exact: true }).click();
         await expect(page).toHaveURL(/\/streams/);
-        await expect(page.getByText('JetStream Streams')).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'JetStream Streams' })).toBeVisible();
     });
 
     test('should open create stream dialog', async ({ page }) => {

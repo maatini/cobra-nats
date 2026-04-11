@@ -1,13 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { useActiveConnection } from "@/hooks/use-active-connection";
-import { listStreams, deleteStream } from "@/app/actions/stream-actions";
-import { getStreamConsumerStats, type ConsumerStats } from "@/app/actions/stream-consumer-stats";
+import { useActiveConnection } from "@/features/connections/hooks";
+import { listStreams, deleteStream } from "@/features/streams/actions";
+import { getStreamConsumerStats, type ConsumerStats } from "@/features/streams/actions";
 import type { StreamInfo } from "nats";
 import { toast } from "sonner";
-import { StreamTable } from "@/components/streams/stream-table";
-import { CreateStreamDialog } from "@/components/streams/create-stream-dialog";
+import { StreamTable } from "@/features/streams/components/stream-table";
+import { CreateStreamDialog } from "@/features/streams/components/create-stream-dialog";
 import { Layers, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 

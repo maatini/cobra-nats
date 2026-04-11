@@ -34,9 +34,11 @@ test.describe('KeyValue Stores', () => {
         await expect(page.getByText('Create New KV Bucket')).toBeVisible();
     });
 
-    test('should show empty state if no buckets', async ({ page }) => {
+    test('should show empty state when filter matches nothing', async ({ page }) => {
         await page.goto('/kv');
-        // Assuming we have no buckets initially
+        // Filter for an impossible name so the empty-state UI is deterministic
+        // regardless of existing buckets on the real NATS server.
+        await page.getByPlaceholder('Search buckets...').fill('___does_not_exist___');
         await expect(page.getByText('No buckets found')).toBeVisible();
     });
 });

@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useActiveConnection } from "@/hooks/use-active-connection";
-import { getStreamInfo, deleteStream } from "@/app/actions/stream-actions";
-import { listConsumers, deleteConsumer } from "@/app/actions/consumer-actions";
+import { useActiveConnection } from "@/features/connections/hooks";
+import { getStreamInfo, deleteStream } from "@/features/streams/actions";
+import { listConsumers, deleteConsumer } from "@/features/streams/actions";
 import type { StreamInfo, ConsumerInfo } from "nats";
 import { toast } from "sonner";
 import {
@@ -17,10 +17,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StreamInfoView } from "@/components/streams/stream-info-view";
-import { ConsumerList } from "@/components/streams/consumer-list";
-import { CreateConsumerDialog } from "@/components/streams/create-consumer-dialog";
-import { MessageBrowser } from "@/components/streams/message-browser";
+import { StreamInfoView } from "@/features/streams/components/stream-info-view";
+import { ConsumerList } from "@/features/streams/components/consumer-list";
+import { CreateConsumerDialog } from "@/features/streams/components/create-consumer-dialog";
+import { MessageBrowser } from "@/features/streams/components/message-browser";
 import { Badge } from "@/components/ui/badge";
 import { useConfirm } from "@/components/providers/confirm-provider";
 import Link from "next/link";

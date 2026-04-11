@@ -2,14 +2,14 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useActiveConnection } from "@/hooks/use-active-connection";
+import { useActiveConnection } from "@/features/connections/hooks";
 import {
     listObjects,
     downloadObject,
     deleteObject,
     deleteOSBucket,
-} from "@/app/actions/os-actions";
-import type { OsObjectInfo } from "@/lib/nats/nats-types";
+} from "@/features/os/actions";
+import type { OsObjectInfo } from "@/types/nats";
 import { toast } from "sonner";
 import {
     HardDrive,
@@ -19,8 +19,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ObjectList } from "@/components/os/object-list";
-import { UploadObjectDialog } from "@/components/os/upload-object-dialog";
+import { ObjectList } from "@/features/os/components/object-list";
+import { UploadObjectDialog } from "@/features/os/components/upload-object-dialog";
 import { useConfirm } from "@/components/providers/confirm-provider";
 import Link from "next/link";
 

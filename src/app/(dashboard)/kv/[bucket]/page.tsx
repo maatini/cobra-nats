@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useActiveConnection } from "@/hooks/use-active-connection";
-import { getKVKeys, getKVEntry, deleteKVBucket } from "@/app/actions/kv-actions";
+import { useActiveConnection } from "@/features/connections/hooks";
+import { getKVKeys, getKVEntry, deleteKVBucket } from "@/features/kv/actions";
 import type { KvEntry } from "nats";
-import type { KvEntryResult } from "@/lib/nats/nats-types";
+import type { KvEntryResult } from "@/types/nats";
 import { toast } from "sonner";
 import {
     Database,
@@ -33,7 +33,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { JsonViewer } from "@/components/ui/json-viewer";
 import { useConfirm } from "@/components/providers/confirm-provider";
-import { PutEntryDialog } from "@/components/kv/put-entry-dialog";
+import { PutEntryDialog } from "@/features/kv/components/put-entry-dialog";
 import Link from "next/link";
 import { format } from "date-fns";
 
