@@ -16,7 +16,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
-    "lucide-react": "^0.575.0",
+    "lucide-react": "^1.8.0",
     "nats": "^2.29.3",
     "next": "16.1.6",
     "next-themes": "^0.4.6",
