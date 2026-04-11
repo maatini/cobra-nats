@@ -40,23 +40,21 @@ export function useUrlState<T extends UrlStateValues>(defaults: T) {
 
     const [state, setStateRaw] = React.useState<T>(initial);
 
-    const setState = React.useCallback(
-        (patch: Partial<T>) => {
-            setStateRaw(prev => {
-                const next = { ...prev, ...patch } as T;
-                const search = new URLSearchParams();
-                for (const [key, value] of Object.entries(next)) {
-                    const def = defaults[key as keyof T];
-                    if (value === undefined || value === null || value === "" || value === def) continue;
-                    search.set(key, String(value));
-                }
-                const qs = search.toString();
-                router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-                return next;
-            });
-        },
-        [pathname, router, defaults]
-    );
+    React.useEffect(() => {
+        const search = new URLSearchParams();
+        for (const [key, value] of Object.entries(state)) {
+            const def = defaults[key as keyof T];
+            if (value === undefined || value === null || value === "" || value === def) continue;
+            search.set(key, String(value));
+        }
+        const qs = search.toString();
+        router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state, pathname]);
+
+    const setState = React.useCallback((patch: Partial<T>) => {
+        setStateRaw(prev => ({ ...prev, ...patch }));
+    }, []);
 
     return [state, setState] as const;
 }
