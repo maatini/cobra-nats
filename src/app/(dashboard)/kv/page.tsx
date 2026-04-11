@@ -15,6 +15,14 @@ import { useConfirm } from "@/components/providers/confirm-provider";
 import { useUrlState } from "@/hooks/use-url-state";
 
 export default function KVPage() {
+    return (
+        <React.Suspense fallback={null}>
+            <KVPageContent />
+        </React.Suspense>
+    );
+}
+
+function KVPageContent() {
     const [buckets, setBuckets] = React.useState<KvStatus[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);

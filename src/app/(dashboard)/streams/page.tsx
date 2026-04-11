@@ -111,13 +111,15 @@ export default function StreamsPage() {
                     <AlertDescription>{error}</AlertDescription>
                 </Alert>
             ) : (
-                <StreamTable
-                    data={streams}
-                    consumerStats={consumerStats}
-                    onDelete={handleDelete}
-                    onRefresh={fetchStreams}
-                    isLoading={isLoading}
-                />
+                <React.Suspense fallback={null}>
+                    <StreamTable
+                        data={streams}
+                        consumerStats={consumerStats}
+                        onDelete={handleDelete}
+                        onRefresh={fetchStreams}
+                        isLoading={isLoading}
+                    />
+                </React.Suspense>
             )}
         </div>
     );

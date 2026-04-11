@@ -15,6 +15,14 @@ import { useConfirm } from "@/components/providers/confirm-provider";
 import { useUrlState } from "@/hooks/use-url-state";
 
 export default function OSPage() {
+    return (
+        <React.Suspense fallback={null}>
+            <OSPageContent />
+        </React.Suspense>
+    );
+}
+
+function OSPageContent() {
     const [buckets, setBuckets] = React.useState<OsBucketInfo[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
