@@ -73,14 +73,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
+                        <SidebarMenuButton size="lg" asChild className="h-auto py-2">
                             <Link href="/">
-                                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-indigo-600 text-sidebar-primary-foreground">
-                                    <Database className="size-4" />
+                                <div className="relative flex aspect-square size-16 items-center justify-center overflow-hidden rounded-lg bg-slate-900 ring-1 ring-indigo-500/30">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                        src="/cobra.png"
+                                        alt="Cobra NATS"
+                                        className="size-16 object-cover"
+                                    />
                                 </div>
                                 <div className="flex flex-col gap-0.5 leading-none">
                                     <span className="font-semibold text-indigo-400">Cobra NATS</span>
-                                    <span className="text-xs text-muted-foreground">v0.1.0</span>
+                                    <span className="text-xs text-muted-foreground">v0.5.0</span>
                                 </div>
                             </Link>
                         </SidebarMenuButton>
