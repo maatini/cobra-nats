@@ -8,7 +8,7 @@
 [![Devbox](https://img.shields.io/badge/Devbox-reproducible_env-7C3AED?logo=nixos&logoColor=white)](https://www.jetpack.io/devbox/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **v0.5.0** — A modern, professional management UI for NATS and JetStream.
+> **v0.5.2** — A modern, professional management UI for NATS and JetStream.
 
 ![Cobra NATS](./cobra_nats.png)
 
