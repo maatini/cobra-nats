@@ -31,7 +31,7 @@ export function UploadObjectDialog({ bucket, onUploaded }: UploadObjectDialogPro
     const [objectName, setObjectName] = React.useState("");
     const activeConnection = useActiveConnection();
 
-    /** Read file as base64 and upload. */
+    /** Read file as base64 (via native FileReader) and upload. */
     async function handleUpload() {
         if (!activeConnection || !selectedFile) return;
 
@@ -39,14 +39,19 @@ export function UploadObjectDialog({ bucket, onUploaded }: UploadObjectDialogPro
         setIsUploading(true);
 
         try {
-            const buffer = await selectedFile.arrayBuffer();
-            const bytes = new Uint8Array(buffer);
-            // Encode to base64
-            let binary = "";
-            for (let i = 0; i < bytes.length; i++) {
-                binary += String.fromCharCode(bytes[i]);
-            }
-            const base64 = btoa(binary);
+            // Use native FileReader.readAsDataURL — much faster than a hot loop
+            // with String.fromCharCode + btoa for files over a few KB.
+            const base64: string = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const dataUrl = reader.result as string;
+                    // Strip "data:<mime>;base64," prefix
+                    const comma = dataUrl.indexOf(",");
+                    resolve(dataUrl.slice(comma + 1));
+                };
+                reader.onerror = () => reject(new Error("Failed to read file"));
+                reader.readAsDataURL(selectedFile);
+            });
 
             const result = await uploadObject(activeConnection, bucket, name, base64);
 
