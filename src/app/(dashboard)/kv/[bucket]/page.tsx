@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useActiveConnection } from "@/features/connections/hooks";
-import { getKVKeys, getKVEntry, deleteKVBucket } from "@/features/kv/actions";
+import { getKVKeys, getKVEntry, deleteKVBucket, deleteKVEntry } from "@/features/kv/actions";
 import type { KvEntry } from "nats";
 import type { KvEntryResult } from "@/types/nats";
 import { toast } from "sonner";
@@ -78,6 +78,25 @@ export default function KVDetailPage() {
             toast.error("Failed to load entry data");
         }
         setIsFetchingEntry(false);
+    };
+
+    const handleDeleteKey = async (key: string) => {
+        if (!activeConnection || !bucket) return;
+        const ok = await confirm({
+            title: `Delete key "${key}"?`,
+            description: "This key and its history will be permanently removed from the KV store.",
+            confirmText: "Delete Key",
+        });
+        if (!ok) return;
+
+        const result = await deleteKVEntry(activeConnection, bucket as string, key);
+        if (result.success) {
+            toast.success(`Key "${key}" deleted`);
+            if (selectedEntry?.key === key) setSelectedEntry(null);
+            fetchKeys();
+        } else {
+            toast.error("Failed to delete key", { description: result.error });
+        }
     };
 
     const handleDeleteBucket = async () => {
@@ -208,6 +227,14 @@ export default function KVDetailPage() {
                                             </Button>
                                         }
                                     />
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={() => handleDeleteKey(selectedEntry.key)}
+                                    >
+                                        <Trash2 className="size-3.5 mr-1" />
+                                        Delete
+                                    </Button>
                                 </div>
                             </div>
 

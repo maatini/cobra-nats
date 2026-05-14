@@ -58,12 +58,15 @@ test.describe('Consumer Creation + Message Browser', () => {
 
         // --- 3. Navigate to stream detail page ---
         await page.getByRole('link', { name: 'Streams', exact: true }).click();
+        await expect(page.getByText('Loading streams...')).not.toBeVisible({ timeout: 10000 });
         await page.getByPlaceholder('Search streams...').fill(streamName);
         const row = page.locator('tr', { hasText: streamName });
         await row.getByRole('button', { name: 'Open menu' }).click();
-        await page
-            .getByRole('menuitem', { name: 'View Details' })
-            .evaluate((el: HTMLElement) => el.click());
+        // Radix dropdown animation makes the menuitem unstable; force-click
+        // after the element appears to avoid the detach/stability race.
+        const menuItem = page.getByRole('menuitem', { name: 'View Details' });
+        await menuItem.waitFor({ state: 'attached', timeout: 5000 });
+        await menuItem.click({ force: true });
         await expect(page).toHaveURL(new RegExp(`\/streams\/${streamName}`));
 
         // --- 4. Message Browser: load and verify the published message ---
@@ -139,14 +142,17 @@ test.describe('Consumer Creation + Message Browser', () => {
             .evaluate((el: HTMLButtonElement) => el.click());
         await expect(page.getByText(`Stream "${streamName}" created successfully`)).toBeVisible({ timeout: 15000 });
 
-        // Open it — dropdown menu animation can micro-shift the menuitem,
-        // tripping Playwright's stability check. Dispatch a direct click.
+        // Wait for the post-create refetch to settle, then filter.
+        await expect(page.getByText('Loading streams...')).not.toBeVisible({ timeout: 10000 });
         await page.getByPlaceholder('Search streams...').fill(streamName);
+
         const row = page.locator('tr', { hasText: streamName });
         await row.getByRole('button', { name: 'Open menu' }).click();
-        await page
-            .getByRole('menuitem', { name: 'View Details' })
-            .evaluate((el: HTMLElement) => el.click());
+        // Radix dropdown animation makes the menuitem unstable; force-click
+        // after the element appears to avoid the detach/stability race.
+        const menuItem = page.getByRole('menuitem', { name: 'View Details' });
+        await menuItem.waitFor({ state: 'attached', timeout: 5000 });
+        await menuItem.click({ force: true });
         await expect(page).toHaveURL(new RegExp(`\/streams\/${streamName}`));
 
         // Open confirm dialog then cancel

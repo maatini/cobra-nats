@@ -96,6 +96,14 @@ export async function getKVEntry(config: NatsConnectionConfig, bucket: string, k
     });
 }
 
+/** Delete a single KV entry by key. */
+export async function deleteKVEntry(config: NatsConnectionConfig, bucket: string, key: string): Promise<ActionResponse<void>> {
+    return withJetStream(config, "deleteKVEntry", async ({ js }) => {
+        const kv = await js.views.kv(bucket);
+        await kv.delete(key);
+    });
+}
+
 /** Upsert a KV entry. Returns the new revision number. */
 export async function putKVEntry(config: NatsConnectionConfig, bucket: string, key: string, value: string): Promise<ActionResponse<{ revision: number }>> {
     return withJetStream(config, "putKVEntry", async ({ js }) => {
