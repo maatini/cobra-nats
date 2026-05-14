@@ -57,26 +57,25 @@ test.describe('Functional Stream Creation', () => {
 
         await expect(successToast).toBeVisible();
 
-        // Force a fresh fetch to guarantee the new stream is in the table
-        // (avoids races where the post-create refetch hasn't landed yet).
-        await page.reload();
-        await expect(page.getByText('Loading streams...')).not.toBeVisible({ timeout: 10000 });
+        // The dialog's onCreated callback triggers fetchStreams() which may
+        // still be in flight. Wait for any loading spinner to clear first.
+        await expect(page.getByText('Loading streams...')).not.toBeVisible({ timeout: 15000 });
 
-        // Filter the table using the search box (vital if there are many streams paginated)
+        // Filter to our new stream. The table already has the updated data.
         await page.getByPlaceholder('Search streams...').fill(streamName);
 
-        // Use getByText for the stream name in the table and click it to view details
-        const streamRow = page.getByText(streamName, { exact: true });
+        // Verify the stream appears in the filtered table
+        const streamRow = page.locator('table tbody tr', { hasText: streamName });
         await expect(streamRow).toBeVisible({ timeout: 10000 });
 
-        // Find the row containing the stream name and open the actions menu
-        const row = page.locator('tr', { hasText: streamName });
-        await row.getByRole('button', { name: 'Open menu' }).click();
+        // Open the actions menu for this row
+        await streamRow.getByRole('button', { name: 'Open menu' }).click();
 
-        // Wait for dropdown animation to complete before clicking menu item
-        const viewDetailsItem = page.getByRole('menuitem', { name: 'View Details' });
-        await expect(viewDetailsItem).toBeVisible({ timeout: 5000 });
-        await viewDetailsItem.click();
+        // Click View Details — the menu renders in a Radix portal.
+        // Use click() directly with a generous timeout; Playwright retries
+        // actionability checks atomically, avoiding the detach race that
+        // occurs when a separate expect() + click() lets a re-render slip in.
+        await page.getByRole('menuitem', { name: 'View Details' }).click({ timeout: 10000 });
 
         // Wait for details page to load
         await expect(page).toHaveURL(new RegExp(`\/streams\/${streamName}`));
@@ -114,7 +113,9 @@ test.describe('Functional Stream Creation', () => {
         await expect(deleteSuccessToast).toBeVisible({ timeout: 10000 });
         await expect(page).toHaveURL(/\/streams/);
 
-        // Ensure stream is not in the list anymore
-        await expect(page.getByText(streamName, { exact: true })).not.toBeVisible();
+        // Ensure stream is not in the table anymore (scope to table to avoid
+        // breadcrumb/h1 matches when page hasn't finished re-rendering).
+        await expect(page.getByRole('heading', { name: 'JetStream Streams' })).toBeVisible();
+        await expect(page.locator('table').getByText(streamName, { exact: true })).not.toBeVisible();
     });
 });

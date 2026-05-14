@@ -1,7 +1,7 @@
 "use client";
 
 import { useNatsStore } from "@/features/connections/store";
-import { useActiveConnection } from "@/features/connections/hooks";
+import { useActiveConnection, useConnectionHealth } from "@/features/connections/hooks";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -11,7 +11,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Plus, Server, Wifi, WifiOff } from "lucide-react";
+import { ChevronDown, Loader2, Plus, Server, Wifi, WifiOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ConnectDialog } from "@/features/connections/components/connect-dialog";
@@ -21,6 +21,7 @@ import { AutoBreadcrumbs } from "@/components/layout/auto-breadcrumbs";
 export function Topbar() {
     const { connections, activeConnectionId, setActiveConnection } = useNatsStore();
     const activeConnection = useActiveConnection();
+    const health = useConnectionHealth();
 
     return (
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-md lg:px-6">
@@ -79,13 +80,20 @@ export function Topbar() {
                 </DropdownMenu>
             </div>
             <div className="flex items-center gap-4">
-                {activeConnection ? (
+                {health.status === "checking" ? (
+                    <div className="flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground border border-border">
+                        <Loader2 className="size-3 animate-spin" />
+                        Checking
+                    </div>
+                ) : health.status === "connected" ? (
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-500 border border-emerald-500/20">
                             <Wifi className="size-3" />
                             Connected
                         </div>
-                        <span className="text-xs text-muted-foreground">12ms</span>
+                        {health.rttMs != null && (
+                            <span className="text-xs text-muted-foreground">{health.rttMs}ms</span>
+                        )}
                     </div>
                 ) : (
                     <div className="flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground border border-border">

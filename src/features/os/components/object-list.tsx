@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { OsObjectInfo } from "@/types/nats";
-import { Download, Trash2, Copy, FileIcon } from "lucide-react";
+import { Download, Eye, Trash2, Copy, FileIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,6 +19,7 @@ interface ObjectListProps {
     objects: OsObjectInfo[];
     onDownload: (name: string) => void;
     onDelete: (name: string) => void;
+    onPreview: (name: string) => void;
 }
 
 /** Format bytes to human-readable string. */
@@ -30,7 +31,7 @@ function formatBytes(bytes: number): string {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-export function ObjectList({ objects, onDownload, onDelete }: ObjectListProps) {
+export function ObjectList({ objects, onDownload, onDelete, onPreview }: ObjectListProps) {
     const handleCopyDigest = (digest: string) => {
         navigator.clipboard.writeText(digest);
         toast.success("Digest copied to clipboard");
@@ -89,6 +90,15 @@ export function ObjectList({ objects, onDownload, onDelete }: ObjectListProps) {
                             </TableCell>
                             <TableCell className="py-2.5 px-4 text-right">
                                 <div className="flex items-center gap-1 justify-end">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-muted-foreground hover:text-cyan-400"
+                                        onClick={() => onPreview(obj.name)}
+                                        title="Preview"
+                                    >
+                                        <Eye className="size-3.5" />
+                                    </Button>
                                     <Button
                                         variant="ghost"
                                         size="icon"

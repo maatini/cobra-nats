@@ -191,6 +191,38 @@ export async function downloadObject(
 }
 
 /**
+ * Fetch object content for in-browser preview.
+ * Attempts UTF-8 text decoding; returns binary flag when the content
+ * is not valid UTF-8 (caller should show a hex dump or "binary file" notice).
+ */
+export async function getObjectContent(
+    config: NatsConnectionConfig,
+    bucket: string,
+    name: string
+): Promise<ActionResponse<{ text: string; binary: boolean; size: number }>> {
+    return withJetStream(config, "getObjectContent", async ({ js }) => {
+        const os = await js.views.os(bucket);
+        const blob = await os.getBlob(name);
+        if (!blob) throw new Error(`Object "${name}" not found or empty`);
+
+        // Attempt UTF-8 decode. If invalid byte sequences are found,
+        // return a hex representation instead.
+        try {
+            const decoder = new TextDecoder("utf-8", { fatal: true });
+            const text = decoder.decode(blob);
+            return { text, binary: false, size: blob.length };
+        } catch {
+            // Binary content — return hex dump (first 4 KB)
+            const slice = blob.slice(0, 4096);
+            const hex = Array.from(slice)
+                .map((b) => b.toString(16).padStart(2, "0"))
+                .join(" ");
+            return { text: hex, binary: true, size: blob.length };
+        }
+    });
+}
+
+/**
  * Delete a single object from an Object Store bucket.
  */
 export async function deleteObject(

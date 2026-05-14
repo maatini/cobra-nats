@@ -31,7 +31,8 @@ import {
     TableRow
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { JsonViewer } from "@/components/ui/json-viewer";
+import { CodeViewer } from "@/components/ui/code-viewer";
+import { CopyButton } from "@/components/ui/copy-button";
 import { useConfirm } from "@/components/providers/confirm-provider";
 import { DataTableSkeleton } from "@/components/ui/data-table-skeleton";
 import { PutEntryDialog } from "@/features/kv/components/put-entry-dialog";
@@ -227,17 +228,15 @@ export default function KVDetailPage() {
 
                             <div className="flex-1 rounded-lg border border-border bg-background flex flex-col overflow-hidden">
                                 <div className="px-4 py-2 border-b border-border bg-card flex items-center justify-between">
-                                    <span className="text-xs font-semibold text-muted-foreground">Value Editor</span>
-                                    <span className="text-[10px] text-muted-foreground/70 font-mono">Size: {(selectedEntry.value.length / 1024).toFixed(2)} KB</span>
+                                    <span className="text-xs font-semibold text-muted-foreground">Value</span>
+                                    <span className="text-[10px] text-muted-foreground/70 font-mono">{(selectedEntry.value.length / 1024).toFixed(2)} KB</span>
                                 </div>
-                                <ScrollArea className="flex-1 p-4">
-                                    <JsonViewer
-                                        value={selectedEntry.value}
-                                        className="text-sm"
-                                        rawClassName="text-sm text-indigo-300 leading-relaxed"
-                                        showBadge
-                                    />
-                                </ScrollArea>
+                                <CodeViewer
+                                    value={selectedEntry.value}
+                                    fileName={selectedEntry.key}
+                                    className="border-0 rounded-none"
+                                    maxHeight="calc(100vh - 380px)"
+                                />
                             </div>
                         </div>
                     ) : (

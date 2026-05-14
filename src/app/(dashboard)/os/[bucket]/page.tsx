@@ -16,10 +16,12 @@ import {
     ChevronLeft,
     RefreshCcw,
     Trash2,
+    Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ObjectList } from "@/features/os/components/object-list";
+import { ObjectPreviewSheet } from "@/features/os/components/object-preview-sheet";
 import { UploadObjectDialog } from "@/features/os/components/upload-object-dialog";
 import { useConfirm } from "@/components/providers/confirm-provider";
 import { DataTableSkeleton } from "@/components/ui/data-table-skeleton";
@@ -33,6 +35,8 @@ export default function OSDetailPage() {
 
     const [objects, setObjects] = React.useState<OsObjectInfo[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [previewObject, setPreviewObject] = React.useState<OsObjectInfo | null>(null);
+    const [previewOpen, setPreviewOpen] = React.useState(false);
 
     const fetchObjects = React.useCallback(async () => {
         if (!activeConnection || !bucket) return;
@@ -82,6 +86,15 @@ export default function OSDetailPage() {
             toast.success(`Downloaded ${name}`, { id: `dl-${name}` });
         } else {
             toast.error(`Failed to download ${name}`, { id: `dl-${name}` });
+        }
+    };
+
+    /** Preview an object in the slide-in viewer. */
+    const handlePreview = (name: string) => {
+        const obj = objects.find((o) => o.name === name);
+        if (obj) {
+            setPreviewObject(obj);
+            setPreviewOpen(true);
         }
     };
 
@@ -197,8 +210,17 @@ export default function OSDetailPage() {
                     objects={objects}
                     onDownload={handleDownload}
                     onDelete={handleDeleteObject}
+                    onPreview={handlePreview}
                 />
             )}
+
+            {/* Object preview sheet */}
+            <ObjectPreviewSheet
+                bucket={bucket as string}
+                object={previewObject}
+                open={previewOpen}
+                onOpenChange={setPreviewOpen}
+            />
         </div>
     );
 }

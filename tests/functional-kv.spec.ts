@@ -108,10 +108,9 @@ test.describe('Functional KV Stores', () => {
         // Verify value is displayed correctly in the editor view (simplified check)
         await expect(page.getByText('Viewing Key', { exact: true })).toBeVisible();
 
-        // The saved payload is valid JSON, so the JsonViewer should render a JSON badge
-        // and highlight the "message" key. Locate inside the value editor region.
-        await expect(page.getByText('JSON', { exact: true }).first()).toBeVisible();
-        await expect(page.getByText('"message"', { exact: false })).toBeVisible();
+        // The saved payload is valid JSON; the CodeViewer header shows the detected language.
+        await expect(page.getByText('json', { exact: true })).toBeVisible();
+        await expect(page.getByText('message', { exact: false })).toBeVisible();
 
         // Delete Bucket — Radix confirm dialog replaces window.confirm.
         await page.getByRole('button', { name: 'Delete Bucket' }).click();
