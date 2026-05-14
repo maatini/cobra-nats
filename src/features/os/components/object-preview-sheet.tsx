@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Eye, Loader2, AlertTriangle, FileIcon, ImageIcon } from "lucide-react";
+import { Eye, Loader2, AlertTriangle, FileIcon, ImageIcon, Download, HardDrive } from "lucide-react";
 import { marked } from "marked";
 
 import type { OsObjectInfo } from "@/types/nats";
@@ -36,6 +36,7 @@ function formatBytes(bytes: number): string {
 
 const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "svg", "webp", "ico", "bmp"]);
 const MARKDOWN_EXTENSIONS = new Set(["md", "markdown", "mdown", "mkd"]);
+const PREVIEW_SIZE_LIMIT = 10 * 1024 * 1024; // 10 MB
 
 function detectType(fileName: string): "image" | "markdown" | "code" {
     const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
@@ -68,6 +69,7 @@ export function ObjectPreviewSheet({ bucket, object, open, onOpenChange }: Objec
     const [imageUrl, setImageUrl] = React.useState<string | null>(null);
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
+    const [tooLarge, setTooLarge] = React.useState(false);
     const fileType = object ? detectType(object.name) : "code";
 
     React.useEffect(() => {
@@ -83,6 +85,13 @@ export function ObjectPreviewSheet({ bucket, object, open, onOpenChange }: Objec
         setError(null);
         setContent(null);
         setImageUrl(null);
+
+        if (object.size > PREVIEW_SIZE_LIMIT) {
+            setTooLarge(true);
+            setLoading(false);
+            return;
+        }
+        setTooLarge(false);
 
         if (fileType === "image") {
             // Fetch as base64 → blob URL for <img>
@@ -170,6 +179,44 @@ export function ObjectPreviewSheet({ bucket, object, open, onOpenChange }: Objec
                         <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
                             <Loader2 className="size-8 animate-spin text-cyan-500/60" />
                             <span className="text-sm">Loading content…</span>
+                        </div>
+                    ) : tooLarge ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-4">
+                            <HardDrive className="size-12 text-amber-400/40" />
+                            <div className="text-center space-y-2 max-w-sm">
+                                <h3 className="text-sm font-medium text-foreground">
+                                    File too large to preview
+                                </h3>
+                                <p className="text-xs text-muted-foreground">
+                                    This file is {formatBytes(object.size)}. Previews are limited to {formatBytes(PREVIEW_SIZE_LIMIT)}.
+                                    Use the download button to inspect the file locally.
+                                </p>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={async () => {
+                                    if (!activeConnection) return;
+                                    const result = await downloadObject(activeConnection, bucket, object.name);
+                                    if (result.success) {
+                                        const binary = atob(result.data.data);
+                                        const bytes = new Uint8Array(binary.length);
+                                        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                                        const blob = new Blob([bytes]);
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement("a");
+                                        a.href = url;
+                                        a.download = object.name;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
+                                    }
+                                }}
+                                className="text-xs"
+                            >
+                                <Download className="size-3.5 mr-1.5" />
+                                Download instead
+                            </Button>
                         </div>
                     ) : error ? (
                         <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
