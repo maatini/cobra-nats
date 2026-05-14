@@ -12,8 +12,19 @@ You are the E2E testing expert for Cobra NATS.
 - `tests/*.spec.ts` — flat test structure per feature (e.g. `streams.spec.ts`, `kv.spec.ts`, `os.spec.ts`)
 
 ## Prerequisites
-- **Real NATS server** on `localhost:4222` (via `docker-compose up` in the repo root).
+
+**Recommended: Devbox environment**
+```bash
+devbox shell                          # enter reproducible env (includes firefox, node, nats)
+devbox run dev:full                   # starts NATS + Next.js in one command
+devbox run test:e2e                   # runs all Playwright tests
+devbox run test:e2e:headed            # headed mode for debugging
+```
+
+**Manual setup:**
+- **Real NATS server** on `localhost:4222` — use `docker-compose up` or `nats-server -js`.
 - Next.js dev server on `localhost:3000` (`npm run dev`).
+- **Firefox**: The devbox environment provides a nixpkgs-built firefox which avoids macOS code-signing issues common with Playwright's prebuilt chromium binaries. Outside devbox, Playwright uses its own managed `chromium_headless_shell`.
 
 ## Mandatory pattern
 
@@ -46,10 +57,11 @@ test.beforeEach(async ({ page }) => {
 ```
 
 ## Rules
+- **Follow the Thinking & Execution principles** in `.claude/rules.md` — define verifiable goals, loop until tests pass.
 - **New features always need UI and functional coverage** (golden path + at least one error case).
 - Assert **toasts** via `page.getByRole("status")` or `page.getByText(...)`.
-- Handle the **confirm dialog**: `page.getByRole("dialog").getByRole("button", { name: "Bestätigen" }).click()`.
-- Use **German** labels in selectors (the project ships in German).
+- Handle the **confirm dialog**: `page.getByRole("dialog").getByRole("button", { name: "Confirm" }).click()`.
+- Use **English** labels in selectors (the project uses English for all UI text).
 - **Cleanup**: everything the test creates (streams, KV buckets, OS buckets) has to be deleted at the end — tests must be idempotent.
 - No subfolders under `tests/` — keep it flat.
 

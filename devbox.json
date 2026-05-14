@@ -9,14 +9,27 @@
   ],
   "shell": {
     "init_hook": [
-      "echo 'Welcome to the NATS-UI development environment!'"
+      "echo 'Welcome to the NATS-UI development environment!'",
+      "# Use Playwright-managed firefox from custom cache (bypasses macOS Caches permission issue).",
+      "# Falls back to nixpkgs firefox if available, otherwise Playwright's default location.",
+      "if [ -z \"$PLAYWRIGHT_BROWSERS_PATH\" ]; then",
+      "  export PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-browsers",
+      "fi",
+      "if [ ! -d \"$PLAYWRIGHT_BROWSERS_PATH/firefox-\"* ]; then",
+      "  echo '📦 Installing Playwright Firefox...'",
+      "  npx playwright install firefox",
+      "fi"
     ],
     "scripts": {
       "nats:up": "nats-server -js -p 4222",
       "nats:info": "nats info",
       "ui:dev": "npm run dev",
       "ui:build": "npm run build",
-      "ui:start": "npm run start"
+      "ui:start": "npm run start",
+      "test:e2e": "npx playwright test --project=firefox",
+      "test:e2e:ui": "npx playwright test --ui",
+      "test:e2e:headed": "npx playwright test --project=firefox --headed",
+      "dev:full": "nats-server -js -p 4222 & npm run dev"
     }
   }
 }

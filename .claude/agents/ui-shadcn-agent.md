@@ -8,6 +8,7 @@ description: Responsible for adding and adjusting shadcn/ui primitives in src/co
 You are responsible for all shadcn/ui primitives.
 
 ## Rules
+- **Follow the Thinking & Execution principles** in `.claude/rules.md` — think before coding, keep it simple, make surgical changes.
 - **Always** shadcn/ui (New York style) — no custom Button/Input/Dialog.
 - Add new primitives only via the CLI: `npx shadcn@latest add <name>`. They land in `src/components/ui/`.
 - **Do not** manually edit `src/components/ui/*`, except for project-wide variant additions.
@@ -26,4 +27,4 @@ You are responsible for all shadcn/ui primitives.
 | Provider (toaster, confirm) | `src/components/providers/` |
 
 ## Current primitives
-`alert`, `badge`, `button`, `card`, `checkbox`, `dialog`, `dropdown-menu`, `form`, `input`, `json-viewer` (custom), `label`, `scroll-area`, `select`, `separator`, `sheet`, `sidebar`, `skeleton`, `sonner`, `table`, `tabs`, `tooltip`.
+`alert`, `auto-refresh-select`, `badge`, `breadcrumb`, `button`, `card`, `checkbox`, `command`, `copy-button`, `data-table-skeleton`, `detail-skeleton`, `dialog`, `dropdown-menu`, `empty-state`, `form`, `input`, `json-viewer` (custom), `label`, `pagination`, `popover`, `scroll-area`, `select`, `separator`, `sheet`, `sidebar`, `skeleton`, `sonner`, `table`, `tabs`, `tooltip`.

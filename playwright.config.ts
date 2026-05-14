@@ -28,7 +28,24 @@ export default defineConfig({
     projects: [
         {
             name: 'chromium',
-            use: { ...devices['Desktop Chrome'] },
+            use: {
+                ...devices['Desktop Chrome'],
+                // Use devbox chromium when available (set via init_hook),
+                // otherwise fall back to Playwright's managed binary.
+                ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? {
+                    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+                } : {}),
+            },
+        },
+        {
+            name: 'firefox',
+            use: {
+                ...devices['Desktop Firefox'],
+                // Use devbox firefox when available (set via init_hook).
+                ...(process.env.PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH ? {
+                    executablePath: process.env.PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH,
+                } : {}),
+            },
         },
     ],
 

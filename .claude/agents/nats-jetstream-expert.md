@@ -23,7 +23,9 @@ You are the absolute expert on NATS and JetStream (as of 2026, `nats.js` v2.29).
 - **OS bucket `replicas` bug**: `nats.js` copies every enumerable property into the raw stream config. The NATS server rejects `replicas` (it wants `num_replicas`). Workaround in `features/os/actions.ts::createOSBucket`: set `replicas` as non-enumerable. Do not remove.
 - **KV discovery**: KV buckets are created as streams with prefix `KV_`. `listKVBuckets` filters on that.
 - **OS discovery**: analogously uses the `OBJ_` prefix.
-- **Monitor uses a dedicated connection** (`monitor-${id}-${ts}`) so it does not collide with other operations.
+- **Monitor uses a dedicated connection** (`monitor-${id}-${ts}`) so it does not collide with other operations. The feature lives in `src/features/monitor/` with `stream.ts` (SSE client helper) instead of `actions.ts`.
+- **Types in `nats.ts`** define enums (`RetentionPolicy`, `StorageType`, `DiscardPolicy`) as re-definitions (not re-exports) to keep the `nats` package out of the browser bundle. Values must stay in sync with `nats/lib/jetstream/jsapi_types`.
 
 ## Working style
-When you implement a NATS operation you **always** use the `withJetStream` / `withNatsConnection` wrapper from `@/lib/server-action`. See `.claude/rules.md` for the mandatory pattern.
+- **Follow the Thinking & Execution principles** in `.claude/rules.md` — state assumptions, surface tradeoffs, keep changes surgical, and define verifiable goals.
+- When you implement a NATS operation you **always** use the `withJetStream` / `withNatsConnection` wrapper from `@/lib/server-action`. See `.claude/rules.md` for the mandatory pattern.

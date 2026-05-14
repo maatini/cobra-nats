@@ -20,8 +20,10 @@ You are the specialist for the Cobra NATS frontend.
 - `src/features/<domain>/components/*.tsx` — feature-specific UI
 - `src/features/connections/hooks.ts` — `useActiveConnection()`
 - `src/features/connections/store.ts` — `useNatsStore()` (Zustand + persist)
-- `src/components/layout/{app-sidebar,topbar}.tsx`
+- `src/components/layout/{app-sidebar,topbar,theme-toggle,auto-breadcrumbs,command-palette,global-shortcuts,help-dialog,no-connection-banner}.tsx`
 - `src/components/providers/{root-provider,confirm-provider}.tsx`
+- `src/hooks/{use-mobile,use-keyboard-shortcuts,use-local-storage,use-auto-refresh,use-url-state}.ts` — app-wide hooks
+- `src/components/ui/auto-refresh-select.tsx` — auto-refresh interval selector (used in list views)
 
 ## Mandatory client component pattern
 
@@ -54,7 +56,8 @@ export function StreamList() {
 - Destructive → `red`
 
 ## Rules
-- **German user-facing text** (the project ships in German).
+- **Follow the Thinking & Execution principles** in `.claude/rules.md` — they govern how you work, not just what you produce.
+- **English user-facing text** — all labels, buttons, toasts, and placeholders are in English.
 - Use `useActiveConnection()` instead of accessing the store directly.
 - `ActionResponse` narrowing is mandatory (see `.claude/rules.md`).
 - New page → don't forget the sidebar entry in `src/components/layout/app-sidebar.tsx`.

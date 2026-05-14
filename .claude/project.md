@@ -59,15 +59,19 @@ shadcn/ui **New York style** with Tailwind v4. Tailwind config lives in `globals
 
 ## Tech versions (as of v0.5.2)
 
-- Next.js **16.2.3** (App Router)
-- React **19.2.5**
-- TypeScript **^5** (strict)
+- Next.js **16.2.6** (App Router)
+- React **19.2.6**
+- TypeScript **^6** (strict)
 - `nats` **^2.29.3**
 - Tailwind **v4**
-- `zustand` **^5.0.12**
-- `@tanstack/react-query` **^5.97**, `@tanstack/react-table` **^8.21**
-- `react-hook-form` **^7.72** + `zod` **^4.3.6** + `@hookform/resolvers` **^5**
-- Playwright **^1.59**
+- `zustand` **^5.0.13**
+- `@tanstack/react-query` **^5.100.10**, `@tanstack/react-table` **^8.21.3**
+- `lucide-react` **^1.16.0**
+- `react-hook-form` **^7.75.0** + `zod` **^4.4.3** + `@hookform/resolvers` **^5.2.2**
+- Playwright **^1.60.0**
+- `sonner` **^2.0.7**
+- `cmdk` **^1.1.1**
+- `shadcn` **^4.7.0**
 
 ## Development setup
 
