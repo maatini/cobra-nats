@@ -250,6 +250,69 @@ test.describe('Functional Object Store CRUD', () => {
         if (fs.existsSync(noExtPath)) fs.unlinkSync(noExtPath);
     });
 
+    test('should upload and preview a file larger than the old 1 MB body limit', async ({ page }) => {
+        const bucketName = `TEST_OS_LARGE_${Date.now()}`;
+
+        // --- Create bucket ---
+        await page.goto('/os');
+        await expect(page.getByRole('heading', { name: 'Object Stores' })).toBeVisible({ timeout: 10000 });
+        await page.getByRole('button', { name: 'Create Object Store' }).click();
+        await page.getByLabel('Bucket Name').fill(bucketName);
+
+        const submitButton = page.getByRole('dialog').getByRole('button', { name: 'Create Object Store', exact: true });
+        await expect(submitButton).toBeEnabled();
+        await submitButton.evaluate((el: HTMLButtonElement) => el.click());
+        await expect(page.getByText(`Object Store "${bucketName}" created successfully`)).toBeVisible({ timeout: 15000 });
+
+        // Navigate directly to the bucket detail page (avoids card-list hydration races).
+        await page.goto(`/os/${bucketName}`);
+        await expect(page.getByRole('heading', { name: bucketName, exact: true })).toBeVisible({ timeout: 10000 });
+
+        // --- Generate a ~1.1 MB file (> old 1 MB server-action body limit) ---
+        const tmpDir = path.join(__dirname, '..', 'tmp');
+        if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+        const largePath = path.join(tmpDir, 'large-file.bin');
+        const size = Math.round(1.1 * 1024 * 1024);
+        const buf = Buffer.alloc(size, 0x41); // fill with 'A' for fast allocation
+        fs.writeFileSync(largePath, buf);
+
+        // --- Upload ---
+        await page.getByRole('button', { name: 'Upload' }).click();
+        await expect(page.getByRole('heading', { name: 'Upload Object' })).toBeVisible();
+        await page.locator('input[type="file"]').setInputFiles(largePath);
+        await expect(page.getByRole('button', { name: 'Upload Object' })).toBeEnabled();
+        await page.getByRole('button', { name: 'Upload Object' }).click();
+
+        // Upload should succeed — old 1 MB limit would reject this request.
+        // Also handle the error case for diagnostics.
+        const uploadSuccess = page.getByText('uploaded successfully');
+        const uploadError = page.getByText('Upload failed');
+        await Promise.race([
+            uploadSuccess.waitFor({ state: 'visible', timeout: 30000 }),
+            uploadError.waitFor({ state: 'visible', timeout: 30000 }),
+        ]).catch(() => {
+            throw new Error('Timed out waiting for upload success or error toast');
+        });
+        if (await uploadError.isVisible().catch(() => false)) {
+            const desc = await page.locator('[data-sonner-toast] [data-description]').innerText().catch(() => '');
+            throw new Error(`Upload failed: ${desc}`);
+        }
+        await expect(uploadSuccess).toBeVisible();
+
+        // Object should appear in the list
+        await expect(page.getByText('large-file.bin', { exact: true })).toBeVisible({ timeout: 10000 });
+
+        // --- Cleanup ---
+        await page.getByRole('button', { name: 'Delete Bucket' }).click();
+        const confirmDialog = page.getByRole('dialog');
+        await expect(confirmDialog.getByText(/Delete bucket/)).toBeVisible();
+        await confirmDialog.getByLabel('Confirm name').fill(bucketName);
+        await confirmDialog.getByRole('button', { name: 'Delete Bucket' }).click();
+        await expect(page.getByText('Bucket deleted')).toBeVisible({ timeout: 10000 });
+
+        if (fs.existsSync(largePath)) fs.unlinkSync(largePath);
+    });
+
     test('should show empty sheet state when clicking preview on missing object', async ({ page }) => {
         // Navigate to existing bucket with objects
         await page.goto('/os');

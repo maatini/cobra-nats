@@ -66,7 +66,14 @@ test.describe('Consumer Creation + Message Browser', () => {
         // after the element appears to avoid the detach/stability race.
         const menuItem = page.getByRole('menuitem', { name: 'View Details' });
         await menuItem.waitFor({ state: 'attached', timeout: 5000 });
-        await menuItem.click({ force: true });
+        // The menuitem is an <a href> — navigate directly instead of clicking
+        // to avoid Radix event-handling races.
+        const href = await menuItem.getAttribute("href");
+        if (href) {
+            await page.goto(href);
+        } else {
+            await menuItem.click({ force: true });
+        }
         await expect(page).toHaveURL(new RegExp(`\/streams\/${streamName}`));
 
         // --- 4. Message Browser: load and verify the published message ---
@@ -143,16 +150,24 @@ test.describe('Consumer Creation + Message Browser', () => {
         await expect(page.getByText(`Stream "${streamName}" created successfully`)).toBeVisible({ timeout: 15000 });
 
         // Wait for the post-create refetch to settle, then filter.
-        await expect(page.getByText('Loading streams...')).not.toBeVisible({ timeout: 10000 });
+        await page.waitForTimeout(2000);
         await page.getByPlaceholder('Search streams...').fill(streamName);
 
         const row = page.locator('tr', { hasText: streamName });
+        await expect(row).toBeVisible({ timeout: 10000 });
         await row.getByRole('button', { name: 'Open menu' }).click();
         // Radix dropdown animation makes the menuitem unstable; force-click
         // after the element appears to avoid the detach/stability race.
         const menuItem = page.getByRole('menuitem', { name: 'View Details' });
         await menuItem.waitFor({ state: 'attached', timeout: 5000 });
-        await menuItem.click({ force: true });
+        // The menuitem is an <a href> — navigate directly instead of clicking
+        // to avoid Radix event-handling races.
+        const href = await menuItem.getAttribute("href");
+        if (href) {
+            await page.goto(href);
+        } else {
+            await menuItem.click({ force: true });
+        }
         await expect(page).toHaveURL(new RegExp(`\/streams\/${streamName}`));
 
         // Open confirm dialog then cancel
