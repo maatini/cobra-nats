@@ -53,7 +53,7 @@ export function useConnectionHealth(): HealthState {
 
             if (!mountedRef.current) return;
 
-            if (result.success && result.data) {
+            if (result.success) {
                 setHealth({ status: "connected", rttMs: result.data.rttMs, error: null });
             } else {
                 setHealth({ status: "disconnected", rttMs: null, error: result.error || null });
