@@ -12,8 +12,7 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('Consumer Creation + Message Browser', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/');
-        await page.evaluate(() => {
+        await page.addInitScript(() => {
             const state = {
                 state: {
                     connections: [
@@ -25,7 +24,7 @@ test.describe('Consumer Creation + Message Browser', () => {
             };
             localStorage.setItem('cobra-nats-storage', JSON.stringify(state));
         });
-        await page.reload();
+        await page.goto('/');
     });
 
     test('browse messages, create + delete a pull consumer, then clean up', async ({ page }) => {

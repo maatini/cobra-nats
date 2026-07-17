@@ -4,9 +4,7 @@ import fs from 'node:fs';
 
 test.describe('Functional Object Store CRUD', () => {
     test.beforeEach(async ({ page }) => {
-        // Setup a connection in localStorage
-        await page.goto('/');
-        await page.evaluate(() => {
+        await page.addInitScript(() => {
             const state = {
                 state: {
                     connections: [
@@ -18,7 +16,7 @@ test.describe('Functional Object Store CRUD', () => {
             };
             localStorage.setItem('cobra-nats-storage', JSON.stringify(state));
         });
-        await page.reload();
+        await page.goto('/');
     });
 
     test('should create a bucket, upload a file, and delete', async ({ page }) => {

@@ -2,10 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Connection Management', () => {
     test.beforeEach(async ({ page }) => {
-        // Clear storage before each test to ensure a clean state
+        await page.addInitScript(() => localStorage.clear());
         await page.goto('/');
-        await page.evaluate(() => localStorage.clear());
-        await page.reload();
     });
 
     test('should show empty state dashboard when no connections exist', async ({ page }) => {
@@ -40,9 +38,7 @@ test.describe('Connection Management', () => {
     });
 
     test('should switch between connections', async ({ page }) => {
-        // Manually inject two connections into localStorage for setup
-        await page.goto('/');
-        await page.evaluate(() => {
+        await page.addInitScript(() => {
             const state = {
                 state: {
                     connections: [
@@ -55,7 +51,7 @@ test.describe('Connection Management', () => {
             };
             localStorage.setItem('cobra-nats-storage', JSON.stringify(state));
         });
-        await page.reload();
+        await page.goto('/');
 
         // Verify Conn 1 is active
         await expect(page.getByRole('button', { name: 'Conn 1', exact: false })).toBeVisible();

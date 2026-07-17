@@ -2,9 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Object Stores', () => {
     test.beforeEach(async ({ page }) => {
-        // Setup a connection in localStorage
-        await page.goto('/');
-        await page.evaluate(() => {
+        await page.addInitScript(() => {
             const state = {
                 state: {
                     connections: [
@@ -16,7 +14,7 @@ test.describe('Object Stores', () => {
             };
             localStorage.setItem('cobra-nats-storage', JSON.stringify(state));
         });
-        await page.reload();
+        await page.goto('/');
     });
 
     test('should navigate to OS page', async ({ page }) => {

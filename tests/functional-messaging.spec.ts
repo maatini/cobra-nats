@@ -2,9 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Functional Messaging', () => {
     test.beforeEach(async ({ page }) => {
-        // Setup a connection in localStorage
-        await page.goto('/');
-        await page.evaluate(() => {
+        await page.addInitScript(() => {
             const state = {
                 state: {
                     connections: [
@@ -16,7 +14,7 @@ test.describe('Functional Messaging', () => {
             };
             localStorage.setItem('cobra-nats-storage', JSON.stringify(state));
         });
-        await page.reload();
+        await page.goto('/');
     });
 
     test('should publish a message successfully', async ({ page }) => {
