@@ -63,6 +63,7 @@ import { Button } from "@/components/ui/button";
 
 ## Further documentation
 
+- **`docs/knowledge-base/`** — **Primary reference for architecture, responsibilities, and dependencies.** Always start with the relevant `index.md` before coding. Contains Mermaid diagrams, data-flow documentation, ADRs, module breakdowns with ownership/dependency tables, and a tag registry.
 - **`.claude/architecture.md`** — "Where does what live?" + blueprint for adding a new feature
 - **`.claude/project.md`** — Feature map, routes, color palette, NATS conventions
 - **`.claude/rules.md`** — Do's & don'ts with code examples
