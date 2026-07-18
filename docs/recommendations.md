@@ -421,13 +421,13 @@ Zum Abhaken bei späterer Arbeit:
 - [x] O2 — OS prefix browse / metadata
 - [x] S6 — Mirror / source streams
 
-**P3+ / P4 (optional)**
+**P4 (optional polish)**
 
-- [ ] U1 — Richer dashboard
-- [ ] P1 — Replay publish
-- [ ] P3 — Monitor backpressure
-- [ ] Q1 — DTO serialization
-- [ ] Q3 — ESLint fix
+- [x] U1 — Richer dashboard
+- [x] P1 — Replay publish
+- [x] P3 — Monitor backpressure
+- [x] Q1 — DTO serialization
+- [x] Q3 — ESLint fix
 - [ ] U4 / M4 / M5 / K3 / K4 / A4 / Q2 / Q4 / Q5 — nach Bedarf
 
 ---

@@ -18,7 +18,6 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
         } catch {
             // ignore corrupted JSON
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [key]);
 
     const setAndStore = React.useCallback(

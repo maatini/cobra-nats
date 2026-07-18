@@ -11,7 +11,7 @@ import {
     getSortedRowModel,
     SortingState,
 } from "@tanstack/react-table";
-import type { StreamInfo } from "nats";
+import type { StreamInfoDto } from "@/types/nats";
 import {
     MoreHorizontal,
     Trash2,
@@ -46,7 +46,7 @@ import { useRouter } from "next/navigation";
 import { useUrlState } from "@/hooks/use-url-state";
 
 interface StreamTableProps {
-    data: StreamInfo[];
+    data: StreamInfoDto[];
     consumerStats?: Record<string, ConsumerStats>;
     onDelete: (name: string) => void;
     onRefresh: () => void;
@@ -78,7 +78,7 @@ export function StreamTable({ data, consumerStats, onDelete, onRefresh, isLoadin
         );
     }, [data, filter]);
 
-    const columns: ColumnDef<StreamInfo>[] = [
+    const columns: ColumnDef<StreamInfoDto>[] = [
         {
             accessorKey: "config.name",
             header: "Name",

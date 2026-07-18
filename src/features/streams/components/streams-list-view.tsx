@@ -7,7 +7,7 @@ import {
     getStreamConsumerStats,
     type ConsumerStats,
 } from "@/features/streams/actions";
-import type { StreamInfo } from "nats";
+import type { StreamInfoDto } from "@/types/nats";
 import { StreamTable } from "@/features/streams/components/stream-table";
 import { CreateStreamDialog } from "@/features/streams/components/create-stream-dialog";
 import { Layers } from "lucide-react";
@@ -19,7 +19,7 @@ import { ErrorAlert } from "@/components/layout/error-alert";
 import { toast } from "sonner";
 
 export function StreamsListView() {
-    const [streams, setStreams] = React.useState<StreamInfo[]>([]);
+    const [streams, setStreams] = React.useState<StreamInfoDto[]>([]);
     const [consumerStats, setConsumerStats] = React.useState<
         Record<string, ConsumerStats> | undefined
     >();

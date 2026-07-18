@@ -16,6 +16,8 @@ import {
     Loader2,
     AlertCircle,
     HardDrive,
+    Package,
+    Users,
 } from "lucide-react";
 
 import type { JetStreamAccountOverview, NatsConnectionConfig } from "@/types/nats";
@@ -24,6 +26,7 @@ import { useNatsStore } from "@/features/connections/store";
 import { getServerInfo } from "@/features/connections/actions";
 import { listStreams, getJetStreamAccountInfo } from "@/features/streams/actions";
 import { listKVBuckets } from "@/features/kv/actions";
+import { listOSBuckets } from "@/features/os/actions";
 import { ConnectDialog } from "@/features/connections/components/connect-dialog";
 import { HttpMonitoringCard } from "@/features/dashboard/http-monitoring-card";
 
@@ -36,6 +39,8 @@ import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 interface DashboardStats {
     streamCount: number | null;
     kvBucketCount: number | null;
+    osBucketCount: number | null;
+    consumerTotal: number | null;
     serverName: string | null;
     serverVersion: string | null;
     jetstream: boolean;
@@ -45,6 +50,8 @@ interface DashboardStats {
 const EMPTY_STATS: DashboardStats = {
     streamCount: null,
     kvBucketCount: null,
+    osBucketCount: null,
+    consumerTotal: null,
     serverName: null,
     serverVersion: null,
     jetstream: false,
@@ -72,12 +79,14 @@ export function DashboardOverview() {
         setError(null);
 
         try {
-            const [serverResult, streamsResult, kvResult, accountResult] = await Promise.allSettled([
-                getServerInfo(connection),
-                listStreams(connection),
-                listKVBuckets(connection),
-                getJetStreamAccountInfo(connection),
-            ]);
+            const [serverResult, streamsResult, kvResult, osResult, accountResult] =
+                await Promise.allSettled([
+                    getServerInfo(connection),
+                    listStreams(connection),
+                    listKVBuckets(connection),
+                    listOSBuckets(connection),
+                    getJetStreamAccountInfo(connection),
+                ]);
 
             const next: DashboardStats = { ...EMPTY_STATS };
 
@@ -88,7 +97,7 @@ export function DashboardOverview() {
                 next.jetstream = !!info.jetstream;
             }
 
-            // Streams/KV may fail if JetStream is not enabled — treat as 0, not error.
+            // Streams/KV/OS may fail if JetStream is not enabled — treat as 0, not error.
             next.streamCount =
                 streamsResult.status === "fulfilled" && streamsResult.value.success
                     ? streamsResult.value.data.length
@@ -99,9 +108,17 @@ export function DashboardOverview() {
                     ? kvResult.value.data.buckets.length
                     : 0;
 
+            next.osBucketCount =
+                osResult.status === "fulfilled" && osResult.value.success
+                    ? osResult.value.data.buckets.length
+                    : 0;
+
             if (accountResult.status === "fulfilled" && accountResult.value.success) {
                 next.account = accountResult.value.data;
+                next.consumerTotal = accountResult.value.data.consumers;
                 next.jetstream = true;
+            } else {
+                next.consumerTotal = 0;
             }
 
             setStats(next);
@@ -141,15 +158,15 @@ export function DashboardOverview() {
                 )}
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 <Card className="bg-card border-border hover:border-indigo-500/50 transition-colors group">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Total Connections</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Connections</CardTitle>
                         <Database className="size-4 text-indigo-400 group-hover:scale-110 transition-transform" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-foreground">{connections.length}</div>
-                        <p className="text-xs text-muted-foreground">Saved in your browser</p>
+                        <p className="text-xs text-muted-foreground">Saved in browser</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-card border-border hover:border-emerald-500/50 transition-colors group">
@@ -161,7 +178,7 @@ export function DashboardOverview() {
                         <div className="text-2xl font-bold text-foreground">
                             {activeConnection ? "Connected" : "Idle"}
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground truncate">
                             {activeConnection ? activeConnection.name : "No active connection"}
                         </p>
                     </CardContent>
@@ -186,6 +203,24 @@ export function DashboardOverview() {
                         </p>
                     </CardContent>
                 </Card>
+                <Card className="bg-card border-border hover:border-violet-500/50 transition-colors group">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Consumers</CardTitle>
+                        <Users className="size-4 text-violet-400 group-hover:scale-110 transition-transform" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-foreground">
+                            {loading ? (
+                                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                            ) : stats.consumerTotal !== null ? (
+                                stats.consumerTotal
+                            ) : (
+                                "--"
+                            )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Account total</p>
+                    </CardContent>
+                </Card>
                 <Card className="bg-card border-border hover:border-rose-500/50 transition-colors group">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                         <CardTitle className="text-sm font-medium text-muted-foreground">KV Buckets</CardTitle>
@@ -202,6 +237,28 @@ export function DashboardOverview() {
                             )}
                         </div>
                         <p className="text-xs text-muted-foreground">Key-Value stores</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-card border-border hover:border-cyan-500/50 transition-colors group">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Object Stores</CardTitle>
+                        <Package className="size-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-foreground">
+                            {loading ? (
+                                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                            ) : stats.osBucketCount !== null ? (
+                                stats.osBucketCount
+                            ) : (
+                                "--"
+                            )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            {stats.account
+                                ? `${formatBytes(stats.account.storage + stats.account.memory)} JS used`
+                                : "Object store buckets"}
+                        </p>
                     </CardContent>
                 </Card>
             </div>
@@ -412,6 +469,13 @@ export function DashboardOverview() {
                             <Link href="/kv">
                                 <Database className="size-4 text-emerald-400" />
                                 <span>Browse KV Stores</span>
+                                <ArrowRight className="size-4 ml-auto opacity-50" />
+                            </Link>
+                        </Button>
+                        <Button variant="outline" className="justify-start gap-3 h-12 border-border bg-card hover:bg-muted hover:text-cyan-400" asChild>
+                            <Link href="/os">
+                                <Package className="size-4 text-cyan-400" />
+                                <span>Browse Object Stores</span>
                                 <ArrowRight className="size-4 ml-auto opacity-50" />
                             </Link>
                         </Button>

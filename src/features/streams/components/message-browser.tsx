@@ -20,10 +20,13 @@ import {
     Filter,
     Loader2,
     Trash2,
+    Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import Link from "next/link";
 import { useConfirm } from "@/components/providers/confirm-provider";
+import { buildPublishReplayHref } from "@/lib/publish-replay";
 
 interface MessageBrowserProps {
     config: NatsConnectionConfig;
@@ -334,24 +337,45 @@ export function MessageBrowser({ config, streamName, firstSeq, lastSeq }: Messag
                                                                 </Badge>
                                                             )}
                                                         </div>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-7 text-[10px] text-rose-500 hover:text-rose-400 hover:bg-rose-500/10"
-                                                            disabled={deletingSeq === msg.seq}
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                void handleDeleteMessage(msg.seq);
-                                                            }}
-                                                        >
-                                                            {deletingSeq === msg.seq ? (
-                                                                <Loader2 className="size-3 mr-1 animate-spin" />
-                                                            ) : (
-                                                                <Trash2 className="size-3 mr-1" />
-                                                            )}
-                                                            Delete
-                                                        </Button>
+                                                        <div className="flex items-center gap-1">
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-7 text-[10px] text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+                                                                asChild
+                                                            >
+                                                                <Link
+                                                                    href={buildPublishReplayHref({
+                                                                        subject: msg.subject,
+                                                                        payload: msg.data,
+                                                                        headers: msg.headers,
+                                                                    })}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    <Send className="size-3 mr-1" />
+                                                                    Replay
+                                                                </Link>
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-7 text-[10px] text-rose-500 hover:text-rose-400 hover:bg-rose-500/10"
+                                                                disabled={deletingSeq === msg.seq}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    void handleDeleteMessage(msg.seq);
+                                                                }}
+                                                            >
+                                                                {deletingSeq === msg.seq ? (
+                                                                    <Loader2 className="size-3 mr-1 animate-spin" />
+                                                                ) : (
+                                                                    <Trash2 className="size-3 mr-1" />
+                                                                )}
+                                                                Delete
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                     <pre className="rounded border border-border bg-background p-3 text-[11px] text-foreground font-mono overflow-x-auto whitespace-pre-wrap break-words max-h-96">
                                                         {pretty ?? msg.data ?? <span className="text-muted-foreground/70 italic">(empty)</span>}

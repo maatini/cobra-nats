@@ -5,6 +5,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Send, Plus, Trash2, Loader2, Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import { publishMessage, requestMessage } from "@/features/publish/actions";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SubjectCombobox, useSubjectHistory } from "@/features/publish/components/subject-combobox";
 import { ReplyOutput } from "@/features/publish/components/reply-output";
+import { parsePublishReplayParams } from "@/lib/publish-replay";
 
 const publishSchema = z.object({
     subject: z.string().min(1, "Subject is required"),
@@ -40,8 +42,12 @@ type PublishFormValues = z.infer<typeof publishSchema>;
 export function PublishView() {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [reply, setReply] = React.useState<{data: string, headers?: Record<string, string>} | null>(null);
+    const [replayBanner, setReplayBanner] = React.useState(false);
     const activeConnection = useActiveConnection();
     const { push: pushSubject } = useSubjectHistory();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
 
     const form = useForm<PublishFormValues>({
         resolver: zodResolver(publishSchema),
@@ -57,6 +63,22 @@ export function PublishView() {
         control: form.control,
         name: "headers",
     });
+
+    // Prefill from Message Browser / Monitor "Replay" query params (once).
+    React.useEffect(() => {
+        const prefill = parsePublishReplayParams(searchParams);
+        if (!prefill) return;
+        form.reset({
+            subject: prefill.subject,
+            payload: prefill.payload || '{\n  "msg": "hello nats"\n}',
+            headers: prefill.headers,
+            isRequest: false,
+        });
+        setReplayBanner(true);
+        router.replace(pathname, { scroll: false });
+        // Only apply on mount / first URL with replay params
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional one-shot prefill
+    }, []);
 
     async function onSubmit(values: PublishFormValues) {
         if (!activeConnection) {
@@ -105,6 +127,13 @@ export function PublishView() {
                     Send messages or make requests to NATS subjects with custom headers and payloads.
                 </p>
             </div>
+
+            {replayBanner && (
+                <div className="flex items-center gap-2 text-sm text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-4 py-2">
+                    <Info className="size-4 shrink-0" />
+                    Form prefilled from a replayed message. Review and publish when ready.
+                </div>
+            )}
 
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 md:grid-cols-3">

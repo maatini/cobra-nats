@@ -7,7 +7,7 @@ import * as z from "zod";
 import { toast } from "sonner";
 import { Pencil, Layers, Loader2, ChevronDown } from "lucide-react";
 import { RetentionPolicy, StorageType, DiscardPolicy, StoreCompression } from "@/types/nats";
-import type { StreamInfo } from "nats";
+import type { StreamInfoDto } from "@/types/nats";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -68,7 +68,7 @@ const streamEditSchema = z.object({
 
 type StreamEditFormValues = z.infer<typeof streamEditSchema>;
 
-function formDefaults(info: StreamInfo): StreamEditFormValues {
+function formDefaults(info: StreamInfoDto): StreamEditFormValues {
     const age = nsToAgeFields(info.config.max_age ?? 0);
     const isMirror = Boolean(info.config.mirror);
     return {
@@ -98,7 +98,7 @@ function formDefaults(info: StreamInfo): StreamEditFormValues {
 }
 
 interface EditStreamDialogProps {
-    info: StreamInfo;
+    info: StreamInfoDto;
     onUpdated?: () => void;
     trigger?: React.ReactNode;
 }

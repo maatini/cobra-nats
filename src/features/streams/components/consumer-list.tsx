@@ -1,6 +1,6 @@
 "use client";
 
-import type { ConsumerInfo } from "nats";
+import type { ConsumerInfoDto } from "@/types/nats";
 import {
     Table,
     TableBody,
@@ -15,7 +15,7 @@ import { Trash2, Clock, Eye } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { CreateConsumerDialog } from "./create-consumer-dialog";
 
-function lastActiveLabel(c: ConsumerInfo): string {
+function lastActiveLabel(c: ConsumerInfoDto): string {
     if (c.ts) {
         try {
             return formatDistanceToNow(new Date(c.ts), { addSuffix: true });
@@ -41,7 +41,7 @@ export function ConsumerList({
     onCreated,
     onSelect,
 }: {
-    consumers: ConsumerInfo[];
+    consumers: ConsumerInfoDto[];
     streamName: string;
     onDelete: (name: string) => void;
     onCreated?: () => void;

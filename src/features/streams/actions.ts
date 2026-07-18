@@ -6,17 +6,18 @@ import type {
     GetStreamMessagesOptions,
     PurgeStreamOptions,
     JetStreamAccountOverview,
+    StreamInfoDto,
+    ConsumerInfoDto,
 } from "@/types/nats";
 import type {
     StreamConfig,
-    StreamInfo,
     StreamUpdateConfig,
     ConsumerConfig,
-    ConsumerInfo,
     ConsumerUpdateConfig,
     PurgeOpts,
 } from "nats";
 import { withJetStream, type ActionResponse } from "@/lib/server-action";
+import { serializeStreamInfo, serializeConsumerInfo } from "@/lib/nats/serialize";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Streams
@@ -25,12 +26,12 @@ import { withJetStream, type ActionResponse } from "@/lib/server-action";
 /** List all JetStream streams on the active connection. */
 export async function listStreams(
     config: NatsConnectionConfig
-): Promise<ActionResponse<StreamInfo[]>> {
+): Promise<ActionResponse<StreamInfoDto[]>> {
     return withJetStream(config, "listStreams", async ({ jsm }) => {
-        const streamList: StreamInfo[] = [];
+        const streamList: StreamInfoDto[] = [];
         const iter = await jsm.streams.list();
         for await (const s of iter) {
-            streamList.push(s);
+            streamList.push(serializeStreamInfo(s));
         }
         return streamList;
     });
@@ -40,9 +41,10 @@ export async function listStreams(
 export async function createStream(
     config: NatsConnectionConfig,
     streamConfig: StreamConfig
-): Promise<ActionResponse<StreamInfo>> {
+): Promise<ActionResponse<StreamInfoDto>> {
     return withJetStream(config, "createStream", async ({ jsm }) => {
-        return await jsm.streams.add(streamConfig);
+        const info = await jsm.streams.add(streamConfig);
+        return serializeStreamInfo(info);
     });
 }
 
@@ -75,9 +77,10 @@ export async function deleteStreamMessage(
 export async function getStreamInfo(
     config: NatsConnectionConfig,
     streamName: string
-): Promise<ActionResponse<StreamInfo>> {
+): Promise<ActionResponse<StreamInfoDto>> {
     return withJetStream(config, "getStreamInfo", async ({ jsm }) => {
-        return await jsm.streams.info(streamName);
+        const info = await jsm.streams.info(streamName);
+        return serializeStreamInfo(info);
     });
 }
 
@@ -89,9 +92,10 @@ export async function updateStream(
     config: NatsConnectionConfig,
     streamName: string,
     update: Partial<StreamUpdateConfig>
-): Promise<ActionResponse<StreamInfo>> {
+): Promise<ActionResponse<StreamInfoDto>> {
     return withJetStream(config, "updateStream", async ({ jsm }) => {
-        return await jsm.streams.update(streamName, update);
+        const info = await jsm.streams.update(streamName, update);
+        return serializeStreamInfo(info);
     });
 }
 
@@ -236,12 +240,12 @@ function subjectMatches(subject: string, filter: string): boolean {
 export async function listConsumers(
     config: NatsConnectionConfig,
     stream: string
-): Promise<ActionResponse<{ consumers: ConsumerInfo[] }>> {
+): Promise<ActionResponse<{ consumers: ConsumerInfoDto[] }>> {
     return withJetStream(config, "listConsumers", async ({ jsm }) => {
         const iter = await jsm.consumers.list(stream);
-        const consumerList: ConsumerInfo[] = [];
+        const consumerList: ConsumerInfoDto[] = [];
         for await (const c of iter) {
-            consumerList.push(c);
+            consumerList.push(serializeConsumerInfo(c));
         }
         return { consumers: consumerList };
     });
@@ -252,10 +256,10 @@ export async function createConsumer(
     config: NatsConnectionConfig,
     stream: string,
     consumerConfig: ConsumerConfig
-): Promise<ActionResponse<{ info: ConsumerInfo }>> {
+): Promise<ActionResponse<{ info: ConsumerInfoDto }>> {
     return withJetStream(config, "createConsumer", async ({ jsm }) => {
         const info = await jsm.consumers.add(stream, consumerConfig);
-        return { info };
+        return { info: serializeConsumerInfo(info) };
     });
 }
 
@@ -275,10 +279,10 @@ export async function getConsumerInfo(
     config: NatsConnectionConfig,
     stream: string,
     consumer: string
-): Promise<ActionResponse<{ info: ConsumerInfo }>> {
+): Promise<ActionResponse<{ info: ConsumerInfoDto }>> {
     return withJetStream(config, "getConsumerInfo", async ({ jsm }) => {
         const info = await jsm.consumers.info(stream, consumer);
-        return { info };
+        return { info: serializeConsumerInfo(info) };
     });
 }
 
@@ -291,10 +295,10 @@ export async function updateConsumer(
     stream: string,
     consumer: string,
     update: Partial<ConsumerUpdateConfig>
-): Promise<ActionResponse<{ info: ConsumerInfo }>> {
+): Promise<ActionResponse<{ info: ConsumerInfoDto }>> {
     return withJetStream(config, "updateConsumer", async ({ jsm }) => {
         const info = await jsm.consumers.update(stream, consumer, update);
-        return { info };
+        return { info: serializeConsumerInfo(info) };
     });
 }
 

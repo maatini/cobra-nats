@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useActiveConnection } from "@/features/connections/hooks";
 import { getStreamInfo, deleteStream } from "@/features/streams/actions";
 import { listConsumers, deleteConsumer } from "@/features/streams/actions";
-import type { StreamInfo, ConsumerInfo } from "nats";
+import type { StreamInfoDto, ConsumerInfoDto } from "@/types/nats";
 import { toast } from "sonner";
 import {
     ChevronLeft,
@@ -35,8 +35,8 @@ export function StreamDetailView() {
     const activeConnection = useActiveConnection();
     const confirm = useConfirm();
 
-    const [streamInfo, setStreamInfo] = React.useState<StreamInfo | null>(null);
-    const [consumers, setConsumers] = React.useState<ConsumerInfo[]>([]);
+    const [streamInfo, setStreamInfo] = React.useState<StreamInfoDto | null>(null);
+    const [consumers, setConsumers] = React.useState<ConsumerInfoDto[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [selectedConsumer, setSelectedConsumer] = React.useState<string | null>(null);
     const [consumerSheetOpen, setConsumerSheetOpen] = React.useState(false);

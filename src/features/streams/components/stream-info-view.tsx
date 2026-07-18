@@ -1,7 +1,6 @@
 "use client";
 
-import type { StreamInfo } from "nats";
-import { StorageType } from "@/types/nats";
+import { StorageType, type StreamInfoDto } from "@/types/nats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -24,7 +23,7 @@ import {
     exportStreamConfig,
 } from "@/features/streams/stream-form-utils";
 
-export function StreamInfoView({ info }: { info: StreamInfo }) {
+export function StreamInfoView({ info }: { info: StreamInfoDto }) {
     const renderValue = (label: string, value: string | number, icon: React.ReactNode) => (
         <div className="flex items-center justify-between py-2 border-b border-border last:border-0">
             <div className="flex items-center gap-2 text-muted-foreground text-xs">
@@ -42,13 +41,13 @@ export function StreamInfoView({ info }: { info: StreamInfo }) {
     );
 
     const handleExport = () => {
-        const payload = exportStreamConfig(info.config as unknown as Record<string, unknown>);
+        const payload = exportStreamConfig({ ...info.config });
         downloadJson(`${info.config.name}.stream.json`, payload);
         toast.success("Stream config exported");
     };
 
     const handleCopy = async () => {
-        const payload = exportStreamConfig(info.config as unknown as Record<string, unknown>);
+        const payload = exportStreamConfig({ ...info.config });
         await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
         toast.success("Stream config copied");
     };

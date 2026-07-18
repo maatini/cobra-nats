@@ -7,7 +7,7 @@ import * as z from "zod";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 import { Loader2, Users, Download } from "lucide-react";
-import type { ConsumerInfo } from "nats";
+import type { ConsumerInfoDto } from "@/types/nats";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +55,7 @@ interface ConsumerDetailSheetProps {
     onUpdated?: () => void;
 }
 
-function formatLastActive(info: ConsumerInfo): string {
+function formatLastActive(info: ConsumerInfoDto): string {
     const nanos = info.delivered?.last_active;
     if (nanos && Number(nanos) > 0) {
         // NATS reports last_active in nanoseconds since epoch in some versions;
@@ -87,7 +87,7 @@ export function ConsumerDetailSheet({
     onUpdated,
 }: ConsumerDetailSheetProps) {
     const activeConnection = useActiveConnection();
-    const [info, setInfo] = React.useState<ConsumerInfo | null>(null);
+    const [info, setInfo] = React.useState<ConsumerInfoDto | null>(null);
     const [loading, setLoading] = React.useState(false);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
