@@ -41,3 +41,6 @@
 
 ### Maintenance
 - [maintenance.md](./maintenance.md) — How/when to update this knowledge base
+
+### Product backlog (implementation candidates)
+- [../recommendations.md](../recommendations.md) — Prioritized improvements & extensions (gaps, priority, effort, phases P0–P4, non-goals). Re-check IDs against the live tree before implementing.
