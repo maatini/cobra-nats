@@ -6,12 +6,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
-import { Loader2, Users } from "lucide-react";
+import { Loader2, Users, Download } from "lucide-react";
 import type { ConsumerInfo } from "nats";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { downloadJson } from "@/features/streams/stream-form-utils";
 import {
     Sheet,
     SheetContent,
@@ -38,6 +40,9 @@ const updateSchema = z.object({
     max_ack_pending: z.number().min(-1),
     filter_subject: z.string().optional(),
     description: z.string().optional(),
+    headers_only: z.boolean(),
+    max_waiting: z.number().min(-1),
+    inactive_threshold_seconds: z.number().min(0),
 });
 
 type UpdateFormValues = z.infer<typeof updateSchema>;
@@ -94,6 +99,9 @@ export function ConsumerDetailSheet({
             max_ack_pending: 1000,
             filter_subject: "",
             description: "",
+            headers_only: false,
+            max_waiting: 512,
+            inactive_threshold_seconds: 0,
         },
     });
 
@@ -114,6 +122,11 @@ export function ConsumerDetailSheet({
             max_ack_pending: c.config.max_ack_pending ?? 1000,
             filter_subject: c.config.filter_subject ?? "",
             description: c.config.description ?? "",
+            headers_only: Boolean(c.config.headers_only),
+            max_waiting: c.config.max_waiting ?? 512,
+            inactive_threshold_seconds: c.config.inactive_threshold
+                ? Math.round(Number(c.config.inactive_threshold) / 1e9)
+                : 0,
         });
     }, [activeConnection, consumerName, open, streamName, form]);
 
@@ -131,6 +144,12 @@ export function ConsumerDetailSheet({
             max_ack_pending: values.max_ack_pending,
             filter_subject: values.filter_subject?.trim() || undefined,
             description: values.description?.trim() || undefined,
+            headers_only: values.headers_only,
+            max_waiting: values.max_waiting > 0 ? values.max_waiting : undefined,
+            inactive_threshold:
+                values.inactive_threshold_seconds > 0
+                    ? values.inactive_threshold_seconds * 1_000_000_000
+                    : undefined,
         });
         setIsSubmitting(false);
 
@@ -184,7 +203,7 @@ export function ConsumerDetailSheet({
                             />
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <Badge variant="outline" className="text-[10px]">
                                 deliver: {String(info.config.deliver_policy)}
                             </Badge>
@@ -193,11 +212,31 @@ export function ConsumerDetailSheet({
                                     {info.config.filter_subject}
                                 </Badge>
                             )}
+                            {info.config.filter_subjects?.map((f) => (
+                                <Badge key={f} variant="outline" className="text-[10px] font-mono">
+                                    {f}
+                                </Badge>
+                            ))}
                             {info.push_bound && (
                                 <Badge variant="outline" className="text-[10px] text-emerald-500 border-emerald-500/30">
                                     push bound
                                 </Badge>
                             )}
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="ml-auto h-7 text-xs"
+                                onClick={() => {
+                                    downloadJson(
+                                        `${streamName}.${consumerName}.consumer.json`,
+                                        info.config
+                                    );
+                                    toast.success("Consumer config exported");
+                                }}
+                            >
+                                <Download className="size-3.5 mr-1.5" /> Export JSON
+                            </Button>
                         </div>
 
                         <Form {...form}>
@@ -294,7 +333,61 @@ export function ConsumerDetailSheet({
                                             </FormItem>
                                         )}
                                     />
+                                    <FormField
+                                        control={form.control}
+                                        name="max_waiting"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Max Waiting</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="number"
+                                                        {...field}
+                                                        onChange={(e) => field.onChange(Number(e.target.value))}
+                                                        className="bg-card border-border"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="inactive_threshold_seconds"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Inactive threshold (s)</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="number"
+                                                        min={0}
+                                                        {...field}
+                                                        onChange={(e) => field.onChange(Number(e.target.value))}
+                                                        className="bg-card border-border"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 </div>
+                                <FormField
+                                    control={form.control}
+                                    name="headers_only"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                                            <FormControl>
+                                                <Checkbox
+                                                    checked={field.value}
+                                                    onCheckedChange={(c) => field.onChange(c === true)}
+                                                />
+                                            </FormControl>
+                                            <FormLabel className="text-xs font-normal cursor-pointer">
+                                                Headers only
+                                            </FormLabel>
+                                        </FormItem>
+                                    )}
+                                />
                                 <SheetFooter className="px-0">
                                     <Button
                                         type="submit"

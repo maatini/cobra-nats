@@ -22,6 +22,8 @@ export async function POST(request: NextRequest) {
 
         const bucket = formData.get("bucket") as string;
         const connectionRaw = formData.get("connection") as string;
+        const objectName = (formData.get("name") as string | null)?.trim();
+        const metadataRaw = formData.get("metadata") as string | null;
         const file = formData.get("file") as File | null;
 
         if (!bucket || !connectionRaw || !file) {
@@ -32,10 +34,26 @@ export async function POST(request: NextRequest) {
         }
 
         const config: Omit<NatsConnectionConfig, "id"> = JSON.parse(connectionRaw);
+        let metadata: Record<string, string> | undefined;
+        if (metadataRaw) {
+            try {
+                const parsed = JSON.parse(metadataRaw) as unknown;
+                if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+                    metadata = Object.fromEntries(
+                        Object.entries(parsed as Record<string, unknown>)
+                            .filter(([, v]) => typeof v === "string")
+                            .map(([k, v]) => [k, v as string])
+                    );
+                }
+            } catch {
+                // ignore invalid metadata JSON
+            }
+        }
 
         // Read file into Uint8Array directly (no base64!)
         const arrayBuffer = await file.arrayBuffer();
         const bytes = new Uint8Array(arrayBuffer);
+        const name = objectName || file.name;
 
         const nc = await connectWithConfig(config, {
             name: "Cobra NATS - OS upload",
@@ -47,7 +65,14 @@ export async function POST(request: NextRequest) {
         try {
             const js = nc.jetstream();
             const os = await js.views.os(bucket);
-            const info = await os.putBlob({ name: file.name }, bytes);
+            const info = await os.putBlob(
+                {
+                    name,
+                    metadata:
+                        metadata && Object.keys(metadata).length > 0 ? metadata : undefined,
+                },
+                bytes
+            );
 
             return NextResponse.json({
                 success: true,

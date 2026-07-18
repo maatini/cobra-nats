@@ -56,6 +56,7 @@ const formSchema = z.object({
     tlsCa: z.string().optional(),
     tlsCert: z.string().optional(),
     tlsKey: z.string().optional(),
+    monitoringUrl: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -108,6 +109,10 @@ function buildConfigFields(values: FormValues): Omit<NatsConnectionConfig, "id">
         };
     }
 
+    if (values.monitoringUrl?.trim()) {
+        config.monitoringUrl = values.monitoringUrl.trim();
+    }
+
     return config;
 }
 
@@ -138,6 +143,7 @@ export function ConnectDialog({ trigger, editingConfig, onOpenChange }: ConnectD
             tlsCa: editingConfig?.tls?.ca || "",
             tlsCert: editingConfig?.tls?.cert || "",
             tlsKey: editingConfig?.tls?.key || "",
+            monitoringUrl: editingConfig?.monitoringUrl || "",
         },
     });
 
@@ -427,6 +433,27 @@ export function ConnectDialog({ trigger, editingConfig, onOpenChange }: ConnectD
                                         )}
                                     />
                                 )}
+
+                                <FormField
+                                    control={form.control}
+                                    name="monitoringUrl"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>HTTP monitoring URL (optional)</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    placeholder="http://localhost:8222"
+                                                    {...field}
+                                                    className="bg-card border-border font-mono text-sm"
+                                                />
+                                            </FormControl>
+                                            <FormDescription className="text-[10px] text-muted-foreground">
+                                                NATS monitoring port for varz/jsz/connz on the dashboard.
+                                            </FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
 
                                 <div className="rounded-lg border border-border/60 bg-card/40 p-3 space-y-3">
                                     <FormField

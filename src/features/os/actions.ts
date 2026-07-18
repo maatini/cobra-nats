@@ -197,7 +197,8 @@ export async function uploadObject(
     config: NatsConnectionConfig,
     bucket: string,
     name: string,
-    base64Data: string
+    base64Data: string,
+    metadata?: Record<string, string>
 ): Promise<ActionResponse<OsObjectInfo>> {
     return withJetStream(config, "uploadObject", async ({ js }) => {
         const os = await js.views.os(bucket);
@@ -207,7 +208,28 @@ export async function uploadObject(
         for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
         }
-        const info = await os.putBlob({ name }, bytes);
+        const info = await os.putBlob(
+            { name, metadata: metadata && Object.keys(metadata).length > 0 ? metadata : undefined },
+            bytes
+        );
+        return serializeObjectInfo(info);
+    });
+}
+
+/**
+ * Update object metadata and/or rename (via ObjectStore.update).
+ */
+export async function updateObjectMeta(
+    config: NatsConnectionConfig,
+    bucket: string,
+    name: string,
+    meta: { name?: string; description?: string; metadata?: Record<string, string> }
+): Promise<ActionResponse<OsObjectInfo>> {
+    return withJetStream(config, "updateObjectMeta", async ({ js }) => {
+        const os = await js.views.os(bucket);
+        await os.update(name, meta);
+        const info = await os.info(meta.name || name);
+        if (!info) throw new Error(`Object "${meta.name || name}" not found after update`);
         return serializeObjectInfo(info);
     });
 }

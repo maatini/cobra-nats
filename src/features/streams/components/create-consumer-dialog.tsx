@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { Plus, Users, Loader2, Info } from "lucide-react";
+import { Plus, Users, Loader2, Info, ChevronDown } from "lucide-react";
 import type { ConsumerConfig as NatsConsumerConfig } from "nats";
 
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Select,
     SelectContent,
@@ -56,6 +57,12 @@ const consumerSchema = z
         ack_wait_seconds: z.number().min(0),
         max_deliver: z.number().min(-1),
         filter_subject: z.string().optional(),
+        description: z.string().optional(),
+        max_ack_pending: z.number().min(-1),
+        max_waiting: z.number().min(-1),
+        headers_only: z.boolean(),
+        inactive_threshold_seconds: z.number().min(0),
+        filter_subjects: z.string().optional(),
     })
     .refine(
         v => v.mode !== "push" || (v.deliver_subject && v.deliver_subject.trim().length > 0),
@@ -86,10 +93,17 @@ export function CreateConsumerDialog({ streamName, onCreated, trigger }: CreateC
             ack_wait_seconds: 30,
             max_deliver: -1,
             filter_subject: "",
+            description: "",
+            max_ack_pending: 1000,
+            max_waiting: 512,
+            headers_only: false,
+            inactive_threshold_seconds: 0,
+            filter_subjects: "",
         },
     });
 
     const mode = form.watch("mode");
+    const [showAdvanced, setShowAdvanced] = React.useState(false);
 
     async function onSubmit(values: ConsumerFormValues) {
         if (!activeConnection) {
@@ -105,12 +119,28 @@ export function CreateConsumerDialog({ streamName, onCreated, trigger }: CreateC
             ack_policy: values.ack_policy as NatsConsumerConfig["ack_policy"],
             ack_wait: values.ack_wait_seconds > 0 ? values.ack_wait_seconds * 1_000_000_000 : undefined,
             max_deliver: values.max_deliver,
+            description: values.description?.trim() || undefined,
+            max_ack_pending: values.max_ack_pending,
+            max_waiting: values.max_waiting > 0 ? values.max_waiting : undefined,
+            headers_only: values.headers_only || undefined,
+            inactive_threshold:
+                values.inactive_threshold_seconds > 0
+                    ? values.inactive_threshold_seconds * 1_000_000_000
+                    : undefined,
         };
         if (values.mode === "push" && values.deliver_subject) {
             config.deliver_subject = values.deliver_subject.trim();
         }
-        if (values.filter_subject && values.filter_subject.trim()) {
+        const multi = values.filter_subjects
+            ?.split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+        if (multi && multi.length > 1) {
+            config.filter_subjects = multi;
+        } else if (values.filter_subject && values.filter_subject.trim()) {
             config.filter_subject = values.filter_subject.trim();
+        } else if (multi && multi.length === 1) {
+            config.filter_subject = multi[0];
         }
 
         setIsSubmitting(true);
@@ -326,6 +356,133 @@ export function CreateConsumerDialog({ streamName, onCreated, trigger }: CreateC
                                 </FormItem>
                             )}
                         />
+
+                        <div className="border border-border rounded-lg">
+                            <button
+                                type="button"
+                                className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-muted/40"
+                                onClick={() => setShowAdvanced((v) => !v)}
+                            >
+                                <span className="font-medium">Advanced</span>
+                                <ChevronDown
+                                    className={`size-4 text-muted-foreground transition-transform ${showAdvanced ? "rotate-180" : ""}`}
+                                />
+                            </button>
+                            {showAdvanced && (
+                                <div className="space-y-3 border-t border-border p-3">
+                                    <FormField
+                                        control={form.control}
+                                        name="description"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Description</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} className="bg-card border-border" />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <FormField
+                                            control={form.control}
+                                            name="max_ack_pending"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Max Ack Pending</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="number"
+                                                            {...field}
+                                                            onChange={(e) => field.onChange(Number(e.target.value))}
+                                                            className="bg-card border-border"
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="max_waiting"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Max Waiting (pull)</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="number"
+                                                            {...field}
+                                                            onChange={(e) => field.onChange(Number(e.target.value))}
+                                                            className="bg-card border-border"
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="inactive_threshold_seconds"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Inactive threshold (s)</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="number"
+                                                            min={0}
+                                                            {...field}
+                                                            onChange={(e) => field.onChange(Number(e.target.value))}
+                                                            className="bg-card border-border"
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription className="text-[10px]">
+                                                        0 = server default
+                                                    </FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="filter_subjects"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Filter subjects (multi)</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            placeholder="a.*, b.>"
+                                                            {...field}
+                                                            className="bg-card border-border font-mono"
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription className="text-[10px]">
+                                                        Comma-separated; overrides single filter when 2+
+                                                    </FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                    <FormField
+                                        control={form.control}
+                                        name="headers_only"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                                                <FormControl>
+                                                    <Checkbox
+                                                        checked={field.value}
+                                                        onCheckedChange={(c) => field.onChange(c === true)}
+                                                    />
+                                                </FormControl>
+                                                <FormLabel className="text-xs font-normal cursor-pointer">
+                                                    Headers only
+                                                </FormLabel>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            )}
+                        </div>
 
                         <div className="rounded-md bg-amber-500/10 p-3 border border-amber-500/20 flex gap-3">
                             <Info className="size-5 text-amber-400 shrink-0" />

@@ -25,6 +25,7 @@ import { getServerInfo } from "@/features/connections/actions";
 import { listStreams, getJetStreamAccountInfo } from "@/features/streams/actions";
 import { listKVBuckets } from "@/features/kv/actions";
 import { ConnectDialog } from "@/features/connections/components/connect-dialog";
+import { HttpMonitoringCard } from "@/features/dashboard/http-monitoring-card";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -417,6 +418,8 @@ export function DashboardOverview() {
                     </CardContent>
                 </Card>
             </div>
+
+            {activeConnection && <HttpMonitoringCard connection={activeConnection} />}
         </div>
     );
 }

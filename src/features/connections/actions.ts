@@ -1,7 +1,11 @@
 "use server";
 
 import { natsManager } from "@/lib/nats/manager";
-import type { ActionResponse, NatsConnectionConfig } from "@/types/nats";
+import type {
+    ActionResponse,
+    HttpMonitoringEndpoint,
+    NatsConnectionConfig,
+} from "@/types/nats";
 import { getErrorMessage, withNatsConnection } from "@/lib/server-action";
 import type { ServerInfo } from "nats";
 import { connectWithConfig } from "@/lib/nats/connect-options";
@@ -57,4 +61,50 @@ export async function getServerInfo(
     return withNatsConnection(config, "getServerInfo", async (nc) => {
         return { info: nc.info! };
     });
+}
+
+/**
+ * Fetch NATS HTTP monitoring JSON (varz / jsz / connz) via server-side fetch.
+ * Uses the connection's `monitoringUrl` (e.g. http://localhost:8222).
+ * Does not use the NATS client protocol.
+ */
+export async function fetchHttpMonitoring(
+    monitoringUrl: string,
+    endpoint: HttpMonitoringEndpoint = "varz"
+): Promise<ActionResponse<{ endpoint: HttpMonitoringEndpoint; data: Record<string, unknown> }>> {
+    try {
+        const base = monitoringUrl.trim().replace(/\/$/, "");
+        if (!base) {
+            return { success: false, error: "Monitoring URL is empty" };
+        }
+        if (!/^https?:\/\//i.test(base)) {
+            return {
+                success: false,
+                error: "Monitoring URL must start with http:// or https://",
+            };
+        }
+
+        const url = `${base}/${endpoint}`;
+        const res = await fetch(url, {
+            method: "GET",
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+            signal: AbortSignal.timeout(8000),
+        });
+
+        if (!res.ok) {
+            return {
+                success: false,
+                error: `Monitoring ${endpoint} failed: HTTP ${res.status}`,
+            };
+        }
+
+        const data = (await res.json()) as Record<string, unknown>;
+        return { success: true, data: { endpoint, data } };
+    } catch (err: unknown) {
+        return {
+            success: false,
+            error: getErrorMessage(err) || "Failed to fetch monitoring endpoint",
+        };
+    }
 }

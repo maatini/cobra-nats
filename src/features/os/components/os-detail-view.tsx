@@ -17,9 +17,11 @@ import {
     RefreshCcw,
     Trash2,
     Lock,
+    FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { ObjectList } from "@/features/os/components/object-list";
 import { ObjectPreviewSheet } from "@/features/os/components/object-preview-sheet";
 import { UploadObjectDialog } from "@/features/os/components/upload-object-dialog";
@@ -38,6 +40,9 @@ export function OSDetailView() {
     const [previewObject, setPreviewObject] = React.useState<OsObjectInfo | null>(null);
     const [previewOpen, setPreviewOpen] = React.useState(false);
     const [sealed, setSealed] = React.useState(false);
+    /** Prefix path segments for folder-style browse (joined with /). */
+    const [prefixParts, setPrefixParts] = React.useState<string[]>([]);
+    const [prefixFilter, setPrefixFilter] = React.useState("");
 
     const fetchObjects = React.useCallback(async () => {
         if (!activeConnection || !bucket) return;
@@ -266,12 +271,66 @@ export function OSDetailView() {
                 </div>
             </div>
 
+            {/* Prefix / folder browse */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-1 text-xs font-mono text-muted-foreground">
+                    <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground"
+                        onClick={() => {
+                            setPrefixParts([]);
+                            setPrefixFilter("");
+                        }}
+                    >
+                        <FolderOpen className="size-3.5" />
+                        /
+                    </button>
+                    {prefixParts.map((part, i) => (
+                        <React.Fragment key={`${part}-${i}`}>
+                            <span className="text-muted-foreground/50">/</span>
+                            <button
+                                type="button"
+                                className="rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground"
+                                onClick={() => {
+                                    const next = prefixParts.slice(0, i + 1);
+                                    setPrefixParts(next);
+                                    setPrefixFilter(next.join("/") + "/");
+                                }}
+                            >
+                                {part}
+                            </button>
+                        </React.Fragment>
+                    ))}
+                </div>
+                <Input
+                    value={prefixFilter}
+                    onChange={(e) => {
+                        const v = e.target.value;
+                        setPrefixFilter(v);
+                        const cleaned = v.replace(/^\/+|\/+$/g, "");
+                        setPrefixParts(cleaned ? cleaned.split("/").filter(Boolean) : []);
+                    }}
+                    placeholder="Filter by prefix (e.g. logs/2024/)"
+                    className="sm:max-w-xs h-8 bg-card border-border font-mono text-xs"
+                />
+            </div>
+
             {/* Object table */}
             {isLoading && objects.length === 0 ? (
                 <DataTableSkeleton rows={6} columns={5} />
             ) : (
                 <ObjectList
                     objects={objects}
+                    prefix={prefixFilter}
+                    onEnterPrefix={(p) => {
+                        setPrefixFilter(p.endsWith("/") ? p : `${p}/`);
+                        setPrefixParts(
+                            p
+                                .replace(/\/+$/, "")
+                                .split("/")
+                                .filter(Boolean)
+                        );
+                    }}
                     onDownload={handleDownload}
                     onDelete={handleDeleteObject}
                     onPreview={handlePreview}

@@ -26,7 +26,16 @@ export enum DiscardPolicy {
     New = "new",
 }
 
+/** Mirror of nats StoreCompression — browser-safe. */
+export enum StoreCompression {
+    None = "none",
+    S2 = "s2",
+}
+
 export type NatsAuthType = "none" | "user_pass" | "token" | "nkey" | "jwt" | "creds";
+
+/** HTTP monitoring endpoints (NATS `-m` / monitoring port). */
+export type HttpMonitoringEndpoint = "varz" | "jsz" | "connz";
 
 /** Optional TLS material (PEM strings). Prefer server-side paths in future hard-sec deployments. */
 export interface NatsTlsConfig {
@@ -55,6 +64,11 @@ export interface NatsConnectionConfig {
     creds?: string;
     tls?: NatsTlsConfig;
     authType: NatsAuthType;
+    /**
+     * Optional NATS HTTP monitoring base URL (e.g. http://localhost:8222).
+     * Used for varz/jsz/connz — separate from client protocol auth.
+     */
+    monitoringUrl?: string;
 }
 
 /** Standardized response shape for all server actions. */

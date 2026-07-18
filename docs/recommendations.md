@@ -413,13 +413,16 @@ Zum Abhaken bei späterer Arbeit:
 - [x] S3 — Delete message by seq
 - [x] K2 — KV purge key
 
-**P3+**
+**P3**
 
-- [ ] S5 — Advanced stream/consumer fields
-- [ ] U2 — Config import/export
-- [ ] M3 — HTTP monitoring (varz/jsz)
-- [ ] O2 — OS prefix browse / metadata
-- [ ] S6 — Mirror / source streams
+- [x] S5 — Advanced stream/consumer fields
+- [x] U2 — Config import/export
+- [x] M3 — HTTP monitoring (varz/jsz)
+- [x] O2 — OS prefix browse / metadata
+- [x] S6 — Mirror / source streams
+
+**P3+ / P4 (optional)**
+
 - [ ] U1 — Richer dashboard
 - [ ] P1 — Replay publish
 - [ ] P3 — Monitor backpressure

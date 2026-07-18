@@ -28,6 +28,7 @@ export function UploadObjectDialog({ bucket, onUploaded }: UploadObjectDialogPro
     const [isUploading, setIsUploading] = React.useState(false);
     const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
     const [objectName, setObjectName] = React.useState("");
+    const [metadataText, setMetadataText] = React.useState("");
     const activeConnection = useActiveConnection();
 
     /** Upload file via API route (FormData) — bypasses RSC serialisation limits. */
@@ -38,16 +39,36 @@ export function UploadObjectDialog({ bucket, onUploaded }: UploadObjectDialogPro
         setIsUploading(true);
 
         try {
+            let metadata: Record<string, string> | undefined;
+            if (metadataText.trim()) {
+                try {
+                    const parsed = JSON.parse(metadataText) as unknown;
+                    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+                        throw new Error("Metadata must be a JSON object of string values");
+                    }
+                    metadata = Object.fromEntries(
+                        Object.entries(parsed as Record<string, unknown>).map(([k, v]) => [
+                            k,
+                            String(v),
+                        ])
+                    );
+                } catch (err) {
+                    toast.error("Invalid metadata JSON", {
+                        description: err instanceof Error ? err.message : "Expected object",
+                    });
+                    setIsUploading(false);
+                    return;
+                }
+            }
+
             const formData = new FormData();
             formData.set("bucket", bucket);
-            formData.set("connection", JSON.stringify({
-                name: activeConnection.name,
-                servers: activeConnection.servers,
-                authType: activeConnection.authType,
-                user: activeConnection.user,
-                pass: activeConnection.pass,
-                token: activeConnection.token,
-            }));
+            formData.set("name", name);
+            // Full connection (auth/TLS) — id not required by connectWithConfig
+            const { id: _id, ...conn } = activeConnection;
+            void _id;
+            formData.set("connection", JSON.stringify(conn));
+            if (metadata) formData.set("metadata", JSON.stringify(metadata));
             formData.set("file", selectedFile, name);
 
             const res = await fetch("/api/os/upload", { method: "POST", body: formData });
@@ -58,6 +79,7 @@ export function UploadObjectDialog({ bucket, onUploaded }: UploadObjectDialogPro
                 setOpen(false);
                 setSelectedFile(null);
                 setObjectName("");
+                setMetadataText("");
                 onUploaded?.();
             } else {
                 toast.error("Upload failed", { description: result.error });
@@ -109,14 +131,26 @@ export function UploadObjectDialog({ bucket, onUploaded }: UploadObjectDialogPro
                         <Label htmlFor="objName">Object Name</Label>
                         <Input
                             id="objName"
-                            placeholder="my-file.txt"
+                            placeholder="folder/my-file.txt"
                             value={objectName}
                             onChange={(e) => setObjectName(e.target.value)}
-                            className="bg-card border-border"
+                            className="bg-card border-border font-mono"
                         />
                         <p className="text-[10px] text-muted-foreground">
-                            Defaults to the file name if left empty.
+                            Defaults to the file name. Use `/` for prefix folders.
                         </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="metadata">Metadata JSON (optional)</Label>
+                        <textarea
+                            id="metadata"
+                            value={metadataText}
+                            onChange={(e) => setMetadataText(e.target.value)}
+                            placeholder='{"content-type":"application/json","env":"dev"}'
+                            className="min-h-[72px] w-full rounded-md border border-border bg-card px-3 py-2 text-xs font-mono"
+                            spellCheck={false}
+                        />
                     </div>
                 </div>
 
