@@ -85,7 +85,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 </div>
                                 <div className="flex flex-col gap-0.5 leading-none">
                                     <span className="font-semibold text-indigo-400">Cobra NATS</span>
-                                    <span className="text-xs text-muted-foreground">v0.5.0</span>
+                                    <span className="text-xs text-muted-foreground">v0.6.0</span>
                                 </div>
                             </Link>
                         </SidebarMenuButton>

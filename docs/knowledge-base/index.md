@@ -2,7 +2,7 @@
 
 **Project**: Web-based management UI for [NATS](https://nats.io) and JetStream.
 **Stack**: Next.js 16 (App Router) · React 19 · TypeScript 6 · Tailwind v4 · shadcn/ui · nats.js v2.29
-**Version**: 0.5.2
+**Version**: 0.6.0
 
 ## Quick-start for coding agents
 
