@@ -60,8 +60,7 @@ graph TD
 | `next` | 16.2.7 | Framework (App Router) | Entire app |
 | `react` / `react-dom` | 19.2.7 | UI framework | All `*.tsx` components |
 | `zustand` | ^5.0.14 | State management | `features/connections/store.ts` |
-| `@tanstack/react-query` | ^5.101.0 | Server-state caching | `providers/root-provider.tsx` |
-| `@tanstack/react-table` | ^8.21.3 | Data table logic | Stream table, KV table, OS lists |
+| `@tanstack/react-table` | ^8.21.3 | Data table logic | Stream table (`stream-table.tsx`) only |
 | `react-hook-form` + `zod` + `@hookform/resolvers` | ^7.78.0 / ^4.4.3 / ^5.4.0 | Form validation | All forms (stream create, KV put, publish, etc.) |
 | `sonner` | ^2.0.7 | Toast notifications | All client components post-action |
 | `lucide-react` | ^1.17.0 | Icon library | All UI components |
@@ -80,6 +79,6 @@ graph TD
 - **`src/features/connections/store.ts`** → depends only on `types/nats.ts` and `zustand` (the root of all state)
 - **`src/app/(dashboard)/**/*.tsx`** → depends on layout components + feature components (thin routing layer)
 - **`src/components/layout/*`** → depends on `components/ui/*`, `features/connections/`, `hooks/*`
-- **`src/components/providers/*`** → depends on `components/ui/*`, `@tanstack/react-query`, `next-themes`, `sonner`
+- **`src/components/providers/*`** → depends on `components/ui/*`, `next-themes`, `sonner`
 - **`src/lib/*`** → depends only on `types/nats.ts` and `nats` package; NEVER imports from `features/` or `components/`
 - **`src/types/nats.ts`** → zero dependencies (pure types, no imports)

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { CONNECTIONS_STORAGE_KEY } from './helpers';
 
 test.describe('Connection Management', () => {
     test.beforeEach(async ({ page }) => {
@@ -26,7 +27,7 @@ test.describe('Connection Management', () => {
         const testButton = page.getByRole('button', { name: 'Test', exact: true });
         await testButton.click();
 
-        // Wait for validation - since we might not have NATS running in the CI env 
+        // Wait for validation - since we might not have NATS running in the CI env
         // we handle both success and error as long as the UI reacts
         await expect(page.getByText(/Connection successful!|Connection failed/)).toBeVisible({ timeout: 10000 });
 
@@ -38,19 +39,22 @@ test.describe('Connection Management', () => {
     });
 
     test('should switch between connections', async ({ page }) => {
-        await page.addInitScript(() => {
-            const state = {
-                state: {
-                    connections: [
-                        { id: '1', name: 'Conn 1', servers: ['localhost:4222'], authType: 'none' },
-                        { id: '2', name: 'Conn 2', servers: ['localhost:4223'], authType: 'none' }
-                    ],
-                    activeConnectionId: '1'
-                },
-                version: 0
-            };
-            localStorage.setItem('cobra-nats-storage', JSON.stringify(state));
-        });
+        await page.addInitScript(
+            ({ key }) => {
+                const state = {
+                    state: {
+                        connections: [
+                            { id: '1', name: 'Conn 1', servers: ['localhost:4222'], authType: 'none' },
+                            { id: '2', name: 'Conn 2', servers: ['localhost:4223'], authType: 'none' },
+                        ],
+                        activeConnectionId: '1',
+                    },
+                    version: 0,
+                };
+                localStorage.setItem(key, JSON.stringify(state));
+            },
+            { key: CONNECTIONS_STORAGE_KEY }
+        );
         await page.goto('/');
 
         // Verify Conn 1 is active

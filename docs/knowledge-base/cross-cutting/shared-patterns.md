@@ -39,31 +39,36 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useActiveConnection } from "@/features/connections/hooks";
 import { doSomething } from "@/features/something/actions";
+import { toastAction } from "@/lib/toast-action";
+import { useServerActionQuery } from "@/hooks/use-server-action-query";
 
+// List/detail loads — prefer the shared query hook:
 export function SomethingList() {
-    const connection = useActiveConnection();
-    const [loading, setLoading] = useState(false);
+    const { data, error, isLoading, reload, connection } = useServerActionQuery(
+        (config) => listSomething(config),
+        { emptyValue: [], errorToast: "Failed to load" }
+    );
+    // ...
+}
 
-    async function handleAction() {
-        if (!connection) return;
-        setLoading(true);
-        const res = await doSomething(connection, ...args);
-        if (!res.success) {
-            toast.error(res.error);
-            setLoading(false);
-            return;
-        }
-        // res.data is type-safe here
-        setLoading(false);
-    }
+// Mutations that return ActionResponse — prefer toastAction (handles success:false):
+async function handleDelete() {
+    if (!connection) return;
+    const result = await toastAction(deleteSomething(connection, id), {
+        loading: "Deleting...",
+        success: () => "Deleted",
+        error: "Failed to delete",
+    });
+    if (result.success) await reload();
 }
 ```
 
 **Key rules**:
 - Always `"use client"` directive.
 - Always guard `if (!connection) return;` before calling actions.
-- Always narrow `if (!res.success) { toast.error(res.error); return; }` before using `res.data`.
+- Always narrow `if (!res.success) { toast.error(res.error); return; }` before using `res.data` (or use `toastAction` / `useServerActionQuery`).
 - No `res.data!` non-null assertions.
+- Do **not** use `toast.promise` with Server Actions — they resolve with `{ success: false }` instead of rejecting.
 
 ## Form Pattern (React Hook Form + Zod)
 

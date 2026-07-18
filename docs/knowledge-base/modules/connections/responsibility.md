@@ -53,3 +53,7 @@
 - Uses React Hook Form + Zod schema for validation.
 - Reads/writes via `useNatsStore` (not direct localStorage).
 - Calls `testConnection` for the "Test" button — does NOT persist on test.
+
+## Settings View (`components/settings-view.tsx`)
+
+**What it owns**: Settings page UI (`/settings`) — connection cards, activate/remove, app info section.

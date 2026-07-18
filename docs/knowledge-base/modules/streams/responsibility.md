@@ -44,8 +44,10 @@ All Stream + Consumer operations via `withJetStream`. This is the largest consol
 
 | Component | Purpose | Key state |
 |---|---|---|
+| `streams-list-view.tsx` | List page shell (`/streams`): load streams + consumer stats, delete | Connection-gated fetch |
+| `stream-detail-view.tsx` | Detail page (`/streams/[name]`): tabs for info / consumers / messages | Parallel fetch of stream + consumers |
 | `stream-table.tsx` | Sortable/filterable stream list with TanStack Table | URL-synced filter via `useUrlState`, auto-refresh |
-| `stream-info-view.tsx` | Stream detail: config, state, consumer list, message browser | Fetches `getStreamInfo` + renders consumer list |
+| `stream-info-view.tsx` | Stream config/state display | Presentational |
 | `create-stream-dialog.tsx` | Form for new stream (retention, storage, limits, replicas) | React Hook Form + Zod |
 | `consumer-list.tsx` | Table of consumers on a stream with delete action | Calls `listConsumers` |
 | `create-consumer-dialog.tsx` | Form for new consumer (push/pull, durable, ack policy) | React Hook Form + Zod |

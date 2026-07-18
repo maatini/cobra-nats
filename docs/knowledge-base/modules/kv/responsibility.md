@@ -22,6 +22,8 @@ All KV operations via `withJetStream`. Uses `js.views.kv(bucket)` to get a KV cl
 
 | Component | Purpose |
 |---|---|
+| `kv-list-view.tsx` | List page: search, create, delete buckets (`/kv`) |
+| `kv-detail-view.tsx` | Bucket detail: key list + value inspector (`/kv/[bucket]`) |
 | `kv-bucket-card.tsx` | Card showing bucket status (values, history, TTL, size); links to bucket detail |
 | `create-kv-dialog.tsx` | Form for new KV bucket (name, TTL, history, replicas, max_bytes) |
 | `put-entry-dialog.tsx` | Form for adding/editing a key-value entry |

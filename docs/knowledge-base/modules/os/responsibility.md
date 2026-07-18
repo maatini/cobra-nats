@@ -25,6 +25,8 @@ The nats.js `ObjectStoreImpl.init()` uses `Object.assign({}, opts)` to build the
 
 | Component | Purpose |
 |---|---|
+| `os-list-view.tsx` | List page: search, create, delete buckets (`/os`) |
+| `os-detail-view.tsx` | Bucket detail: object list + upload/preview (`/os/[bucket]`) |
 | `os-bucket-card.tsx` | Card showing bucket info (size, object count, replicas, sealed status) |
 | `create-os-dialog.tsx` | Form for new OS bucket (name, replicas, description) |
 | `object-list.tsx` | Table of objects with download/delete/preview actions |

@@ -17,7 +17,7 @@
 
 | Provider | Wraps | Purpose |
 |---|---|---|
-| `root-provider.tsx` | Entire app (in `app/layout.tsx`) | QueryClient + ThemeProvider + TooltipProvider + Toaster + ConfirmProvider |
+| `root-provider.tsx` | Entire app (in `app/layout.tsx`) | ThemeProvider + TooltipProvider + Toaster + ConfirmProvider |
 | `confirm-provider.tsx` | Inside RootProvider | Promise-based confirmation dialog with type-to-confirm for destructive actions |
 
 ### ConfirmProvider invariants

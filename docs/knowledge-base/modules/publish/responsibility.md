@@ -21,5 +21,6 @@ Uses `withNatsConnection` (not `withJetStream`) — publish and request are core
 
 | Component | Purpose |
 |---|---|
+| `publish-view.tsx` | Full publish/request page (`/publish`) |
 | `subject-combobox.tsx` | Subject input with autocomplete (popular subjects) |
 | `reply-output.tsx` | Display area for request-reply response (subject, payload, headers) |

@@ -14,7 +14,6 @@
 | `next/navigation` (usePathname, useRouter) | External | Breadcrumbs, command palette navigation |
 | `cmdk` | External | Command palette |
 | `lucide-react` | External | Icons |
-| `@tanstack/react-query` | External | QueryClient in root provider |
 | `sonner` | External | Toaster in root provider |
 
 ## Inbound

@@ -1,19 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { seedConnection } from './helpers';
 
 test.describe('Functional Stream Creation', () => {
     test.beforeEach(async ({ page }) => {
-        await page.addInitScript(() => {
-            const state = {
-                state: {
-                    connections: [
-                        { id: '1', name: 'Real NATS', servers: ['localhost:4222'], authType: 'none' }
-                    ],
-                    activeConnectionId: '1'
-                },
-                version: 0
-            };
-            localStorage.setItem('cobra-nats-storage', JSON.stringify(state));
-        });
+        await seedConnection(page, { name: 'Real NATS' });
         await page.goto('/');
     });
 
