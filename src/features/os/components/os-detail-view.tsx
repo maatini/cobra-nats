@@ -5,9 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { useActiveConnection } from "@/features/connections/hooks";
 import {
     listObjects,
-    downloadObject,
     deleteObject,
     deleteOSBucket,
+    sealOSBucket,
+    getOSBucket,
 } from "@/features/os/actions";
 import type { OsObjectInfo } from "@/types/nats";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ import {
     ChevronLeft,
     RefreshCcw,
     Trash2,
+    Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,18 +37,25 @@ export function OSDetailView() {
     const [isLoading, setIsLoading] = React.useState(true);
     const [previewObject, setPreviewObject] = React.useState<OsObjectInfo | null>(null);
     const [previewOpen, setPreviewOpen] = React.useState(false);
+    const [sealed, setSealed] = React.useState(false);
 
     const fetchObjects = React.useCallback(async () => {
         if (!activeConnection || !bucket) return;
 
         setIsLoading(true);
-        const result = await listObjects(activeConnection, bucket as string);
-        if (result.success) {
-            setObjects(result.data.objects || []);
+        const [objectsResult, bucketResult] = await Promise.all([
+            listObjects(activeConnection, bucket as string),
+            getOSBucket(activeConnection, bucket as string),
+        ]);
+        if (objectsResult.success) {
+            setObjects(objectsResult.data.objects || []);
         } else {
             toast.error("Failed to load objects", {
-                description: result.error,
+                description: objectsResult.error,
             });
+        }
+        if (bucketResult.success) {
+            setSealed(bucketResult.data.sealed);
         }
         setIsLoading(false);
     }, [activeConnection, bucket]);
@@ -55,21 +64,33 @@ export function OSDetailView() {
         fetchObjects();
     }, [fetchObjects]);
 
-    /** Download object as a browser file-save. */
+    /** Stream download via POST /api/os/download (avoids base64 in memory). */
     const handleDownload = async (name: string) => {
         if (!activeConnection || !bucket) return;
 
         toast.loading(`Downloading ${name}...`, { id: `dl-${name}` });
 
-        const result = await downloadObject(activeConnection, bucket as string, name);
-        if (result.success) {
-            // Decode base64 → blob → trigger download
-            const binaryString = atob(result.data.data);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
+        try {
+            const res = await fetch("/api/os/download", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    config: activeConnection,
+                    bucket,
+                    name,
+                }),
+            });
+
+            if (!res.ok) {
+                const text = await res.text().catch(() => "Download failed");
+                toast.error(`Failed to download ${name}`, {
+                    id: `dl-${name}`,
+                    description: text,
+                });
+                return;
             }
-            const blob = new Blob([bytes]);
+
+            const blob = await res.blob();
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -82,8 +103,11 @@ export function OSDetailView() {
             }, 100);
 
             toast.success(`Downloaded ${name}`, { id: `dl-${name}` });
-        } else {
-            toast.error(`Failed to download ${name}`, { id: `dl-${name}` });
+        } catch (err: unknown) {
+            toast.error(`Failed to download ${name}`, {
+                id: `dl-${name}`,
+                description: err instanceof Error ? err.message : String(err),
+            });
         }
     };
 
@@ -112,6 +136,27 @@ export function OSDetailView() {
             fetchObjects();
         } else {
             toast.error(`Failed to delete object: ${result.error}`);
+        }
+    };
+
+    /** Seal the bucket (irreversible read-only). */
+    const handleSealBucket = async () => {
+        if (!activeConnection || !bucket) return;
+        const ok = await confirm({
+            title: `Seal bucket "${bucket}"?`,
+            description: "Sealing is irreversible. No further uploads or deletes will be allowed.",
+            confirmText: "Seal Bucket",
+            typedName: bucket as string,
+        });
+        if (!ok) return;
+
+        const result = await sealOSBucket(activeConnection, bucket as string);
+        if (result.success) {
+            toast.success(`Bucket "${bucket}" sealed`);
+            setSealed(true);
+            fetchObjects();
+        } else {
+            toast.error("Failed to seal bucket", { description: result.error });
         }
     };
 
@@ -169,15 +214,25 @@ export function OSDetailView() {
                             >
                                 Object Store
                             </Badge>
+                            {sealed && (
+                                <Badge
+                                    variant="outline"
+                                    className="bg-amber-500/10 text-amber-500 border-amber-500/20"
+                                >
+                                    Sealed
+                                </Badge>
+                            )}
                         </div>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <UploadObjectDialog
-                        bucket={bucket as string}
-                        onUploaded={fetchObjects}
-                    />
+                    {!sealed && (
+                        <UploadObjectDialog
+                            bucket={bucket as string}
+                            onUploaded={fetchObjects}
+                        />
+                    )}
                     <Button
                         variant="outline"
                         size="sm"
@@ -189,6 +244,17 @@ export function OSDetailView() {
                         />
                         Refresh
                     </Button>
+                    {!sealed && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleSealBucket}
+                            className="bg-card border-border text-amber-500 hover:text-amber-400"
+                        >
+                            <Lock className="size-4 mr-2" />
+                            Seal
+                        </Button>
+                    )}
                     <Button
                         variant="destructive"
                         size="sm"

@@ -109,6 +109,52 @@ export async function deleteOSBucket(
 }
 
 /**
+ * Seal an Object Store bucket. Irreversible — no further puts/deletes allowed.
+ */
+export async function sealOSBucket(
+    config: NatsConnectionConfig,
+    name: string
+): Promise<ActionResponse<OsBucketInfo>> {
+    return withJetStream(config, "sealOSBucket", async ({ js }) => {
+        const os = await js.views.os(name);
+        const status = await os.seal();
+        const objects = await os.list();
+        return {
+            bucket: status.bucket,
+            description: status.description,
+            size: status.size,
+            storage: String(status.storage),
+            replicas: status.replicas,
+            sealed: status.sealed,
+            objectCount: objects.filter((o) => !o.deleted).length,
+        };
+    });
+}
+
+/**
+ * Fetch status for a single Object Store bucket.
+ */
+export async function getOSBucket(
+    config: NatsConnectionConfig,
+    name: string
+): Promise<ActionResponse<OsBucketInfo>> {
+    return withJetStream(config, "getOSBucket", async ({ js }) => {
+        const os = await js.views.os(name);
+        const status = await os.status();
+        const objects = await os.list();
+        return {
+            bucket: status.bucket,
+            description: status.description,
+            size: status.size,
+            storage: String(status.storage),
+            replicas: status.replicas,
+            sealed: status.sealed,
+            objectCount: objects.filter((o) => !o.deleted).length,
+        };
+    });
+}
+
+/**
  * List all objects in an Object Store bucket.
  */
 export async function listObjects(

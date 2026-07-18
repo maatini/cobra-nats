@@ -28,6 +28,8 @@ Cobra NATS is a web-based administration dashboard for [NATS](https://nats.io), 
 ### 📡 JetStream Streams
 - **List** all streams with sortable columns (name, subjects, messages, size, created)
 - **Create** streams with full configuration: retention policy, storage type, max messages/bytes/age, replicas, and discard policy
+- **Edit** stream config (subjects, limits, discard, replicas) without recreate
+- **Purge** messages (optional subject filter / sequence / keep last N)
 - **Delete** streams with confirmation
 - **View details**: stream configuration, state, and all attached consumers
 - Filter/search streams by name or subject
@@ -37,6 +39,7 @@ Cobra NATS is a web-based administration dashboard for [NATS](https://nats.io), 
 - **Create** new KV buckets with configurable TTL and replication
 - **Browse** all keys inside a bucket
 - **Get** and **Put** key-value entries
+- **Revision history** per key with optional restore
 - **Delete** buckets
 
 ### 📦 Object Stores
@@ -56,7 +59,7 @@ Cobra NATS is a web-based administration dashboard for [NATS](https://nats.io), 
 
 ### 📺 Live Subject Monitor
 - Subscribe to any subject pattern (e.g. `orders.>`, `>`)
-- Real-time message stream via Server-Sent Events (SSE)
+- Real-time message stream via Server-Sent Events (SSE over POST — full connection auth, no secrets in the URL)
 - **Pause** / **resume** the stream without disconnecting
 - **Expand** messages to inspect full payload and headers
 - **Copy** message payload to clipboard
@@ -66,6 +69,8 @@ Cobra NATS is a web-based administration dashboard for [NATS](https://nats.io), 
 ### 👥 Consumer Management
 - **List** all consumers on a JetStream stream
 - **Create** new push/pull consumers via dialog
+- **Detail sheet** with delivered/ack floor, pending, and redelivery stats
+- **Update** consumer settings (ack wait, max deliver, filter, max ack pending)
 - **Delete** consumers
 - **Browse** messages on a stream (message browser with payload/header inspection)
 
@@ -342,7 +347,10 @@ npx playwright test tests/functional-streams.spec.ts tests/functional-messaging.
 - [x] Command Palette & global keyboard shortcuts
 - [x] Auto-refresh and URL-synced filter state
 - [x] Message browser with consumer creation
-- [ ] Live dashboard with real-time stream stats
+- [x] Stream edit / purge, consumer detail + update, KV history
+- [x] JetStream account storage overview on dashboard
+- [x] Monitor uses full connection auth (no credentials in query string)
+- [ ] Live dashboard charts / time series
 - [ ] NATS Cluster topology view
 - [ ] Multi-tab message comparison
 

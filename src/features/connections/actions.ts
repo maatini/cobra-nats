@@ -4,7 +4,7 @@ import { natsManager } from "@/lib/nats/manager";
 import type { ActionResponse, NatsConnectionConfig } from "@/types/nats";
 import { getErrorMessage, withNatsConnection } from "@/lib/server-action";
 import type { ServerInfo } from "nats";
-import { connect } from "nats";
+import { connectWithConfig } from "@/lib/nats/connect-options";
 
 /**
  * Probe a NATS server without persisting the connection (used by Connect-Dialog's "Test" button).
@@ -33,15 +33,11 @@ export async function pingConnection(
 ): Promise<ActionResponse<{ rttMs: number }>> {
     try {
         const start = performance.now();
-        const nc = await connect({
-            servers: config.servers,
-            user: config.user,
-            pass: config.pass,
-            token: config.token,
-            name: `Cobra NATS - health`,
+        const nc = await connectWithConfig(config, {
             maxReconnectAttempts: 0,
             reconnect: false,
             timeout: 5000,
+            name: "Cobra NATS - health",
         });
         await nc.flush();
         const rttMs = Math.round(performance.now() - start);

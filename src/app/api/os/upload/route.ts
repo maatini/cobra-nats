@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connect } from "nats";
 import { getErrorMessage } from "@/lib/server-action";
 import type { NatsConnectionConfig } from "@/types/nats";
+import { connectWithConfig } from "@/lib/nats/connect-options";
 
 export const dynamic = "force-dynamic";
 
@@ -37,34 +37,33 @@ export async function POST(request: NextRequest) {
         const arrayBuffer = await file.arrayBuffer();
         const bytes = new Uint8Array(arrayBuffer);
 
-        const nc = await connect({
-            servers: config.servers,
-            user: config.user,
-            pass: config.pass,
-            token: config.token,
-            name: `Cobra NATS - OS upload`,
+        const nc = await connectWithConfig(config, {
+            name: "Cobra NATS - OS upload",
             maxReconnectAttempts: 0,
             reconnect: false,
             timeout: 10000,
         });
 
-        const js = nc.jetstream();
-        const os = await js.views.os(bucket);
-        const info = await os.putBlob({ name: file.name }, bytes);
-        await nc.close();
+        try {
+            const js = nc.jetstream();
+            const os = await js.views.os(bucket);
+            const info = await os.putBlob({ name: file.name }, bytes);
 
-        return NextResponse.json({
-            success: true,
-            data: {
-                name: info.name,
-                size: info.size,
-                chunks: info.chunks,
-                modified: info.mtime,
-                digest: info.digest,
-                deleted: info.deleted,
-                metadata: info.metadata,
-            },
-        });
+            return NextResponse.json({
+                success: true,
+                data: {
+                    name: info.name,
+                    size: info.size,
+                    chunks: info.chunks,
+                    modified: info.mtime,
+                    digest: info.digest,
+                    deleted: info.deleted,
+                    metadata: info.metadata,
+                },
+            });
+        } finally {
+            await nc.close();
+        }
     } catch (err: unknown) {
         console.error("[OS Upload API Error]", err);
         return NextResponse.json(

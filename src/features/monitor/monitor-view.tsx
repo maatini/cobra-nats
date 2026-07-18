@@ -39,47 +39,134 @@ export function MonitorView() {
     const [isPaused, setIsPaused] = React.useState(false);
     const [expandedMessage, setExpandedMessage] = React.useState<number | null>(null);
 
-    const eventSourceRef = React.useRef<EventSource | null>(null);
+    const abortRef = React.useRef<AbortController | null>(null);
+    const isPausedRef = React.useRef(false);
     const activeConnection = useActiveConnection();
 
-    const toggleSubscription = () => {
+    React.useEffect(() => {
+        isPausedRef.current = isPaused;
+    }, [isPaused]);
+
+    React.useEffect(() => {
+        return () => {
+            abortRef.current?.abort();
+        };
+    }, []);
+
+    /** Parse SSE frames from a chunked text buffer; returns leftover incomplete frame. */
+    function processSseBuffer(
+        buffer: string,
+        onEvent: (event: string, data: string) => void
+    ): string {
+        const parts = buffer.split("\n\n");
+        const remainder = parts.pop() ?? "";
+        for (const part of parts) {
+            if (!part.trim()) continue;
+            let event = "message";
+            const dataLines: string[] = [];
+            for (const line of part.split("\n")) {
+                if (line.startsWith("event:")) {
+                    event = line.slice(6).trim();
+                } else if (line.startsWith("data:")) {
+                    dataLines.push(line.slice(5).trim());
+                }
+            }
+            if (dataLines.length > 0) {
+                onEvent(event, dataLines.join("\n"));
+            }
+        }
+        return remainder;
+    }
+
+    const stopSubscription = React.useCallback((notify = true) => {
+        abortRef.current?.abort();
+        abortRef.current = null;
+        setIsSubscribed(false);
+        setIsPaused(false);
+        if (notify) toast.info("Subscription stopped");
+    }, []);
+
+    const toggleSubscription = async () => {
         if (isSubscribed) {
-            eventSourceRef.current?.close();
-            setIsSubscribed(false);
-            setIsPaused(false);
-            toast.info("Subscription stopped");
-        } else {
-            if (!activeConnection) {
-                toast.error("No active connection selected");
+            stopSubscription(true);
+            return;
+        }
+
+        if (!activeConnection) {
+            toast.error("No active connection selected");
+            return;
+        }
+
+        // POST body carries full config (incl. auth). Secrets never go in the URL.
+        const controller = new AbortController();
+        abortRef.current = controller;
+
+        try {
+            const res = await fetch("/api/monitor", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    config: activeConnection,
+                    subject,
+                }),
+                signal: controller.signal,
+            });
+
+            if (!res.ok || !res.body) {
+                const text = await res.text().catch(() => "Monitor connection failed");
+                toast.error(text || "Monitor connection failed");
+                abortRef.current = null;
                 return;
             }
 
-            const servers = activeConnection.servers.join(",");
-            const url = `/api/monitor?connectionId=${activeConnection.id}&subject=${encodeURIComponent(subject)}&servers=${encodeURIComponent(servers)}`;
+            setIsSubscribed(true);
+            toast.success(`Subscribed to ${subject}`);
 
-            const es = new EventSource(url);
-            eventSourceRef.current = es;
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
 
-            es.addEventListener("connected", () => {
-                setIsSubscribed(true);
-                toast.success(`Subscribed to ${subject}`);
-            });
-
-            es.addEventListener("message", (e) => {
-                if (isPaused) return;
-                try {
-                    const msg = JSON.parse(e.data);
-                    setMessages((prev) => [msg, ...prev].slice(0, 500));
-                } catch (err) {
-                    console.error("Failed to parse message", err);
+            const onEvent = (event: string, data: string) => {
+                if (event === "ping" || event === "connected") return;
+                if (event === "error") {
+                    toast.error(data || "Monitor error");
+                    stopSubscription(false);
+                    return;
                 }
-            });
+                if (event === "message") {
+                    if (isPausedRef.current) return;
+                    try {
+                        const msg = JSON.parse(data) as NatsMessage;
+                        setMessages((prev) => [msg, ...prev].slice(0, 500));
+                    } catch (err) {
+                        console.error("Failed to parse message", err);
+                    }
+                }
+            };
 
-            es.addEventListener("error", () => {
-                es.close();
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                buffer = processSseBuffer(buffer, onEvent);
+            }
+
+            if (!controller.signal.aborted) {
                 setIsSubscribed(false);
-                toast.error("Monitor connection error");
-            });
+                setIsPaused(false);
+            }
+        } catch (err: unknown) {
+            if (err instanceof DOMException && err.name === "AbortError") {
+                return;
+            }
+            console.error("Monitor stream error:", err);
+            toast.error("Monitor connection error");
+            setIsSubscribed(false);
+            setIsPaused(false);
+        } finally {
+            if (abortRef.current === controller) {
+                abortRef.current = null;
+            }
         }
     };
 

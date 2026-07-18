@@ -10,7 +10,9 @@ All Object Store operations via `withJetStream`. Uses `js.views.os(bucket)` to g
 |---|---|---|---|
 | `listOSBuckets(config)` | `{buckets: OsBucketInfo[]}` | Discover OS buckets via `OBJ_` prefixed streams | `/os` |
 | `createOSBucket(config, name, opts)` | `OsBucketInfo` | Create OS bucket | `/os` (create dialog) |
+| `getOSBucket(config, name)` | `OsBucketInfo` | Status for a single bucket (incl. sealed) | `/os/[bucket]` |
 | `deleteOSBucket(config, name)` | `void` | Destroy bucket + all objects | `/os` (confirm) |
+| `sealOSBucket(config, name)` | `OsBucketInfo` | Seal bucket (irreversible read-only) | `/os/[bucket]` |
 | `listObjects(config, bucket)` | `{objects: OsObjectInfo[]}` | List all non-deleted objects with metadata | `/os/[bucket]` |
 | `getObjectInfo(config, bucket, name)` | `OsObjectInfo` | Metadata for single object | `/os/[bucket]` |
 | `uploadObject(config, bucket, name, base64Data)` | `OsObjectInfo` | Upload file (client encodes to base64, server decodes) | `/os/[bucket]` (upload dialog) |
@@ -38,3 +40,11 @@ The nats.js `ObjectStoreImpl.init()` uses `Object.assign({}, opts)` to build the
 An API route exists for OS upload (in addition to the `uploadObject` Server Action). This handles multipart file uploads from the browser, streaming the body to NATS.
 
 **Note**: This is a REST endpoint, not a Server Action. It exists because file uploads as Server Actions have size limitations.
+
+## API Route — OS Download (`src/app/api/os/download/`)
+
+Streams an Object Store object to the client without base64-encoding the entire payload in memory.
+
+Body JSON: `{ config: NatsConnectionConfig, bucket: string, name: string }`.
+
+Used by the detail-view download button; prefer this path over the `downloadObject` Server Action for large objects.

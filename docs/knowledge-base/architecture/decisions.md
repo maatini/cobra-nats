@@ -3,8 +3,9 @@
 ## ADR-001: Server-side NATS (Server Actions by default)
 
 **Decision**: NATS never runs in the browser. The default transport is a Next.js Server Action (`features/*/actions.ts` + `withNatsConnection` / `withJetStream`). Intentional exceptions use App Router API routes when Actions are the wrong tool:
-- `GET /api/monitor` — long-lived SSE (`features/monitor/stream.ts`)
+- `POST /api/monitor` — long-lived SSE with config in JSON body (`features/monitor/stream.ts`)
 - `POST /api/os/upload` — multipart binary (avoids RSC payload limits)
+- `POST /api/os/download` — streaming binary (avoids base64-encoding entire objects in memory)
 
 **Rationale**:
 - Credentials never reach the browser.

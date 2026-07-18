@@ -68,5 +68,5 @@ export async function listThings(
 | `os/actions.ts` | Buckets + download/seal; **createOSBucket** has non-enumerable `replicas` workaround |
 | `publish/actions.ts` | `publishMessage`, `requestMessage` |
 | `monitor/stream.ts` | SSE builder — not an action |
-| `api/monitor/route.ts` | `GET` SSE |
+| `api/monitor/route.ts` | `POST` SSE (config in body) |
 | `api/os/upload/route.ts` | `POST` multipart binary upload (not a Server Action on purpose) |

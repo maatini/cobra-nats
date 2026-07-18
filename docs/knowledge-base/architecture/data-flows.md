@@ -30,9 +30,9 @@ sequenceDiagram
     participant NatsMgr as NatsManager (singleton)
     participant NATS as NATS Server
 
-    Browser->>API: GET /api/monitor?connectionId=X&subject=orders.>
-    Note over Browser,API: EventSource connection
-    API->>NatsMgr: getConnection({id: "monitor-X-ts"})
+    Browser->>API: POST /api/monitor {config, subject}
+    Note over Browser,API: fetch + ReadableStream (SSE body)
+    API->>NatsMgr: getConnection({...config, id: "monitor-X-ts"})
     NatsMgr-->>API: Dedicated NatsConnection
     API->>NATS: nc.subscribe("orders.>")
     NATS-->>API: event: connected (via SSE)

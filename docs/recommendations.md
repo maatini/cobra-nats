@@ -14,7 +14,7 @@ Cobra NATS ist bereits eine brauchbare Admin-UI für den Alltagsbetrieb, solange
 
 | Domain | Route(s) | Heutige Capabilities (Server Actions / UI) |
 |---|---|---|
-| **Connections** | `/settings` | Mehrere Connections in `localStorage` (`cobra-nats-storage`); Auth `none` \| `user_pass` \| `token`; Test-Connect, Ping/RTT, Edit/Delete |
+| **Connections** | `/settings` | Mehrere Connections in `localStorage` (`cobra-nats-storage`); Auth `none` \| `user_pass` \| `token` \| `nkey` \| `jwt` \| `creds`; optional TLS PEMs; Test-Connect, Ping/RTT, Edit/Delete |
 | **Dashboard** | `/` | Server-Name/Version, JetStream-Flag, Stream-Count, KV-Bucket-Count, Auto-Refresh |
 | **Streams** | `/streams`, `/streams/[name]` | List/Create/Delete, Info (Config+State), Message Browser (Seq-Range, Subject-Filter, Batch) |
 | **Consumers** | (Stream-Detail) | List/Create (push/pull, durable, ack/deliver policy, ack_wait, max_deliver, filter_subject)/Delete; aggregierte Stats (pending/ack) |
@@ -28,7 +28,7 @@ Cobra NATS ist bereits eine brauchbare Admin-UI für den Alltagsbetrieb, solange
 
 - NATS läuft nur serverseitig (`nats` nie im Browser).
 - Default: Server Actions + `withNatsConnection` / `withJetStream`.
-- Ausnahmen: `GET /api/monitor` (SSE), `POST /api/os/upload` (Multipart).
+- Ausnahmen: `POST /api/monitor` (SSE, Config im Body), `POST /api/os/upload` (Multipart), `POST /api/os/download` (Streaming).
 
 **Explizite Lücken (Spot-Check zum Analyse-Zeitpunkt):**
 
@@ -392,26 +392,26 @@ Zum Abhaken bei späterer Arbeit:
 
 **P0**
 
-- [ ] M1 — Monitor-Auth fix
-- [ ] A3 — Credentials-Hygiene (Monitor ohne Secrets in Query)
-- [ ] O1 — OS Seal Action **oder** Docs/README korrigieren
-- [ ] U3 — Claim-Sync Docs/README/KB
+- [x] M1 — Monitor-Auth fix
+- [x] A3 — Credentials-Hygiene (Monitor ohne Secrets in Query)
+- [x] O1 — OS Seal Action **oder** Docs/README korrigieren
+- [x] U3 — Claim-Sync Docs/README/KB
 
 **P1**
 
-- [ ] S2 — Stream purge
-- [ ] S1 — Stream update
-- [ ] K1 — KV revision history
-- [ ] S4 — Consumer detail + update
-- [ ] M2 — JetStream account / storage overview
+- [x] S2 — Stream purge
+- [x] S1 — Stream update
+- [x] K1 — KV revision history
+- [x] S4 — Consumer detail + update
+- [x] M2 — JetStream account / storage overview
 
 **P2**
 
-- [ ] A1 — TLS client support
-- [ ] A2 — NKey / JWT / creds
-- [ ] O3 — Streaming download route
-- [ ] S3 — Delete message by seq
-- [ ] K2 — KV purge key
+- [x] A1 — TLS client support
+- [x] A2 — NKey / JWT / creds
+- [x] O3 — Streaming download route
+- [x] S3 — Delete message by seq
+- [x] K2 — KV purge key
 
 **P3+**
 

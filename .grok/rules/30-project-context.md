@@ -4,4 +4,4 @@ Feature ↔ route map, KV/OS stream prefixes, color palette, localStorage key, a
 
 **`.claude/project.md`**
 
-Remember server-boundary exceptions: `GET /api/monitor` (SSE), `POST /api/os/upload` (multipart).
+Remember server-boundary exceptions: `POST /api/monitor` (SSE, config in body), `POST /api/os/upload` (multipart), `POST /api/os/download` (stream).

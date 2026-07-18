@@ -70,9 +70,29 @@ export function SettingsView() {
                                         </div>
                                     </CardHeader>
                                     <CardContent className="pb-3">
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <Shield className="size-3 text-muted-foreground" />
-                                            <span>Auth: <span className="text-foreground capitalize">{conn.authType === 'none' ? 'None' : conn.authType.replace('_', ' ')}</span></span>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                            <span className="inline-flex items-center gap-1.5">
+                                                <Shield className="size-3 text-muted-foreground" />
+                                                Auth:{" "}
+                                                <span className="text-foreground capitalize">
+                                                    {conn.authType === "none"
+                                                        ? "None"
+                                                        : conn.authType.replaceAll("_", " ")}
+                                                </span>
+                                            </span>
+                                            {(conn.tls?.enabled ||
+                                                conn.servers.some(
+                                                    (s) =>
+                                                        /^tls:\/\//i.test(s) ||
+                                                        /^wss:\/\//i.test(s)
+                                                )) && (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="h-5 px-1.5 text-[10px] border-sky-500/30 text-sky-400 bg-sky-500/10"
+                                                >
+                                                    TLS
+                                                </Badge>
+                                            )}
                                         </div>
                                     </CardContent>
                                     <CardFooter className="flex justify-between pt-2 border-t border-border/50">

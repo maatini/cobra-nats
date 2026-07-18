@@ -27,7 +27,7 @@ The client **never calls NATS directly**. It imports server actions (or hits a s
 
 | Route | Why not an action |
 |---|---|
-| `GET /api/monitor` | Long-lived SSE stream |
+| `POST /api/monitor` | Long-lived SSE stream (config in body) |
 | `POST /api/os/upload` | Multipart binary; avoids RSC payload limits |
 
 ## Folder map (ownership)

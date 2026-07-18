@@ -26,6 +26,20 @@ export enum DiscardPolicy {
     New = "new",
 }
 
+export type NatsAuthType = "none" | "user_pass" | "token" | "nkey" | "jwt" | "creds";
+
+/** Optional TLS material (PEM strings). Prefer server-side paths in future hard-sec deployments. */
+export interface NatsTlsConfig {
+    /** Force TLS even if server URL is not tls:// */
+    enabled?: boolean;
+    /** CA / root certificate PEM */
+    ca?: string;
+    /** Client certificate PEM */
+    cert?: string;
+    /** Client private key PEM */
+    key?: string;
+}
+
 export interface NatsConnectionConfig {
     id: string;
     name: string;
@@ -33,7 +47,14 @@ export interface NatsConnectionConfig {
     user?: string;
     pass?: string;
     token?: string;
-    authType: "none" | "user_pass" | "token";
+    /** NKey seed (e.g. SU…) for nkey or JWT+seed auth */
+    nkeySeed?: string;
+    /** User JWT (for jwt auth; bearer JWT alone is valid without seed) */
+    jwt?: string;
+    /** Full contents of a NATS .creds file */
+    creds?: string;
+    tls?: NatsTlsConfig;
+    authType: NatsAuthType;
 }
 
 /** Standardized response shape for all server actions. */
@@ -89,4 +110,33 @@ export interface GetStreamMessagesOptions {
     endSeq?: number;
     subjectFilter?: string;
     batchSize?: number;
+}
+
+/** Options for purging messages from a stream. */
+export interface PurgeStreamOptions {
+    /** Restrict purge to this subject filter. */
+    filter?: string;
+    /** Purge up to (but not including) this sequence. */
+    seq?: number;
+    /** Keep this many messages (from the end). Mutually exclusive with seq in most servers. */
+    keep?: number;
+}
+
+/** Serializable JetStream account / storage overview. */
+export interface JetStreamAccountOverview {
+    memory: number;
+    storage: number;
+    streams: number;
+    consumers: number;
+    domain?: string;
+    limits: {
+        maxMemory: number;
+        maxStorage: number;
+        maxStreams: number;
+        maxConsumers: number;
+    };
+    api: {
+        total: number;
+        errors: number;
+    };
 }

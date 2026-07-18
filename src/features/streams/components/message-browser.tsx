@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { getStreamMessages } from "@/features/streams/actions";
+import { getStreamMessages, deleteStreamMessage } from "@/features/streams/actions";
 import type { NatsConnectionConfig, StreamMessage } from "@/types/nats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,9 +19,11 @@ import {
     Clock,
     Filter,
     Loader2,
+    Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useConfirm } from "@/components/providers/confirm-provider";
 
 interface MessageBrowserProps {
     config: NatsConnectionConfig;
@@ -45,6 +47,7 @@ function tryPrettyJson(value: string): string | null {
 }
 
 export function MessageBrowser({ config, streamName, firstSeq, lastSeq }: MessageBrowserProps) {
+    const confirm = useConfirm();
     const [startSeq, setStartSeq] = React.useState<string>(String(firstSeq || 1));
     const [batchSize, setBatchSize] = React.useState<string>("25");
     const [subjectFilter, setSubjectFilter] = React.useState<string>("");
@@ -53,7 +56,34 @@ export function MessageBrowser({ config, streamName, firstSeq, lastSeq }: Messag
     const [hasMore, setHasMore] = React.useState(false);
     const [expanded, setExpanded] = React.useState<Set<number>>(new Set());
     const [focusedSeq, setFocusedSeq] = React.useState<number | null>(null);
+    const [deletingSeq, setDeletingSeq] = React.useState<number | null>(null);
     const listRef = React.useRef<HTMLDivElement | null>(null);
+
+    const handleDeleteMessage = async (seq: number) => {
+        const ok = await confirm({
+            title: `Delete message #${seq}?`,
+            description: "This permanently removes the message from the stream. This cannot be undone.",
+            confirmText: "Delete Message",
+        });
+        if (!ok) return;
+
+        setDeletingSeq(seq);
+        const result = await deleteStreamMessage(config, streamName, seq);
+        setDeletingSeq(null);
+
+        if (!result.success) {
+            toast.error("Failed to delete message", { description: result.error });
+            return;
+        }
+
+        toast.success(`Message #${seq} deleted`);
+        setMessages((prev) => prev.filter((m) => m.seq !== seq));
+        setExpanded((prev) => {
+            const next = new Set(prev);
+            next.delete(seq);
+            return next;
+        });
+    };
 
     const fetchBatch = React.useCallback(
         async (fromSeq: number, append: boolean) => {
@@ -290,18 +320,38 @@ export function MessageBrowser({ config, streamName, firstSeq, lastSeq }: Messag
                                                     </div>
                                                 )}
                                                 <div>
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-[10px] text-muted-foreground uppercase font-bold">
-                                                            Payload
-                                                        </span>
-                                                        {isJson && (
-                                                            <Badge
-                                                                variant="outline"
-                                                                className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] py-0 px-1.5"
-                                                            >
-                                                                JSON
-                                                            </Badge>
-                                                        )}
+                                                    <div className="flex items-center justify-between gap-2 mb-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] text-muted-foreground uppercase font-bold">
+                                                                Payload
+                                                            </span>
+                                                            {isJson && (
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] py-0 px-1.5"
+                                                                >
+                                                                    JSON
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 text-[10px] text-rose-500 hover:text-rose-400 hover:bg-rose-500/10"
+                                                            disabled={deletingSeq === msg.seq}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                void handleDeleteMessage(msg.seq);
+                                                            }}
+                                                        >
+                                                            {deletingSeq === msg.seq ? (
+                                                                <Loader2 className="size-3 mr-1 animate-spin" />
+                                                            ) : (
+                                                                <Trash2 className="size-3 mr-1" />
+                                                            )}
+                                                            Delete
+                                                        </Button>
                                                     </div>
                                                     <pre className="rounded border border-border bg-background p-3 text-[11px] text-foreground font-mono overflow-x-auto whitespace-pre-wrap break-words max-h-96">
                                                         {pretty ?? msg.data ?? <span className="text-muted-foreground/70 italic">(empty)</span>}

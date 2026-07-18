@@ -30,8 +30,9 @@ Auto-scanned Grok rule stubs: `.grok/rules/*.md` (pointers only — no pattern d
 
 NATS never runs in the browser. Default: Server Actions + wrappers. Exceptions:
 
-- `GET /api/monitor` — SSE
+- `POST /api/monitor` — SSE (connection config in body; no secrets in query)
 - `POST /api/os/upload` — multipart binary
+- `POST /api/os/download` — streaming binary
 
 ## Local commands
 

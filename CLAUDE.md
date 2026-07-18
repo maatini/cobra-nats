@@ -8,7 +8,7 @@
 | Path | Role |
 |---|---|
 | `src/app/(dashboard)/` | Routes only — thin pages that render feature UI |
-| `src/app/api/` | REST/SSE routes when Server Actions are insufficient (`monitor` SSE, `os/upload` multipart) |
+| `src/app/api/` | REST/SSE routes when Server Actions are insufficient (`monitor` SSE, `os/upload` multipart, `os/download` stream) |
 | `src/features/<domain>/` | Domain module: `actions.ts` (or `stream.ts`), `components/`, optional store/hooks |
 | `src/components/ui/` | shadcn primitives — add via CLI, do not hand-author replacements |
 | `src/components/layout/` | App chrome (sidebar, topbar, command palette, shortcuts, …) |

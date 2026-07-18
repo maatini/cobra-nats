@@ -13,7 +13,7 @@
 | Dashboard | `/` | `features/dashboard/` | Server info, overview, quick stats (UI only; reuses other features’ actions) |
 | Streams | `/streams`, `/streams/[name]` | `features/streams/` | JetStream streams + consumers + message browser |
 | KV | `/kv`, `/kv/[bucket]` | `features/kv/` | Key-Value buckets, browse keys, put/delete |
-| Object Store | `/os`, `/os/[bucket]` | `features/os/` | OS buckets; upload via `POST /api/os/upload`, download/seal via actions |
+| Object Store | `/os`, `/os/[bucket]` | `features/os/` | OS buckets; upload via `POST /api/os/upload`, download via `POST /api/os/download`, seal via actions |
 | Publish | `/publish` | `features/publish/` | Publish + request-reply |
 | Monitor | `/monitor` | `features/monitor/` + `api/monitor` SSE | Live subject monitor (`stream.ts`, dedicated connection) |
 | Settings | `/settings` | `features/connections/` | Manage connections |

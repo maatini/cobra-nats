@@ -10,8 +10,11 @@ All Stream + Consumer operations via `withJetStream`. This is the largest consol
 |---|---|---|---|
 | `listStreams(config)` | `StreamInfo[]` | List all JetStream streams | `/streams` |
 | `createStream(config, streamConfig)` | `StreamInfo` | Create a stream; fails on name collision | `/streams` (create dialog) |
+| `updateStream(config, streamName, update)` | `StreamInfo` | Update subjects/limits/discard/replicas | `/streams/[name]` (edit dialog) |
+| `purgeStream(config, streamName, opts)` | `{purged}` | Purge messages (optional filter/seq/keep) | `/streams/[name]` (purge dialog) |
 | `deleteStream(config, streamName)` | `boolean` | Delete stream + all messages; irreversible | `/streams` (confirm) |
 | `getStreamInfo(config, streamName)` | `StreamInfo` | Fetch config + state (messages, bytes, seq range) | `/streams/[name]` |
+| `getJetStreamAccountInfo(config)` | `JetStreamAccountOverview` | Account storage/limits overview | `/` (dashboard) |
 
 ### Messages
 
@@ -30,6 +33,8 @@ All Stream + Consumer operations via `withJetStream`. This is the largest consol
 |---|---|---|---|
 | `listConsumers(config, stream)` | `{consumers}` | List all consumers on a stream | `/streams/[name]` |
 | `createConsumer(config, stream, consumerConfig)` | `{info}` | Create durable/ephemeral consumer | `/streams/[name]` (dialog) |
+| `getConsumerInfo(config, stream, consumer)` | `{info}` | Full consumer config + delivery/ack state | `/streams/[name]` (detail sheet) |
+| `updateConsumer(config, stream, consumer, update)` | `{info}` | Update ack_wait, max_deliver, filter, … | `/streams/[name]` (detail sheet) |
 | `deleteConsumer(config, stream, consumer)` | `void` | Delete consumer; pending messages lost | `/streams/[name]` (confirm) |
 
 ### Stats
@@ -49,6 +54,9 @@ All Stream + Consumer operations via `withJetStream`. This is the largest consol
 | `stream-table.tsx` | Sortable/filterable stream list with TanStack Table | URL-synced filter via `useUrlState`, auto-refresh |
 | `stream-info-view.tsx` | Stream config/state display | Presentational |
 | `create-stream-dialog.tsx` | Form for new stream (retention, storage, limits, replicas) | React Hook Form + Zod |
-| `consumer-list.tsx` | Table of consumers on a stream with delete action | Calls `listConsumers` |
+| `edit-stream-dialog.tsx` | Edit subjects/limits/discard/replicas (name immutable) | React Hook Form + Zod |
+| `purge-stream-dialog.tsx` | Purge with optional subject/seq/keep + typed confirm | React Hook Form + Zod |
+| `consumer-list.tsx` | Table of consumers; open detail / delete | Row click → detail sheet |
+| `consumer-detail-sheet.tsx` | Consumer stats + update form | `getConsumerInfo` / `updateConsumer` |
 | `create-consumer-dialog.tsx` | Form for new consumer (push/pull, durable, ack policy) | React Hook Form + Zod |
 | `message-browser.tsx` | Paginated message viewer with payload + header expansion | Calls `getStreamMessages`, pagination via seq range |

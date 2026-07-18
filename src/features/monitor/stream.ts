@@ -1,43 +1,48 @@
 import type { NatsConnection } from "nats";
 import { natsManager } from "@/lib/nats/manager";
 import { getErrorMessage } from "@/lib/server-action";
+import type { NatsConnectionConfig } from "@/types/nats";
 
 interface MonitorStreamParams {
-    connectionId: string;
+    config: NatsConnectionConfig;
     subject: string;
-    servers: string[];
     signal: AbortSignal;
 }
 
 /**
  * Build the SSE `ReadableStream` that powers `/api/monitor`.
  *
- * Uses a dedicated NATS connection (not the shared pool) so monitor subscriptions
- * don't block or conflict with other feature operations. The connection is closed
- * when the client aborts (`signal`).
+ * Uses a dedicated NATS connection (not the shared feature pool) so monitor
+ * subscriptions don't block other ops. Full auth comes from the connection
+ * config in the POST body — never from query-string secrets.
+ * The dedicated connection is closed when the client aborts (`signal`).
  */
 export function createMonitorStream({
-    connectionId,
+    config,
     subject,
-    servers,
     signal,
 }: MonitorStreamParams): ReadableStream {
     const encoder = new TextEncoder();
+    // Unique pool key so this connection is never reused by feature actions.
+    const monitorConnectionId = `monitor-${config.id}-${Date.now()}`;
 
     return new ReadableStream({
         async start(controller) {
             let nc: NatsConnection | undefined;
 
             const send = (event: string, data: string) => {
-                controller.enqueue(encoder.encode(`event: ${event}\ndata: ${data}\n\n`));
+                try {
+                    controller.enqueue(encoder.encode(`event: ${event}\ndata: ${data}\n\n`));
+                } catch {
+                    // Controller already closed.
+                }
             };
 
             try {
                 nc = await natsManager.getConnection({
-                    id: `monitor-${connectionId}-${Date.now()}`,
+                    ...config,
+                    id: monitorConnectionId,
                     name: `Monitor - ${subject}`,
-                    servers,
-                    authType: "none",
                 });
 
                 const sub = nc.subscribe(subject);
@@ -48,8 +53,28 @@ export function createMonitorStream({
                     send("ping", String(Date.now()));
                 }, 15000);
 
+                const shutdown = async () => {
+                    clearInterval(heartbeat);
+                    try {
+                        sub.unsubscribe();
+                    } catch {
+                        // already unsubscribed
+                    }
+                    try {
+                        await natsManager.closeConnection(monitorConnectionId);
+                    } catch (e) {
+                        console.error("Error closing monitor connection:", e);
+                    }
+                    try {
+                        controller.close();
+                    } catch {
+                        // already closed
+                    }
+                };
+
                 (async () => {
                     for await (const msg of sub) {
+                        if (signal.aborted) break;
                         let headers: Record<string, string> | undefined;
                         if (msg.headers) {
                             headers = {};
@@ -72,22 +97,22 @@ export function createMonitorStream({
                     console.error("Monitor subscription error:", err);
                 });
 
-                signal.addEventListener("abort", async () => {
-                    clearInterval(heartbeat);
-                    sub.unsubscribe();
-                    if (nc) {
-                        try {
-                            await nc.close();
-                        } catch (e) {
-                            console.error("Error closing monitor connection:", e);
-                        }
-                    }
-                    controller.close();
+                signal.addEventListener("abort", () => {
+                    void shutdown();
                 });
             } catch (err: unknown) {
                 console.error("SSE NATS Error:", err);
                 send("error", getErrorMessage(err));
-                controller.close();
+                try {
+                    await natsManager.closeConnection(monitorConnectionId);
+                } catch {
+                    // ignore cleanup errors
+                }
+                try {
+                    controller.close();
+                } catch {
+                    // ignore
+                }
             }
         },
     });

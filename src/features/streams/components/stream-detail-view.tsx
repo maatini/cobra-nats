@@ -21,6 +21,9 @@ import { StreamInfoView } from "@/features/streams/components/stream-info-view";
 import { ConsumerList } from "@/features/streams/components/consumer-list";
 import { CreateConsumerDialog } from "@/features/streams/components/create-consumer-dialog";
 import { MessageBrowser } from "@/features/streams/components/message-browser";
+import { EditStreamDialog } from "@/features/streams/components/edit-stream-dialog";
+import { PurgeStreamDialog } from "@/features/streams/components/purge-stream-dialog";
+import { ConsumerDetailSheet } from "@/features/streams/components/consumer-detail-sheet";
 import { Badge } from "@/components/ui/badge";
 import { useConfirm } from "@/components/providers/confirm-provider";
 import { DetailSkeleton } from "@/components/ui/detail-skeleton";
@@ -35,6 +38,8 @@ export function StreamDetailView() {
     const [streamInfo, setStreamInfo] = React.useState<StreamInfo | null>(null);
     const [consumers, setConsumers] = React.useState<ConsumerInfo[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [selectedConsumer, setSelectedConsumer] = React.useState<string | null>(null);
+    const [consumerSheetOpen, setConsumerSheetOpen] = React.useState(false);
 
     const fetchData = React.useCallback(async () => {
         if (!activeConnection || !name) return;
@@ -124,6 +129,8 @@ export function StreamDetailView() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <EditStreamDialog info={streamInfo} onUpdated={fetchData} />
+                    <PurgeStreamDialog streamName={name as string} onPurged={fetchData} />
                     <Button variant="outline" size="sm" onClick={fetchData} className="bg-card border-border text-foreground/80">
                         <RefreshCcw className="size-4 mr-2" /> Refresh
                     </Button>
@@ -161,6 +168,10 @@ export function StreamDetailView() {
                             streamName={name as string}
                             onDelete={handleDeleteConsumer}
                             onCreated={fetchData}
+                            onSelect={(consumerName) => {
+                                setSelectedConsumer(consumerName);
+                                setConsumerSheetOpen(true);
+                            }}
                         />
                     </div>
                 </TabsContent>
@@ -174,6 +185,14 @@ export function StreamDetailView() {
                     />
                 </TabsContent>
             </Tabs>
+
+            <ConsumerDetailSheet
+                streamName={name as string}
+                consumerName={selectedConsumer}
+                open={consumerSheetOpen}
+                onOpenChange={setConsumerSheetOpen}
+                onUpdated={fetchData}
+            />
         </div>
     );
 }

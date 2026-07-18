@@ -15,13 +15,14 @@ import {
     Monitor,
     Loader2,
     AlertCircle,
+    HardDrive,
 } from "lucide-react";
 
-import type { NatsConnectionConfig } from "@/types/nats";
+import type { JetStreamAccountOverview, NatsConnectionConfig } from "@/types/nats";
 import { useActiveConnection } from "@/features/connections/hooks";
 import { useNatsStore } from "@/features/connections/store";
 import { getServerInfo } from "@/features/connections/actions";
-import { listStreams } from "@/features/streams/actions";
+import { listStreams, getJetStreamAccountInfo } from "@/features/streams/actions";
 import { listKVBuckets } from "@/features/kv/actions";
 import { ConnectDialog } from "@/features/connections/components/connect-dialog";
 
@@ -37,6 +38,7 @@ interface DashboardStats {
     serverName: string | null;
     serverVersion: string | null;
     jetstream: boolean;
+    account: JetStreamAccountOverview | null;
 }
 
 const EMPTY_STATS: DashboardStats = {
@@ -45,7 +47,17 @@ const EMPTY_STATS: DashboardStats = {
     serverName: null,
     serverVersion: null,
     jetstream: false,
+    account: null,
 };
+
+function formatBytes(bytes: number): string {
+    if (bytes < 0) return "∞";
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
 
 export function DashboardOverview() {
     const activeConnection = useActiveConnection();
@@ -59,10 +71,11 @@ export function DashboardOverview() {
         setError(null);
 
         try {
-            const [serverResult, streamsResult, kvResult] = await Promise.allSettled([
+            const [serverResult, streamsResult, kvResult, accountResult] = await Promise.allSettled([
                 getServerInfo(connection),
                 listStreams(connection),
                 listKVBuckets(connection),
+                getJetStreamAccountInfo(connection),
             ]);
 
             const next: DashboardStats = { ...EMPTY_STATS };
@@ -84,6 +97,11 @@ export function DashboardOverview() {
                 kvResult.status === "fulfilled" && kvResult.value.success
                     ? kvResult.value.data.buckets.length
                     : 0;
+
+            if (accountResult.status === "fulfilled" && accountResult.value.success) {
+                next.account = accountResult.value.data;
+                next.jetstream = true;
+            }
 
             setStats(next);
         } catch {
@@ -284,6 +302,62 @@ export function DashboardOverview() {
                                         ))}
                                     </div>
                                 </div>
+                                {stats.account && (
+                                    <>
+                                        <div className="flex items-center justify-between p-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="rounded-md bg-cyan-500/10 p-2">
+                                                    <HardDrive className="size-4 text-cyan-400" />
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-medium text-foreground">File Storage</div>
+                                                    <div className="text-xs text-muted-foreground">JetStream disk usage</div>
+                                                </div>
+                                            </div>
+                                            <div className="text-sm text-foreground/80 tabular-nums text-right">
+                                                {formatBytes(stats.account.storage)}
+                                                {stats.account.limits.maxStorage > 0 && (
+                                                    <span className="text-muted-foreground text-xs block">
+                                                        / {formatBytes(stats.account.limits.maxStorage)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between p-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="rounded-md bg-violet-500/10 p-2">
+                                                    <Activity className="size-4 text-violet-400" />
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-medium text-foreground">Memory Storage</div>
+                                                    <div className="text-xs text-muted-foreground">JetStream memory usage</div>
+                                                </div>
+                                            </div>
+                                            <div className="text-sm text-foreground/80 tabular-nums text-right">
+                                                {formatBytes(stats.account.memory)}
+                                                {stats.account.limits.maxMemory > 0 && (
+                                                    <span className="text-muted-foreground text-xs block">
+                                                        / {formatBytes(stats.account.limits.maxMemory)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between p-4 text-sm">
+                                            <div className="text-muted-foreground">JS Streams / Consumers</div>
+                                            <div className="tabular-nums text-foreground/80">
+                                                {stats.account.streams}
+                                                {stats.account.limits.maxStreams > 0 && (
+                                                    <span className="text-muted-foreground">/{stats.account.limits.maxStreams}</span>
+                                                )}
+                                                {" · "}
+                                                {stats.account.consumers}
+                                                {stats.account.limits.maxConsumers > 0 && (
+                                                    <span className="text-muted-foreground">/{stats.account.limits.maxConsumers}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         ) : (
                             <div className="flex flex-col items-center justify-center py-12 px-4 text-center">

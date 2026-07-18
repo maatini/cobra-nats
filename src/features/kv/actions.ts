@@ -96,11 +96,26 @@ export async function getKVEntry(config: NatsConnectionConfig, bucket: string, k
     });
 }
 
-/** Delete a single KV entry by key. */
+/** Soft-delete a single KV entry (tombstone; history retained per bucket history). */
 export async function deleteKVEntry(config: NatsConnectionConfig, bucket: string, key: string): Promise<ActionResponse<void>> {
     return withJetStream(config, "deleteKVEntry", async ({ js }) => {
         const kv = await js.views.kv(bucket);
         await kv.delete(key);
+    });
+}
+
+/**
+ * Hard-purge a key: removes the value and all revision history.
+ * Prefer this over delete for compliance / reclaiming space.
+ */
+export async function purgeKVEntry(
+    config: NatsConnectionConfig,
+    bucket: string,
+    key: string
+): Promise<ActionResponse<void>> {
+    return withJetStream(config, "purgeKVEntry", async ({ js }) => {
+        const kv = await js.views.kv(bucket);
+        await kv.purge(key);
     });
 }
 
@@ -110,5 +125,34 @@ export async function putKVEntry(config: NatsConnectionConfig, bucket: string, k
         const kv = await js.views.kv(bucket);
         const revision = await kv.put(key, value);
         return { revision };
+    });
+}
+
+/**
+ * Fetch revision history for a single key (newest first).
+ * Requires the bucket's history config to be > 1 for meaningful results.
+ */
+export async function getKVHistory(
+    config: NatsConnectionConfig,
+    bucket: string,
+    key: string
+): Promise<ActionResponse<{ entries: KvEntryResult[] }>> {
+    return withJetStream(config, "getKVHistory", async ({ js }) => {
+        const kv = await js.views.kv(bucket);
+        const iter = await kv.history({ key });
+        const entries: KvEntryResult[] = [];
+        for await (const entry of iter) {
+            entries.push({
+                key: entry.key,
+                value: entry.string(),
+                revision: entry.revision,
+                created: entry.created,
+                delta: entry.delta,
+                operation: entry.operation,
+            });
+        }
+        // History iterator yields oldest→newest; reverse so newest is first.
+        entries.reverse();
+        return { entries };
     });
 }

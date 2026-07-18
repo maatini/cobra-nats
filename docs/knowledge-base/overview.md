@@ -4,20 +4,21 @@
 
 Cobra NATS is a **browser-based management dashboard** for NATS messaging and JetStream persistence. It replaces CLI tooling with a visual UI for managing streams, consumers, KV buckets, Object Stores, publishing messages, and monitoring subjects in real-time.
 
-**Core promise**: NATS credentials and connection logic never reach the client browser. Almost all operations run as Server Actions; a small set of intentional API routes covers SSE and large binary uploads.
+**Core promise**: NATS credentials and connection logic never reach the client browser. Almost all operations run as Server Actions; a small set of intentional API routes covers SSE and large binary upload/download.
 
 ## Architecture at 30,000 feet
 
 ```
 Browser (React SPA)
    │  Server Actions (features/*/actions.ts)  ──┐
-   │  GET  /api/monitor (SSE)                 ──┼──> NatsManager / dedicated NC
-   │  POST /api/os/upload (multipart)         ──┘
+   │  POST /api/monitor (SSE)                 ──┼──> NatsManager / dedicated NC
+   │  POST /api/os/upload (multipart)         ──┤
+   │  POST /api/os/download (stream)          ──┘
 ```
 
 - **Client**: React 19 components under `src/features/<domain>/components/` and `src/app/(dashboard)/<route>/page.tsx`
 - **Server boundary (primary)**: Server Actions under `src/features/<domain>/actions.ts` via `withNatsConnection` / `withJetStream`
-- **Server boundary (exceptions)**: `GET /api/monitor` (SSE live monitor via `features/monitor/stream.ts`) and `POST /api/os/upload` (multipart binary; avoids RSC payload limits)
+- **Server boundary (exceptions)**: `POST /api/monitor` (SSE live monitor via `features/monitor/stream.ts`; config in body), `POST /api/os/upload` (multipart binary), and `POST /api/os/download` (streaming binary; avoids base64 in memory)
 - **Connection pool**: `src/lib/nats/manager.ts` — singleton `NatsManager` caches one `NatsConnection` per config ID (monitor uses a dedicated connection ID)
 - **State**: Zustand store (`src/features/connections/store.ts`) persisted to `localStorage` under key `cobra-nats-storage`
 - **Routing**: Next.js App Router with a single dashboard layout wrapping all pages
@@ -38,6 +39,7 @@ Browser (React SPA)
 | `src/app/(dashboard)/` | Next.js routes (thin — delegates to feature components) |
 | `src/app/api/monitor/route.ts` | SSE endpoint for live monitor |
 | `src/app/api/os/upload/route.ts` | Multipart OS object upload (binary; not a Server Action) |
+| `src/app/api/os/download/route.ts` | Streaming OS object download (binary; not a Server Action) |
 | `src/features/<domain>/actions.ts` | All Server Actions for the domain |
 | `src/features/<domain>/components/` | Domain-specific UI components |
 | `src/features/connections/store.ts` | Zustand connection store (persisted) |
@@ -58,7 +60,7 @@ Browser (React SPA)
 |---|---|
 | Framework | Next.js 16 (App Router) |
 | UI | React 19, Tailwind CSS v4, shadcn/ui (New York style) |
-| State | Zustand 5, TanStack React Query 5 |
+| State | Zustand 5; list pages use `useServerActionQuery` (no React Query) |
 | Forms | React Hook Form 7 + Zod 4 + `@hookform/resolvers` |
 | NATS client | nats.js 2.29 (server-side only) |
 | Tables | TanStack Table 8 |

@@ -4,12 +4,17 @@ import type {
     NatsConnectionConfig,
     StreamMessage,
     GetStreamMessagesOptions,
+    PurgeStreamOptions,
+    JetStreamAccountOverview,
 } from "@/types/nats";
 import type {
     StreamConfig,
     StreamInfo,
+    StreamUpdateConfig,
     ConsumerConfig,
     ConsumerInfo,
+    ConsumerUpdateConfig,
+    PurgeOpts,
 } from "nats";
 import { withJetStream, type ActionResponse } from "@/lib/server-action";
 
@@ -51,6 +56,21 @@ export async function deleteStream(
     });
 }
 
+/**
+ * Delete a single message from a stream by sequence number.
+ * When `erase` is true (default), the payload is securely erased when the backend supports it.
+ */
+export async function deleteStreamMessage(
+    config: NatsConnectionConfig,
+    streamName: string,
+    seq: number,
+    erase = true
+): Promise<ActionResponse<boolean>> {
+    return withJetStream(config, "deleteStreamMessage", async ({ jsm }) => {
+        return await jsm.streams.deleteMessage(streamName, seq, erase);
+    });
+}
+
 /** Fetch current config + state (messages, bytes, seq range) for a single stream. */
 export async function getStreamInfo(
     config: NatsConnectionConfig,
@@ -58,6 +78,70 @@ export async function getStreamInfo(
 ): Promise<ActionResponse<StreamInfo>> {
     return withJetStream(config, "getStreamInfo", async ({ jsm }) => {
         return await jsm.streams.info(streamName);
+    });
+}
+
+/**
+ * Update an existing stream's configuration.
+ * Name is immutable; pass a partial `StreamUpdateConfig` (subjects, limits, discard, replicas, …).
+ */
+export async function updateStream(
+    config: NatsConnectionConfig,
+    streamName: string,
+    update: Partial<StreamUpdateConfig>
+): Promise<ActionResponse<StreamInfo>> {
+    return withJetStream(config, "updateStream", async ({ jsm }) => {
+        return await jsm.streams.update(streamName, update);
+    });
+}
+
+/**
+ * Purge messages from a stream. Optionally filter by subject and/or sequence/keep.
+ * Returns how many messages were removed.
+ */
+export async function purgeStream(
+    config: NatsConnectionConfig,
+    streamName: string,
+    opts: PurgeStreamOptions = {}
+): Promise<ActionResponse<{ purged: number }>> {
+    return withJetStream(config, "purgeStream", async ({ jsm }) => {
+        let purgeOpts: PurgeOpts | undefined;
+        if (opts.seq != null && opts.seq > 0) {
+            purgeOpts = { seq: opts.seq, filter: opts.filter };
+        } else if (opts.keep != null && opts.keep > 0) {
+            purgeOpts = { keep: opts.keep, filter: opts.filter };
+        } else if (opts.filter) {
+            purgeOpts = { filter: opts.filter };
+        }
+
+        const result = await jsm.streams.purge(streamName, purgeOpts);
+        return { purged: result.purged };
+    });
+}
+
+/** JetStream account storage / limits overview for the dashboard. */
+export async function getJetStreamAccountInfo(
+    config: NatsConnectionConfig
+): Promise<ActionResponse<JetStreamAccountOverview>> {
+    return withJetStream(config, "getJetStreamAccountInfo", async ({ jsm }) => {
+        const info = await jsm.getAccountInfo();
+        return {
+            memory: info.memory,
+            storage: info.storage,
+            streams: info.streams,
+            consumers: info.consumers,
+            domain: info.domain,
+            limits: {
+                maxMemory: info.limits.max_memory,
+                maxStorage: info.limits.max_storage,
+                maxStreams: info.limits.max_streams,
+                maxConsumers: info.limits.max_consumers,
+            },
+            api: {
+                total: info.api.total,
+                errors: info.api.errors,
+            },
+        };
     });
 }
 
@@ -183,6 +267,34 @@ export async function deleteConsumer(
 ): Promise<ActionResponse<void>> {
     return withJetStream(config, "deleteConsumer", async ({ jsm }) => {
         await jsm.consumers.delete(stream, consumer);
+    });
+}
+
+/** Fetch a single consumer's full info (config + delivery/ack state). */
+export async function getConsumerInfo(
+    config: NatsConnectionConfig,
+    stream: string,
+    consumer: string
+): Promise<ActionResponse<{ info: ConsumerInfo }>> {
+    return withJetStream(config, "getConsumerInfo", async ({ jsm }) => {
+        const info = await jsm.consumers.info(stream, consumer);
+        return { info };
+    });
+}
+
+/**
+ * Update a durable consumer. Only fields allowed by `ConsumerUpdateConfig`
+ * (ack_wait, max_deliver, filter_subject, max_ack_pending, …) may change.
+ */
+export async function updateConsumer(
+    config: NatsConnectionConfig,
+    stream: string,
+    consumer: string,
+    update: Partial<ConsumerUpdateConfig>
+): Promise<ActionResponse<{ info: ConsumerInfo }>> {
+    return withJetStream(config, "updateConsumer", async ({ jsm }) => {
+        const info = await jsm.consumers.update(stream, consumer, update);
+        return { info };
     });
 }
 

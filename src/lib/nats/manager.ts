@@ -1,5 +1,6 @@
 import { connect, type NatsConnection, type JetStreamManager } from "nats";
 import type { NatsConnectionConfig } from "@/types/nats";
+import { buildConnectionOptions } from "@/lib/nats/connect-options";
 
 /**
  * Singleton connection pool for NATS.
@@ -27,13 +28,7 @@ export class NatsManager {
         if (existing && !existing.isClosed()) return existing;
 
         try {
-            const nc = await connect({
-                servers: config.servers,
-                user: config.user,
-                pass: config.pass,
-                token: config.token,
-                name: `Cobra NATS - ${config.name}`,
-            });
+            const nc = await connect(buildConnectionOptions(config));
             this.connections.set(config.id, nc);
             return nc;
         } catch (err) {

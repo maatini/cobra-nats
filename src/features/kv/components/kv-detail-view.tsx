@@ -3,7 +3,15 @@
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useActiveConnection } from "@/features/connections/hooks";
-import { getKVKeys, getKVEntry, deleteKVBucket, deleteKVEntry } from "@/features/kv/actions";
+import {
+    getKVKeys,
+    getKVEntry,
+    deleteKVBucket,
+    deleteKVEntry,
+    purgeKVEntry,
+    getKVHistory,
+    putKVEntry,
+} from "@/features/kv/actions";
 import type { KvEntryResult } from "@/types/nats";
 import { toast } from "sonner";
 import {
@@ -13,6 +21,9 @@ import {
     Search,
     Key,
     Eye,
+    History,
+    RotateCcw,
+    Eraser,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +55,8 @@ export function KVDetailView() {
     const [filter, setFilter] = React.useState("");
     const [isLoading, setIsLoading] = React.useState(true);
     const [selectedEntry, setSelectedEntry] = React.useState<KvEntryResult | null>(null);
-    const [isFetchingEntry, setIsFetchingEntry] = React.useState(false);
+    const [history, setHistory] = React.useState<KvEntryResult[]>([]);
+    const [isFetchingHistory, setIsFetchingHistory] = React.useState(false);
 
     const fetchKeys = React.useCallback(async () => {
         if (!activeConnection || !bucket) return;
@@ -65,21 +77,53 @@ export function KVDetailView() {
 
     const handleFetchEntry = async (key: string) => {
         if (!activeConnection || !bucket) return;
-        setIsFetchingEntry(true);
-        const result = await getKVEntry(activeConnection, bucket as string, key);
-        if (result.success) {
-            setSelectedEntry(result.data.entry);
+        setIsFetchingHistory(true);
+        const [entryResult, historyResult] = await Promise.all([
+            getKVEntry(activeConnection, bucket as string, key),
+            getKVHistory(activeConnection, bucket as string, key),
+        ]);
+        if (entryResult.success) {
+            setSelectedEntry(entryResult.data.entry);
         } else {
             toast.error("Failed to load entry data");
+            setSelectedEntry(null);
         }
-        setIsFetchingEntry(false);
+        if (historyResult.success) {
+            setHistory(historyResult.data.entries || []);
+        } else {
+            setHistory([]);
+        }
+        setIsFetchingHistory(false);
+    };
+
+    const handleRestoreRevision = async (entry: KvEntryResult) => {
+        if (!activeConnection || !bucket) return;
+        if (entry.operation !== "PUT") {
+            toast.error("Only PUT revisions can be restored");
+            return;
+        }
+        const ok = await confirm({
+            title: `Restore revision ${entry.revision}?`,
+            description: `This will write the value from revision ${entry.revision} as a new revision of "${entry.key}".`,
+            confirmText: "Restore",
+        });
+        if (!ok) return;
+
+        const result = await putKVEntry(activeConnection, bucket as string, entry.key, entry.value);
+        if (result.success) {
+            toast.success(`Restored as revision ${result.data.revision}`);
+            handleFetchEntry(entry.key);
+            fetchKeys();
+        } else {
+            toast.error("Failed to restore revision", { description: result.error });
+        }
     };
 
     const handleDeleteKey = async (key: string) => {
         if (!activeConnection || !bucket) return;
         const ok = await confirm({
             title: `Delete key "${key}"?`,
-            description: "This key and its history will be permanently removed from the KV store.",
+            description: "Creates a tombstone. History may still be retained depending on bucket settings.",
             confirmText: "Delete Key",
         });
         if (!ok) return;
@@ -87,10 +131,36 @@ export function KVDetailView() {
         const result = await deleteKVEntry(activeConnection, bucket as string, key);
         if (result.success) {
             toast.success(`Key "${key}" deleted`);
-            if (selectedEntry?.key === key) setSelectedEntry(null);
+            if (selectedEntry?.key === key) {
+                setSelectedEntry(null);
+                setHistory([]);
+            }
             fetchKeys();
         } else {
             toast.error("Failed to delete key", { description: result.error });
+        }
+    };
+
+    const handlePurgeKey = async (key: string) => {
+        if (!activeConnection || !bucket) return;
+        const ok = await confirm({
+            title: `Purge key "${key}"?`,
+            description: "Hard-removes the key and all revision history. This cannot be undone.",
+            confirmText: "Purge Key",
+            typedName: key,
+        });
+        if (!ok) return;
+
+        const result = await purgeKVEntry(activeConnection, bucket as string, key);
+        if (result.success) {
+            toast.success(`Key "${key}" purged`);
+            if (selectedEntry?.key === key) {
+                setSelectedEntry(null);
+                setHistory([]);
+            }
+            fetchKeys();
+        } else {
+            toast.error("Failed to purge key", { description: result.error });
         }
     };
 
@@ -223,6 +293,15 @@ export function KVDetailView() {
                                         }
                                     />
                                     <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
+                                        onClick={() => handlePurgeKey(selectedEntry.key)}
+                                    >
+                                        <Eraser className="size-3.5 mr-1" />
+                                        Purge
+                                    </Button>
+                                    <Button
                                         variant="destructive"
                                         size="sm"
                                         onClick={() => handleDeleteKey(selectedEntry.key)}
@@ -248,7 +327,7 @@ export function KVDetailView() {
                                 </div>
                             </div>
 
-                            <div className="flex-1 rounded-lg border border-border bg-background flex flex-col overflow-hidden">
+                            <div className="flex-1 rounded-lg border border-border bg-background flex flex-col overflow-hidden min-h-0">
                                 <div className="px-4 py-2 border-b border-border bg-card flex items-center justify-between">
                                     <span className="text-xs font-semibold text-muted-foreground">Value</span>
                                     <span className="text-[10px] text-muted-foreground/70 font-mono">{(selectedEntry.value.length / 1024).toFixed(2)} KB</span>
@@ -257,8 +336,74 @@ export function KVDetailView() {
                                     value={selectedEntry.value}
                                     fileName={selectedEntry.key}
                                     className="border-0 rounded-none"
-                                    maxHeight="calc(100vh - 380px)"
+                                    maxHeight="calc(100vh - 520px)"
                                 />
+                            </div>
+
+                            <div className="rounded-lg border border-border bg-card/50 overflow-hidden max-h-48 flex flex-col">
+                                <div className="px-4 py-2 border-b border-border bg-card flex items-center gap-2">
+                                    <History className="size-3.5 text-emerald-500" />
+                                    <span className="text-xs font-semibold text-muted-foreground">
+                                        Revision History
+                                    </span>
+                                    {isFetchingHistory && (
+                                        <RefreshCcw className="size-3 animate-spin text-muted-foreground ml-auto" />
+                                    )}
+                                </div>
+                                <ScrollArea className="flex-1">
+                                    {history.length > 0 ? (
+                                        <div className="divide-y divide-border/50">
+                                            {history.map((h) => (
+                                                <div
+                                                    key={`${h.revision}-${h.operation}`}
+                                                    className={`flex items-center justify-between gap-3 px-4 py-2 text-xs ${
+                                                        h.revision === selectedEntry.revision
+                                                            ? "bg-emerald-500/10"
+                                                            : "hover:bg-muted/40"
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        <span className="font-mono tabular-nums text-foreground">
+                                                            rev {h.revision}
+                                                        </span>
+                                                        <Badge
+                                                            variant="outline"
+                                                            className={`text-[9px] ${
+                                                                h.operation === "PUT"
+                                                                    ? "border-emerald-500/30 text-emerald-500"
+                                                                    : h.operation === "DEL"
+                                                                      ? "border-rose-500/30 text-rose-400"
+                                                                      : "border-amber-500/30 text-amber-500"
+                                                            }`}
+                                                        >
+                                                            {h.operation}
+                                                        </Badge>
+                                                        <span className="text-muted-foreground truncate">
+                                                            {format(new Date(h.created), "MMM d, HH:mm:ss")}
+                                                        </span>
+                                                    </div>
+                                                    {h.operation === "PUT" && h.revision !== selectedEntry.revision && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 text-[10px] text-muted-foreground hover:text-emerald-400"
+                                                            onClick={() => handleRestoreRevision(h)}
+                                                        >
+                                                            <RotateCcw className="size-3 mr-1" />
+                                                            Restore
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="px-4 py-6 text-center text-muted-foreground/70 text-xs italic">
+                                            {isFetchingHistory
+                                                ? "Loading history…"
+                                                : "No revision history (bucket history may be 1)."}
+                                        </div>
+                                    )}
+                                </ScrollArea>
                             </div>
                         </div>
                     ) : (
