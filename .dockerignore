@@ -5,6 +5,8 @@ node_modules
 tests
 test-results
 playwright-report
+tmp
+.commandcode
 .env*
 !.env.example
 Dockerfile

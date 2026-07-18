@@ -8,7 +8,7 @@
 
 **Invariants**:
 - Uses a **dedicated** NATS connection (ID: `monitor-${config.id}-${Date.now()}`) — not the shared feature pool — to avoid conflicts with other operations.
-- Full auth is taken from the `NatsConnectionConfig` (user/pass/token). **Never** hardcodes `authType: "none"`.
+- Full auth is taken from the `NatsConnectionConfig` (same modes as the pool). **Never** hardcodes `authType: "none"`.
 - Sends 15-second heartbeat `ping` events to keep the SSE connection alive.
 - Subscribes with a wildcard subject (e.g., `orders.>`).
 - Closes the NATS connection + subscription when the client aborts (`signal.addEventListener("abort", ...)`).
@@ -42,8 +42,7 @@
 - Subscribe to any subject pattern via `fetch` POST + streaming body (not `EventSource`, which cannot send a body).
 - Real-time SSE parse of chunked response.
 - **Pause / resume** without disconnecting (client-side pause via ref).
+- **Client subject filter**, configurable **buffer size** (100–2000), **rate limit**, drop/rate-limit badges.
 - **Expand** messages to inspect full payload and headers.
-- **Copy** message payload to clipboard.
-- **Export** captured messages as JSON.
-- Keeps the last **500 messages** in memory (ring buffer).
+- **Copy** / **Replay** (publish prefill) / **Export** captured messages as JSON.
 - AbortController cleans up on stop/unmount.

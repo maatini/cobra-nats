@@ -22,7 +22,7 @@ Every logical component in the system mapped to its responsibilities.
 | **Publish Actions** | `@server-actions-agent` | `publishMessage` (with headers + auto-JSON), `requestMessage` (request-reply) | `src/features/publish/actions.ts` |
 | **Publish UI** | `@nextjs-frontend-agent` / `@ui-shadcn-agent` | Publish form, reply output, subject combobox | `src/features/publish/components/` |
 | **Monitor Stream** | `@server-actions-agent` | SSE `ReadableStream` using dedicated NATS connection; heartbeat + message + error events | `src/features/monitor/stream.ts` |
-| **Monitor UI** | `@nextjs-frontend-agent` | Live message view: subscribe, pause/resume, expand, copy, export JSON, keep last 500 | `src/features/monitor/monitor-view.tsx` |
+| **Monitor UI** | `@nextjs-frontend-agent` | Live message view: subscribe, pause/resume, client filter, buffer/rate limits, expand, copy, replay, export JSON | `src/features/monitor/monitor-view.tsx` |
 | **Monitor API Route** | `@server-actions-agent` | `POST /api/monitor` — SSE endpoint; config+subject in JSON body (no secrets in query), delegates to `createMonitorStream` | `src/app/api/monitor/route.ts` |
 | **OS Upload API Route** | `@server-actions-agent` | `POST /api/os/upload` — multipart binary upload (avoids RSC payload limits) | `src/app/api/os/upload/route.ts` |
 | **OS Download API Route** | `@server-actions-agent` | `POST /api/os/download` — streaming binary download (avoids base64 in memory) | `src/app/api/os/download/route.ts` |

@@ -2,7 +2,7 @@
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![NATS](https://img.shields.io/badge/NATS-2.10+-27AAE1?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJMMiAyMmgyMEwxMiAyeiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=)](https://nats.io/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![Playwright](https://img.shields.io/badge/Playwright-E2E_Tests-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev/)
 [![Devbox](https://img.shields.io/badge/Devbox-reproducible_env-7C3AED?logo=nixos&logoColor=white)](https://www.jetpack.io/devbox/)
@@ -21,8 +21,8 @@ Cobra NATS is a web-based administration dashboard for [NATS](https://nats.io), 
 
 ### 🔗 Connection Management
 - Save multiple NATS server connections in your browser (persisted via `localStorage`)
-- Support for `none`, `username/password`, and `token` authentication
-- Quickly switch between connections from the sidebar
+- Support for `none`, username/password, token, NKey, JWT, and credentials-file auth; optional TLS client certs
+- Quickly switch between connections from the top bar
 - Connection status indicator in the dashboard
 
 ### 📡 JetStream Streams
@@ -55,16 +55,16 @@ Cobra NATS is a web-based administration dashboard for [NATS](https://nats.io), 
 - Publish messages to any NATS subject
 - Set custom **headers** (key/value pairs)
 - **Request-Reply** mode: send a request and view the reply inline
+- **Replay** from Message Browser / Monitor (URL prefill)
 - Full subject, payload, and header configuration
 
 ### 📺 Live Subject Monitor
 - Subscribe to any subject pattern (e.g. `orders.>`, `>`)
 - Real-time message stream via Server-Sent Events (SSE over POST — full connection auth, no secrets in the URL)
 - **Pause** / **resume** the stream without disconnecting
+- **Client filter**, configurable **buffer size**, and **rate limit** (backpressure badges)
 - **Expand** messages to inspect full payload and headers
-- **Copy** message payload to clipboard
-- **Export** captured messages as JSON
-- Keeps the last 500 messages in memory
+- **Copy** / **Replay** / **Export** captured messages as JSON
 
 ### 👥 Consumer Management
 - **List** all consumers on a JetStream stream

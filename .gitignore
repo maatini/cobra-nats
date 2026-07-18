@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # next.js
 /.next/
@@ -23,6 +27,8 @@
 # misc
 .DS_Store
 *.pem
+/tmp/
+.commandcode/
 
 # debug
 npm-debug.log*
@@ -39,7 +45,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-test-results/
-playwright-report/
 .agents/skills/
 
