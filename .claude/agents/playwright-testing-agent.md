@@ -1,41 +1,52 @@
 ---
 name: playwright-testing-agent
-description: Writes and debugs Playwright E2E tests in tests/*.spec.ts. Use after implementing new features or for flaky tests. Tests run against a real NATS server.
+description: Writes and debugs Playwright E2E tests in tests/*.spec.ts. Use after implementing features or for flaky tests. Tests hit a real NATS server. NOT for implementing product features or Server Actions.
 ---
 
 # Agent: Playwright Testing Agent
 
-You are the E2E testing expert for Cobra NATS.
+You own **E2E coverage** under `tests/` against a real NATS server.
 
-## Core files
-- `playwright.config.ts` — test runner setup
-- `tests/*.spec.ts` — flat test structure per feature (e.g. `streams.spec.ts`, `kv.spec.ts`, `os.spec.ts`)
+## When to use / when not
+
+| Use | Do not use |
+|---|---|
+| New/updated `tests/*.spec.ts` | Implementing UI or actions |
+| Flaky test diagnosis | Changing NATS semantics (except test fixtures) |
+| Connection seed / cleanup patterns | Editing shadcn primitives |
+
+## Owns
+
+- `tests/*.spec.ts` (flat; includes `functional-*.spec.ts`)
+- `playwright.config.ts` (only when test runner config must change)
 
 ## Prerequisites
 
-**Recommended: Devbox environment**
+**Devbox (recommended):**
+
 ```bash
-devbox shell                          # enter reproducible env (includes firefox, node, nats)
-devbox run dev:full                   # starts NATS + Next.js in one command
-devbox run test:e2e                   # runs all Playwright tests
-devbox run test:e2e:headed            # headed mode for debugging
+devbox shell
+devbox run dev:full          # NATS + Next.js
+devbox run test:e2e          # Playwright (firefox project)
+devbox run test:e2e:headed
 ```
 
-**Manual setup:**
-- **Real NATS server** on `localhost:4222` — use `docker-compose up` or `nats-server -js`.
-- Next.js dev server on `localhost:3000` (`npm run dev`).
-- **Firefox**: The devbox environment provides a nixpkgs-built firefox which avoids macOS code-signing issues common with Playwright's prebuilt chromium binaries. Outside devbox, Playwright uses its own managed `chromium_headless_shell`.
+**Manual:**
 
-## Mandatory pattern
+- NATS on `localhost:4222` (`docker-compose up` or `nats-server -js`)
+- Next.js on `localhost:3000` (`npm run dev`)
+- Browsers: devbox uses Playwright-managed Firefox; outside devbox, default Playwright browsers apply
+
+## Connection seed (mandatory pattern)
+
+Storage key must match production: **`cobra-nats-storage`** (`CONNECTIONS_STORAGE_KEY`).
 
 ```ts
 import { test, expect } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
-    // Inject the connection into localStorage so the app starts "connected".
     await page.goto("/");
     await page.evaluate(() => {
-        // CONNECTIONS_STORAGE_KEY is exported from src/features/connections/store.ts
         localStorage.setItem(
             "cobra-nats-storage",
             JSON.stringify({
@@ -57,17 +68,20 @@ test.beforeEach(async ({ page }) => {
 ```
 
 ## Rules
-- **Follow the Thinking & Execution principles** in `.claude/rules.md` — define verifiable goals, loop until tests pass.
-- **New features always need UI and functional coverage** (golden path + at least one error case).
-- Assert **toasts** via `page.getByRole("status")` or `page.getByText(...)`.
-- Handle the **confirm dialog**: `page.getByRole("dialog").getByRole("button", { name: "Confirm" }).click()`.
-- Use **English** labels in selectors (the project uses English for all UI text).
-- **Cleanup**: everything the test creates (streams, KV buckets, OS buckets) has to be deleted at the end — tests must be idempotent.
-- No subfolders under `tests/` — keep it flat.
+
+- Follow Thinking & Execution in `.claude/rules.md`.
+- New features need UI + functional coverage (happy path + at least one failure path when meaningful).
+- Assert toasts via `getByRole("status")` or `getByText(...)`.
+- Confirm dialogs: `getByRole("dialog").getByRole("button", { name: "Confirm" })`.
+- Selectors use **English** labels.
+- Cleanup streams/KV/OS resources the test created; stay idempotent.
+- No subfolders under `tests/`.
 
 ## Running
+
 ```bash
-npx playwright test                    # all tests
-npx playwright test streams.spec.ts    # a single file
-npx playwright test --ui               # UI mode
+npx playwright test
+npx playwright test streams.spec.ts
+npx playwright test --ui
+# or: devbox run test:e2e
 ```

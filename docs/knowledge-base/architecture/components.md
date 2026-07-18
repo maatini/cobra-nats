@@ -23,7 +23,8 @@ Every logical component in the system mapped to its responsibilities.
 | **Publish UI** | `@nextjs-frontend-agent` / `@ui-shadcn-agent` | Publish form, reply output, subject combobox | `src/features/publish/components/` |
 | **Monitor Stream** | `@server-actions-agent` | SSE `ReadableStream` using dedicated NATS connection; heartbeat + message + error events | `src/features/monitor/stream.ts` |
 | **Monitor UI** | `@nextjs-frontend-agent` | Live message view: subscribe, pause/resume, expand, copy, export JSON, keep last 500 | `src/features/monitor/monitor-view.tsx` |
-| **Monitor API Route** | `@server-actions-agent` | `GET /api/monitor` — lone REST endpoint; parses query params, delegates to `createMonitorStream` | `src/app/api/monitor/route.ts` |
+| **Monitor API Route** | `@server-actions-agent` | `GET /api/monitor` — SSE endpoint; parses query params, delegates to `createMonitorStream` | `src/app/api/monitor/route.ts` |
+| **OS Upload API Route** | `@server-actions-agent` | `POST /api/os/upload` — multipart binary upload (avoids RSC payload limits) | `src/app/api/os/upload/route.ts` |
 | **Dashboard** | `@nextjs-frontend-agent` | Landing page: aggregates data from connections/streams/kv actions; displays stats + quick action links | `src/features/dashboard/dashboard-overview.tsx` |
 | **App Shell** | `@nextjs-frontend-agent` | Dashboard layout: Sidebar + Topbar + NoConnectionBanner + GlobalShortcuts | `src/app/(dashboard)/layout.tsx` |
 | **Sidebar** | `@nextjs-frontend-agent` | Navigation + connection switcher + new-connection entry | `src/components/layout/app-sidebar.tsx` |

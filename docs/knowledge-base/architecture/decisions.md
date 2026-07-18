@@ -1,18 +1,20 @@
 # Architectural Decisions
 
-## ADR-001: Server Actions for all NATS operations
+## ADR-001: Server-side NATS (Server Actions by default)
 
-**Decision**: Every NATS operation executes as a Next.js Server Action, never on the client.
+**Decision**: NATS never runs in the browser. The default transport is a Next.js Server Action (`features/*/actions.ts` + `withNatsConnection` / `withJetStream`). Intentional exceptions use App Router API routes when Actions are the wrong tool:
+- `GET /api/monitor` — long-lived SSE (`features/monitor/stream.ts`)
+- `POST /api/os/upload` — multipart binary (avoids RSC payload limits)
 
 **Rationale**:
 - Credentials never reach the browser.
 - The `nats` package imports Node.js builtins (`dns`, `fs`) that can't run in browsers.
-- Server Actions provide RPC-style serialization with full TypeScript type safety across the boundary.
+- Server Actions provide RPC-style serialization with full TypeScript type safety across the boundary for ordinary CRUD/publish ops.
 
 **Trade-offs**:
 - No offline-first capabilities (NATS requires a running server anyway).
 - Slightly higher latency vs. direct WebSocket connection.
-- Cannot use NATS subscription handles in the client (live monitor uses SSE instead).
+- Streaming and large binaries need dedicated routes instead of Actions.
 
 ## ADR-002: Feature-based module organization
 

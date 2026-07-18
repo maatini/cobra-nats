@@ -1,70 +1,44 @@
 # CLAUDE.md – Cobra NATS
 
 **What**: Web UI for NATS/JetStream (Streams, Consumers, KV, Object Store, Publish/Request, Live Monitor).
-**Stack**: Next.js 16 App Router · React 19 · TypeScript 5 strict · Tailwind v4 · shadcn/ui (New York) · Zustand · Playwright · `nats` v2.29.
+**Stack**: Next.js 16 App Router · React 19 · TypeScript 6 strict · Tailwind v4 · shadcn/ui (New York) · Zustand · Playwright · `nats` v2.29.
 
-## Project structure (short version)
+## Layout (where code lives)
 
-```
-src/
-├── app/                    # Next.js routing + layouts. Nothing else goes here!
-│   ├── (dashboard)/        # All user-facing pages (/, streams, kv, os, publish, monitor, settings)
-│   └── api/monitor/        # The only REST endpoint (SSE for the live monitor)
-│
-├── features/               # Domain modules — EVERYTHING for one feature in ONE place
-│   ├── connections/        # NATS connection store, hook, actions, connect dialog
-│   ├── dashboard/          # Dashboard overview (component only, no actions)
-│   ├── streams/            # Streams + consumers + stats (actions.ts is consolidated)
-│   ├── kv/                 # Key-Value buckets
-│   ├── os/                 # Object Store buckets + upload/download
-│   ├── publish/            # Publish + request-reply actions
-│   └── monitor/            # Live subject monitor (stream.ts instead of actions.ts, uses SSE)
-│
-├── components/
-│   ├── ui/                 # shadcn primitives — NEVER edit directly, use `shadcn add`
-│   ├── layout/             # app-sidebar, topbar, theme-toggle, auto-breadcrumbs,
-│   │                       # command-palette, global-shortcuts, help-dialog,
-│   │                       # no-connection-banner
-│   └── providers/          # Root provider, confirm provider
-│
-├── lib/
-│   ├── nats/manager.ts     # Singleton connection pool (NatsManager)
-│   ├── server-action.ts    # withNatsConnection / withJetStream / ActionResponse
-│   └── utils.ts            # cn() and generic helpers
-│
-├── hooks/                  # App-wide hooks
-│   ├── use-mobile.ts
-│   ├── use-keyboard-shortcuts.ts
-│   ├── use-local-storage.ts
-│   ├── use-auto-refresh.ts
-│   └── use-url-state.ts
-└── types/nats.ts           # All shared domain types (NatsConnectionConfig, StreamMessage, ...)
-```
+| Path | Role |
+|---|---|
+| `src/app/(dashboard)/` | Routes only — thin pages that render feature UI |
+| `src/app/api/` | REST/SSE routes when Server Actions are insufficient (`monitor` SSE, `os/upload` multipart) |
+| `src/features/<domain>/` | Domain module: `actions.ts` (or `stream.ts`), `components/`, optional store/hooks |
+| `src/components/ui/` | shadcn primitives — add via CLI, do not hand-author replacements |
+| `src/components/layout/` | App chrome (sidebar, topbar, command palette, shortcuts, …) |
+| `src/lib/` | `nats/manager.ts` pool + `server-action.ts` wrappers |
+| `src/types/nats.ts` | Shared domain types (keep NATS enums browser-safe) |
+| `src/hooks/` | App-wide hooks |
+| `tests/*.spec.ts` | Flat Playwright E2E |
+
+Feature folders today: `connections`, `dashboard`, `streams`, `kv`, `os`, `publish`, `monitor`.
 
 ## Core rules (mandatory)
 
-1. **All NATS operations go through Server Actions** in `src/features/<domain>/actions.ts`. Never ship credentials to the client.
-2. **Every action uses `withNatsConnection` or `withJetStream`** from `@/lib/server-action` and returns `ActionResponse<T>`.
-3. **Feature isolation**: UI, actions, store, and types for a feature live in `src/features/<domain>/`. No cross-feature imports without a reason.
-4. **Types stay central**: domain types belong in `src/types/nats.ts`, not scattered per feature.
-5. **Strict shadcn/ui**: new UI only with shadcn components (New York style). No custom button variants.
-6. **TypeScript strict + Zod**: all forms use React Hook Form + a Zod schema.
-7. **Playwright tests** for new features under `tests/`.
+1. **All NATS ops on the server** — Server Actions in `src/features/<domain>/actions.ts` (or dedicated API routes for SSE/binary). Never ship credentials or import `nats` on the client.
+2. **Wrappers always** — `withNatsConnection` / `withJetStream` from `@/lib/server-action`; return `ActionResponse<T>`. First arg is always `NatsConnectionConfig`.
+3. **Feature isolation** — UI + actions for a domain live under `src/features/<domain>/`. No cross-feature imports without a reason.
+4. **Types stay central** — domain types in `src/types/nats.ts`, not scattered per feature.
+5. **shadcn/ui only** — New York style; new primitives via `npx shadcn@latest add …`. No custom Button/Input variants.
+6. **Forms** — React Hook Form + Zod next to the component; English UI strings.
+7. **Tests** — Playwright under `tests/*.spec.ts` (flat) for new user-facing features.
 
-## Standard imports (cheat sheet)
+## Doc map (read by need)
 
-```ts
-import type { NatsConnectionConfig, StreamMessage } from "@/types/nats";
-import { withJetStream, type ActionResponse } from "@/lib/server-action";
-import { useActiveConnection } from "@/features/connections/hooks";
-import { useNatsStore } from "@/features/connections/store";
-import { Button } from "@/components/ui/button";
-```
+| Doc | Owns |
+|---|---|
+| **`AGENTS.md`** | Grok Build entry: subagent routing, local commands (loaded with this file) |
+| **`docs/knowledge-base/`** | **Primary deep reference** — architecture, data flows, ADRs, module ownership. Start at `index.md`. |
+| `.claude/architecture.md` | “Where does what live?” + blueprints for new feature / action / shadcn component |
+| `.claude/project.md` | Feature ↔ route map, NATS conventions, palette, localStorage key, dev setup |
+| `.claude/rules.md` | How to work + mandatory code patterns (actions, client, forms, Playwright) |
+| `.claude/agents/*.md` | Specialized personas (ownership + deltas only); mirrored for Grok via `.grok/agents/` symlinks |
+| `.grok/rules/*.md` | Short auto-scanned pointers into the files above (no pattern dumps) |
 
-## Further documentation
-
-- **`docs/knowledge-base/`** — **Primary reference for architecture, responsibilities, and dependencies.** Always start with the relevant `index.md` before coding. Contains Mermaid diagrams, data-flow documentation, ADRs, module breakdowns with ownership/dependency tables, and a tag registry.
-- **`.claude/architecture.md`** — "Where does what live?" + blueprint for adding a new feature
-- **`.claude/project.md`** — Feature map, routes, color palette, NATS conventions
-- **`.claude/rules.md`** — Do's & don'ts with code examples
-- **`.claude/agents/*.md`** — Specialized agent profiles
+Do **not** paste full patterns into this file — they live once in `.claude/rules.md`.

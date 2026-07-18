@@ -1,0 +1,1 @@
+../../.claude/agents/nextjs-frontend-agent.md

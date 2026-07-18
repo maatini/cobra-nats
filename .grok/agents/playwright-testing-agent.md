@@ -1,0 +1,1 @@
+../../.claude/agents/playwright-testing-agent.md

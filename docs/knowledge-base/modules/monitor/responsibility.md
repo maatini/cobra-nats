@@ -1,6 +1,6 @@
 # Monitor — Responsibilities
 
-**Note**: The monitor does NOT use Server Actions. It's the only feature that uses a REST API route (`/api/monitor`) + SSE `ReadableStream`. There is no `actions.ts` — the server-side logic is in `stream.ts`.
+**Note**: The monitor does NOT use Server Actions. It uses a REST API route (`/api/monitor`) + SSE `ReadableStream`. There is no `actions.ts` — the server-side logic is in `stream.ts`. (Object Store multipart upload is a separate API route under `/api/os/upload`.)
 
 ## SSE Stream (`stream.ts`)
 
@@ -23,7 +23,7 @@
 
 ## API Route (`src/app/api/monitor/route.ts`)
 
-**What it owns**: The `GET /api/monitor` endpoint — the only REST route in the application.
+**What it owns**: The `GET /api/monitor` endpoint — the SSE entry point for live subject monitoring.
 
 **Query params**:
 | Param | Default | Purpose |

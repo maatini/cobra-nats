@@ -4,38 +4,40 @@
 
 Cobra NATS is a **browser-based management dashboard** for NATS messaging and JetStream persistence. It replaces CLI tooling with a visual UI for managing streams, consumers, KV buckets, Object Stores, publishing messages, and monitoring subjects in real-time.
 
-**Core promise**: All NATS operations run on the server via Next.js Server Actions — credentials and connection logic never reach the client browser.
+**Core promise**: NATS credentials and connection logic never reach the client browser. Almost all operations run as Server Actions; a small set of intentional API routes covers SSE and large binary uploads.
 
 ## Architecture at 30,000 feet
 
 ```
-Browser (React SPA) ──imports──> Server Actions ──calls──> NatsManager (singleton pool)
-                                                               ├─ NatsConnection
-                                                               ├─ JetStreamManager (cached)
-                                                               └─ JetStreamClient (on-demand)
+Browser (React SPA)
+   │  Server Actions (features/*/actions.ts)  ──┐
+   │  GET  /api/monitor (SSE)                 ──┼──> NatsManager / dedicated NC
+   │  POST /api/os/upload (multipart)         ──┘
 ```
 
 - **Client**: React 19 components under `src/features/<domain>/components/` and `src/app/(dashboard)/<route>/page.tsx`
-- **Server boundary**: Server Actions under `src/features/<domain>/actions.ts` — the ONLY place NATS operations execute
-- **Connection pool**: `src/lib/nats/manager.ts` — singleton `NatsManager` caches one `NatsConnection` per config ID
+- **Server boundary (primary)**: Server Actions under `src/features/<domain>/actions.ts` via `withNatsConnection` / `withJetStream`
+- **Server boundary (exceptions)**: `GET /api/monitor` (SSE live monitor via `features/monitor/stream.ts`) and `POST /api/os/upload` (multipart binary; avoids RSC payload limits)
+- **Connection pool**: `src/lib/nats/manager.ts` — singleton `NatsManager` caches one `NatsConnection` per config ID (monitor uses a dedicated connection ID)
 - **State**: Zustand store (`src/features/connections/store.ts`) persisted to `localStorage` under key `cobra-nats-storage`
 - **Routing**: Next.js App Router with a single dashboard layout wrapping all pages
 
 ## Key principles
 
-1. **Server-first NATS**. The client NEVER imports `nats` or calls NATS directly. Every operation is a Server Action returning `ActionResponse<T>`.
+1. **Server-first NATS**. The client NEVER imports `nats` or calls NATS directly. NATS runs on the server — either as a Server Action returning `ActionResponse<T>`, or via the intentional API routes above (SSE / multipart).
 2. **Feature isolation**. Everything for a domain (actions, UI, store) lives in `src/features/<domain>/`. No cross-feature imports without justification.
 3. **TypeScript strict**. No `any`, no `@ts-ignore`. NATS enums are re-defined in `src/types/nats.ts` so the client never pulls the full `nats` package.
 4. **shadcn/ui only**. UI primitives come from `src/components/ui/`, populated via `shadcn add`. No custom buttons/inputs.
-5. **Actions pattern**: Every action takes `NatsConnectionConfig` as first param, returns `ActionResponse<T>`, uses `withNatsConnection` or `withJetStream` wrapper.
-6. **Error surfacing**: Client always checks `if (!res.success)` and toasts the error. No silent failures.
+5. **Actions pattern**: Every Server Action takes `NatsConnectionConfig` as first param, returns `ActionResponse<T>`, uses `withNatsConnection` or `withJetStream` wrapper.
+6. **Error surfacing**: Client always checks `if (!res.success)` and toasts the error for action results. No silent failures.
 
 ## Project layout (condensed)
 
 | Path | Role |
 |---|---|
 | `src/app/(dashboard)/` | Next.js routes (thin — delegates to feature components) |
-| `src/app/api/monitor/route.ts` | SSE endpoint for live monitor (the only REST route) |
+| `src/app/api/monitor/route.ts` | SSE endpoint for live monitor |
+| `src/app/api/os/upload/route.ts` | Multipart OS object upload (binary; not a Server Action) |
 | `src/features/<domain>/actions.ts` | All Server Actions for the domain |
 | `src/features/<domain>/components/` | Domain-specific UI components |
 | `src/features/connections/store.ts` | Zustand connection store (persisted) |

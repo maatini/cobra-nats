@@ -4,19 +4,19 @@ Central glossary of `@tag:xxx` concepts used throughout the codebase and knowled
 
 ## Agent personas (from `.claude/agents/`)
 
-| Tag | Meaning |
-|---|---|
-| `@nats-jetstream-expert` | Owns NatsManager, shared types, all Server Actions that touch NATS directly |
-| `@server-actions-agent` | Owns Server Action wrappers (`withNatsConnection`, `withJetStream`), error mapping, SSE stream creation |
-| `@nextjs-frontend-agent` | Owns all React components, hooks, stores, layouts, providers — everything in `src/features/*/components/`, `src/components/`, `src/hooks/` |
-| `@ui-shadcn-agent` | Owns shadcn/ui primitives (`src/components/ui/`) and their styling — but primitives are generated, not hand-edited |
-| `@playwright-testing-agent` | Owns all E2E tests under `tests/` |
+| Tag | Owns | Does not own |
+|---|---|---|
+| `@nats-jetstream-expert` | `NatsManager`, shared types (`types/nats.ts`), JetStream domain semantics | Feature `actions.ts`, UI, tests |
+| `@server-actions-agent` | Wrappers (`withNatsConnection` / `withJetStream`), all feature Server Actions, `monitor/stream.ts`, `src/app/api/**` | Feature React components, primitives |
+| `@nextjs-frontend-agent` | Pages, feature components, layout, providers, hooks, connections store | `src/components/ui/*`, `actions.ts`, tests |
+| `@ui-shadcn-agent` | shadcn primitives in `src/components/ui/` (CLI-first) | Feature-specific components, layout |
+| `@playwright-testing-agent` | E2E under `tests/` | Product feature implementation |
 
 ## Architecture concepts
 
 | Tag | Meaning |
 |---|---|
-| `@tag:server-action` | A function marked `"use server"` that runs on the Next.js server; the only place NATS operations execute |
+| `@tag:server-action` | A function marked `"use server"` that runs on the Next.js server; primary place NATS operations execute |
 | `@tag:action-response` | The `ActionResponse<T>` discriminated union: `{success:true, data:T} | {success:false, error:string}` |
 | `@tag:nats-manager` | The singleton `NatsManager` that owns the connection pool (`src/lib/nats/manager.ts`) |
 | `@tag:nats-wrapper` | `withNatsConnection` / `withJetStream` wrappers that standardize error handling and connection management |
@@ -31,7 +31,7 @@ Central glossary of `@tag:xxx` concepts used throughout the codebase and knowled
 | `@tag:kv` | Key-Value bucket discovery and CRUD |
 | `@tag:os` | Object Store bucket discovery, upload/download, content preview |
 | `@tag:publish` | Message publishing and request-reply |
-| `@tag:monitor` | Live subject monitoring via SSE (uses dedicated NATS connection, not Server Actions) |
+| `@tag:monitor` | Live subject monitoring via SSE (dedicated NATS connection; not Server Actions) |
 | `@tag:dashboard` | Landing page aggregation — no own actions |
 
 ## Patterns
@@ -43,6 +43,7 @@ Central glossary of `@tag:xxx` concepts used throughout the codebase and knowled
 | `@tag:url-state` | `useUrlState` hook — local React state as source of truth, mirrored to URL |
 | `@tag:auto-refresh` | `useAutoRefresh` hook — periodic callback with localStorage-persisted interval |
 | `@tag:sse-monitor` | The SSE-based live monitor pattern — REST route + ReadableStream + EventSource client |
+| `@tag:os-multipart-upload` | `POST /api/os/upload` multipart route — binary upload outside Server Actions (RSC payload limits) |
 
 ## Known issues / workarounds
 
