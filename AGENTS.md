@@ -24,7 +24,8 @@ Built-ins still apply: `explore`, `plan`, `general-purpose`.
 | Architecture, ADRs, modules | `docs/knowledge-base/` (start: `index.md`) |
 | Persona body | `.claude/agents/<name>.md` (also linked from `.grok/agents/`) |
 
-Auto-scanned Grok rule stubs: `.grok/rules/*.md` (pointers only — no pattern dumps).
+Auto-scanned Grok rule stubs: `.grok/rules/*.md` (pointers only — no pattern dumps).  
+Context compaction: `.grok/rules/00-context-management.md` (and global `~/.grok/AGENTS.md`).
 
 ## Server boundary (do not regress)
 
