@@ -13,8 +13,8 @@ export default defineConfig({
     retries: process.env.CI ? 2 : 1,
     /* Opt out of parallel tests on CI. */
     workers: process.env.CI ? 1 : undefined,
-    /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-    reporter: 'html',
+    /* list for CI/terminal signal; html for local drill-down */
+    reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list'], ['html']],
     /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
     use: {
         /* Base URL to use in actions like `await page.goto('/')`. */
@@ -24,7 +24,10 @@ export default defineConfig({
         trace: 'on-first-retry',
     },
 
-    /* Configure projects for major browsers */
+    /*
+     * Default: chromium only (faster, less flake noise).
+     * Cross-browser: PLAYWRIGHT_ALL_BROWSERS=1 or `npm run test:e2e:all`.
+     */
     projects: [
         {
             name: 'chromium',
@@ -37,17 +40,19 @@ export default defineConfig({
                 } : {}),
             },
         },
-        {
-            name: 'firefox',
-            use: {
-                ...devices['Desktop Firefox'],
-                // Use devbox firefox when available (set via init_hook).
-                ...(process.env.PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH ? {
-                    executablePath: process.env.PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH,
-                } : {}),
-            },
-        },
+        ...(process.env.PLAYWRIGHT_ALL_BROWSERS === '1'
+            ? [{
+                name: 'firefox',
+                use: {
+                    ...devices['Desktop Firefox'],
+                    ...(process.env.PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH ? {
+                        executablePath: process.env.PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH,
+                    } : {}),
+                },
+            }]
+            : []),
     ],
+
 
     /* Run your local dev server before starting the tests */
     webServer: {

@@ -6,8 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "playwright test --project=chromium",
+    "test:e2e": "playwright test --project=chromium",
+    "test:e2e:all": "PLAYWRIGHT_ALL_BROWSERS=1 playwright test",
+    "test:e2e:ui": "playwright test --ui --project=chromium"
   },
+
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
     "@tanstack/react-table": "^8.21.3",

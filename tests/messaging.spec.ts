@@ -29,13 +29,15 @@ test.describe('Messaging & Monitoring', () => {
         await expect(page.getByRole('heading', { name: 'Live Subject Monitor' })).toBeVisible();
     });
 
-    test('should toggle monitor subscription', async ({ page }) => {
+    test('should show monitor controls and buffer options', async ({ page }) => {
         await page.goto('/monitor');
-        const subscribeButton = page.getByRole('button', { name: 'Subscribe' });
-        await expect(subscribeButton).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Subscribe' })).toBeVisible();
+        await expect(page.getByPlaceholder(/Subject or pattern/)).toHaveValue('>');
+        await expect(page.getByPlaceholder('Filter subjects (orders.*, events.>)')).toBeVisible();
+        await expect(page.getByText('Buffer size', { exact: true })).toBeVisible();
+        await expect(page.getByText('Rate limit', { exact: true })).toBeVisible();
+        await expect(page.getByText('Subscribe to a subject to start monitoring')).toBeVisible();
 
-        // We don't click because it initiates an SSE connection which might hang in tests 
-        // unless mocked, but we verify the UI components are present.
-        await expect(page.getByPlaceholder('Subject or pattern')).toHaveValue('>');
     });
 });
+

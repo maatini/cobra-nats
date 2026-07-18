@@ -1,8 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { seedConnection } from './helpers';
+import {
+    seedConnection,
+    createStreamViaUi,
+    gotoStreamDetail,
+    deleteStreamViaUi,
+} from './helpers';
 
 /**
- * End-to-end coverage for the two critical features added in Priority 1:
+ * End-to-end coverage for:
  *   - Message Browser (stream detail → Messages tab)
  *   - Consumer Creation Dialog (stream detail → Consumers tab)
  *
@@ -23,19 +28,7 @@ test.describe('Consumer Creation + Message Browser', () => {
         const consumerName = 'e2e-pull';
 
         // --- 1. Create stream ---
-        await page.goto('/streams');
-        await expect(page.getByRole('button', { name: 'Create Stream', exact: true })).toBeVisible({ timeout: 10000 });
-        await page.getByRole('button', { name: 'Create Stream', exact: true }).click();
-        await page.getByLabel('Stream Name').fill(streamName);
-        await page.getByLabel('Subjects').fill(`${streamName}.>`);
-        // Scope submit click to the dialog and fire a native DOM click — the Radix
-        // open animation can micro-shift the submit button, tripping Playwright's
-        // stability check.
-        await page
-            .getByRole('dialog')
-            .getByRole('button', { name: 'Create Stream', exact: true })
-            .evaluate((el: HTMLButtonElement) => el.click());
-        await expect(page.getByText(`Stream "${streamName}" created successfully`)).toBeVisible({ timeout: 15000 });
+        await createStreamViaUi(page, streamName);
 
         // --- 2. Publish a JSON message to the stream's subject ---
         await page.getByRole('link', { name: 'Publish', exact: true }).click();
@@ -45,25 +38,8 @@ test.describe('Consumer Creation + Message Browser', () => {
         await page.getByRole('button', { name: 'Publish Message' }).click();
         await expect(page.getByText('Message published')).toBeVisible({ timeout: 10000 });
 
-        // --- 3. Navigate to stream detail page ---
-        await page.getByRole('link', { name: 'Streams', exact: true }).click();
-        await expect(page.getByText('Loading streams...')).not.toBeVisible({ timeout: 10000 });
-        await page.getByPlaceholder('Search streams...').fill(streamName);
-        const row = page.locator('tr', { hasText: streamName });
-        await row.getByRole('button', { name: 'Open menu' }).click();
-        // Radix dropdown animation makes the menuitem unstable; force-click
-        // after the element appears to avoid the detach/stability race.
-        const menuItem = page.getByRole('menuitem', { name: 'View Details' });
-        await menuItem.waitFor({ state: 'attached', timeout: 5000 });
-        // The menuitem is an <a href> — navigate directly instead of clicking
-        // to avoid Radix event-handling races.
-        const href = await menuItem.getAttribute("href");
-        if (href) {
-            await page.goto(href);
-        } else {
-            await menuItem.click({ force: true });
-        }
-        await expect(page).toHaveURL(new RegExp(`\/streams\/${streamName}`));
+        // --- 3. Navigate to stream detail (direct URL — no dropdown race) ---
+        await gotoStreamDetail(page, streamName);
 
         // --- 4. Message Browser: load and verify the published message ---
         await page.getByRole('tab', { name: /Messages/ }).click();
@@ -111,53 +87,14 @@ test.describe('Consumer Creation + Message Browser', () => {
         await expect(page.getByText('Consumer deleted')).toBeVisible({ timeout: 10000 });
 
         // --- 6. Delete stream via Radix confirm dialog ---
-        await page.getByRole('button', { name: 'Delete', exact: true }).click();
-        const confirmDialog = page.getByRole('dialog');
-        await expect(confirmDialog.getByText(/Delete stream/)).toBeVisible();
-        await confirmDialog.getByLabel('Confirm name').fill(streamName);
-        await confirmDialog.getByRole('button', { name: 'Delete Stream' }).click();
-        await expect(page.getByText('Stream deleted')).toBeVisible({ timeout: 10000 });
-        await expect(page).toHaveURL(/\/streams/);
+        await deleteStreamViaUi(page, streamName);
     });
 
     test('cancel on confirm dialog keeps the stream alive', async ({ page }) => {
         const streamName = `TEST_CANCEL_${Date.now()}`;
 
-        // Create a disposable stream
-        await page.goto('/streams');
-        await expect(page.getByRole('button', { name: 'Create Stream', exact: true })).toBeVisible({ timeout: 10000 });
-        await page.getByRole('button', { name: 'Create Stream', exact: true }).click();
-        await page.getByLabel('Stream Name').fill(streamName);
-        await page.getByLabel('Subjects').fill(`${streamName}.>`);
-        // Scope submit click to the dialog and fire a native DOM click — the Radix
-        // open animation can micro-shift the submit button, tripping Playwright's
-        // stability check.
-        await page
-            .getByRole('dialog')
-            .getByRole('button', { name: 'Create Stream', exact: true })
-            .evaluate((el: HTMLButtonElement) => el.click());
-        await expect(page.getByText(`Stream "${streamName}" created successfully`)).toBeVisible({ timeout: 15000 });
-
-        // Wait for the post-create refetch to settle, then filter.
-        await page.waitForTimeout(2000);
-        await page.getByPlaceholder('Search streams...').fill(streamName);
-
-        const row = page.locator('tr', { hasText: streamName });
-        await expect(row).toBeVisible({ timeout: 10000 });
-        await row.getByRole('button', { name: 'Open menu' }).click();
-        // Radix dropdown animation makes the menuitem unstable; force-click
-        // after the element appears to avoid the detach/stability race.
-        const menuItem = page.getByRole('menuitem', { name: 'View Details' });
-        await menuItem.waitFor({ state: 'attached', timeout: 5000 });
-        // The menuitem is an <a href> — navigate directly instead of clicking
-        // to avoid Radix event-handling races.
-        const href = await menuItem.getAttribute("href");
-        if (href) {
-            await page.goto(href);
-        } else {
-            await menuItem.click({ force: true });
-        }
-        await expect(page).toHaveURL(new RegExp(`\/streams\/${streamName}`));
+        await createStreamViaUi(page, streamName);
+        await gotoStreamDetail(page, streamName);
 
         // Open confirm dialog then cancel
         await page.getByRole('button', { name: 'Delete', exact: true }).click();
@@ -170,10 +107,6 @@ test.describe('Consumer Creation + Message Browser', () => {
         await expect(page.getByRole('heading', { name: streamName, exact: true })).toBeVisible();
 
         // Now actually delete for cleanup
-        await page.getByRole('button', { name: 'Delete', exact: true }).click();
-        const cleanupDialog = page.getByRole('dialog');
-        await cleanupDialog.getByLabel('Confirm name').fill(streamName);
-        await cleanupDialog.getByRole('button', { name: 'Delete Stream' }).click();
-        await expect(page.getByText('Stream deleted')).toBeVisible({ timeout: 10000 });
+        await deleteStreamViaUi(page, streamName);
     });
 });
