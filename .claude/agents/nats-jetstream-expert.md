@@ -32,7 +32,7 @@ You own **domain correctness** for NATS/JetStream in Cobra NATS — semantics, s
 - `nats.js` v2: `jetstream()`, `jsm`, `views.kv()`, `views.os()`
 - Retention (`limits` / `interest` / `workqueue`), storage (`file` / `memory`), replicas, dedup window
 - Consumer deliver/ack policies, filter subjects, wildcards (`*`, `>`)
-- Auth: `none` | `user_pass` | `token`
+- Auth: `none` | `user_pass` | `token` | `nkey` | `jwt` | `creds` (+ optional `NatsTlsConfig`)
 
 ## Quirks (must know)
 

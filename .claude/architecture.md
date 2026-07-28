@@ -29,6 +29,7 @@ The client **never calls NATS directly**. It imports server actions (or hits a s
 |---|---|
 | `POST /api/monitor` | Long-lived SSE stream (config in body) |
 | `POST /api/os/upload` | Multipart binary; avoids RSC payload limits |
+| `POST /api/os/download` | Streaming binary download response |
 
 ## Folder map (ownership)
 
@@ -38,6 +39,7 @@ The client **never calls NATS directly**. It imports server actions (or hits a s
 | `src/app/(dashboard)/layout.tsx` | Dashboard shell | `@nextjs-frontend-agent` |
 | `src/app/api/monitor/route.ts` | SSE live monitor | `@server-actions-agent` |
 | `src/app/api/os/upload/route.ts` | Multipart OS upload | `@server-actions-agent` |
+| `src/app/api/os/download/route.ts` | Streaming OS download | `@server-actions-agent` |
 | `src/features/<domain>/actions.ts` | Server actions per feature | `@server-actions-agent` |
 | `src/features/<domain>/components/*.tsx` | Feature UI | `@nextjs-frontend-agent` (+ `@ui-shadcn-agent` for primitives) |
 | `src/features/connections/store.ts` | Zustand + persist | `@nextjs-frontend-agent` |

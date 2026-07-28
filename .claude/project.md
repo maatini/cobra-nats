@@ -3,7 +3,7 @@
 **Owns**: product map (features, routes, NATS conventions, palette, setup).  
 **Does not own**: code patterns (→ `rules.md`), folder ownership (→ `architecture.md`).
 
-**Version**: 0.5.2 (see `package.json`)  
+**Version**: 0.6.0 (truth is `package.json`)  
 **Goal**: The fastest and most beautiful NATS/JetStream management UI.
 
 ## Features & routes
@@ -33,7 +33,7 @@ The server creates prefixed streams for KV and OS:
 
 - **Store**: `src/features/connections/store.ts` (Zustand + `persist`, localStorage key **`cobra-nats-storage`** / `CONNECTIONS_STORAGE_KEY`).
 - **Active connection**: `useActiveConnection()` hook.
-- **Auth types**: `none` | `user_pass` | `token`.
+- **Auth types**: `none` | `user_pass` | `token` | `nkey` | `jwt` | `creds` (`NatsAuthType` in `types/nats.ts`). Optional TLS via `NatsTlsConfig` (PEM strings on the connection config).
 - **Singleton pool**: `natsManager` in `src/lib/nats/manager.ts` — NC, JSM, and JS per connection ID.
 - **Monitor connection**: dedicated ID `monitor-${id}-${ts}` so it does not collide with other ops.
 

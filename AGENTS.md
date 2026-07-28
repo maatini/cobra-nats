@@ -27,6 +27,17 @@ Built-ins still apply: `explore`, `plan`, `general-purpose`.
 Auto-scanned Grok rule stubs: `.grok/rules/*.md` (pointers only — no pattern dumps).  
 Context compaction: `.grok/rules/00-context-management.md` (and global `~/.grok/AGENTS.md`).
 
+## Project skills (`.grok/skills/`)
+
+| Skill | Use when |
+|---|---|
+| `cobra-new-feature` | New domain/feature end-to-end (types → actions → UI → route → E2E) |
+| `cobra-new-action` | New or refactored Server Action / API boundary work |
+| `cobra-e2e` | Playwright specs, seed key, flaky E2E against real NATS |
+| `cobra-verify-prompts` | Prompt/agent docs drift vs live tree |
+
+Product invariants + mental model: `CLAUDE.md`.
+
 ## Server boundary (do not regress)
 
 NATS never runs in the browser. Default: Server Actions + wrappers. Exceptions:

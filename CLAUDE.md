@@ -3,6 +3,15 @@
 **What**: Web UI for NATS/JetStream (Streams, Consumers, KV, Object Store, Publish/Request, Live Monitor).
 **Stack**: Next.js 16 App Router · React 19 · TypeScript 6 strict · Tailwind v4 · shadcn/ui (New York) · Zustand · Playwright · `nats` v2.29.
 
+## Mental model
+
+```
+Client → Server Action | intentional API → withJetStream / withNatsConnection → NatsManager → NATS
+```
+
+**Never:** `nats` in the browser · secrets in query strings · actions outside `src/features/<domain>/`.  
+**Open on demand:** `.claude/rules.md` (patterns) · `architecture.md` (where) · `project.md` (routes/palette) · `docs/knowledge-base/` (depth).
+
 ## Layout (where code lives)
 
 | Path | Role |
@@ -40,5 +49,6 @@ Feature folders today: `connections`, `dashboard`, `streams`, `kv`, `os`, `publi
 | `.claude/rules.md` | How to work + mandatory code patterns (actions, client, forms, Playwright) |
 | `.claude/agents/*.md` | Specialized personas (ownership + deltas only); mirrored for Grok via `.grok/agents/` symlinks |
 | `.grok/rules/*.md` | Short auto-scanned pointers into the files above (no pattern dumps) |
+| `.grok/skills/cobra-*` | Task skills: new-feature, new-action, e2e, verify-prompts (index in `AGENTS.md`) |
 
 Do **not** paste full patterns into this file — they live once in `.claude/rules.md`.
