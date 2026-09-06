@@ -3,13 +3,19 @@
 import * as React from "react";
 import type { ConsumerStats } from "@/features/streams/actions";
 import {
-    ColumnDef,
+    createPaginatedRowModel,
+    createSortedRowModel,
     flexRender,
-    getCoreRowModel,
-    useReactTable,
-    getPaginationRowModel,
-    getSortedRowModel,
-    SortingState,
+    rowPaginationFeature,
+    rowSortingFeature,
+    sortFn_alphanumeric,
+    sortFn_text,
+    tableFeatures,
+    useTable,
+    type ColumnDef,
+    type OnChangeFn,
+    type PaginationState,
+    type SortingState,
 } from "@tanstack/react-table";
 import type { StreamInfoDto } from "@/types/nats";
 import {
@@ -54,6 +60,18 @@ interface StreamTableProps {
 }
 
 const URL_DEFAULTS = { q: "", sort: "", dir: "asc", page: 0 };
+const PAGE_SIZE = 10;
+
+const streamTableFeatures = tableFeatures({
+    rowSortingFeature,
+    rowPaginationFeature,
+    sortedRowModel: createSortedRowModel(),
+    paginatedRowModel: createPaginatedRowModel(),
+    sortFns: {
+        alphanumeric: sortFn_alphanumeric,
+        text: sortFn_text,
+    },
+});
 
 export function StreamTable({ data, consumerStats, onDelete, onRefresh, isLoading }: StreamTableProps) {
     const router = useRouter();
@@ -65,7 +83,7 @@ export function StreamTable({ data, consumerStats, onDelete, onRefresh, isLoadin
         () => (urlState.sort ? [{ id: urlState.sort, desc: urlState.dir === "desc" }] : []),
         [urlState.sort, urlState.dir]
     );
-    const setSorting = (updater: SortingState | ((old: SortingState) => SortingState)) => {
+    const setSorting: OnChangeFn<SortingState> = (updater) => {
         const next = typeof updater === "function" ? updater(sorting) : updater;
         const head = next[0];
         setUrlState({ sort: head?.id ?? "", dir: head?.desc ? "desc" : "asc" });
@@ -78,7 +96,7 @@ export function StreamTable({ data, consumerStats, onDelete, onRefresh, isLoadin
         );
     }, [data, filter]);
 
-    const columns: ColumnDef<StreamInfoDto>[] = [
+    const columns: ColumnDef<typeof streamTableFeatures, StreamInfoDto>[] = [
         {
             accessorKey: "config.name",
             header: "Name",
@@ -230,24 +248,24 @@ export function StreamTable({ data, consumerStats, onDelete, onRefresh, isLoadin
         },
     ];
 
-    const table = useReactTable({
+    const pagination: PaginationState = {
+        pageIndex: urlState.page,
+        pageSize: PAGE_SIZE,
+    };
+
+    const table = useTable({
+        features: streamTableFeatures,
         data: filteredData,
         columns,
-        getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
         onSortingChange: setSorting,
-        getSortedRowModel: getSortedRowModel(),
         state: {
             sorting,
-            pagination: { pageIndex: urlState.page, pageSize: 10 },
+            pagination,
         },
-        onPaginationChange: updater => {
-            const next = typeof updater === "function"
-                ? updater({ pageIndex: urlState.page, pageSize: 10 })
-                : updater;
+        onPaginationChange: (updater) => {
+            const next = typeof updater === "function" ? updater(pagination) : updater;
             setUrlState({ page: next.pageIndex });
         },
-        manualPagination: false,
     });
 
     return (
@@ -299,7 +317,7 @@ export function StreamTable({ data, consumerStats, onDelete, onRefresh, isLoadin
                                     onClick={() => router.push(`/streams/${row.original.config.name}`)}
                                     className="border-border hover:bg-muted/50 transition-colors cursor-pointer"
                                 >
-                                    {row.getVisibleCells().map((cell) => (
+                                    {row.getAllCells().map((cell) => (
                                         <TableCell key={cell.id} className="py-3">
                                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </TableCell>
