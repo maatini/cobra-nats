@@ -1,0 +1,81 @@
+# mise.toml — reproducible toolchain for cobra-nats
+#
+# This file pins Node.js (Next.js 16 UI) and Python (CrewAI crew) so every
+# developer gets the same versions via `mise install`.
+#
+# Coexistence with devbox.json
+# ----------------------------
+# - devbox.json  Nix env with nats-server, natscli, nodejs_20, jq, curl.
+#                Use it when you need a local JetStream broker (`devbox run nats:up`).
+# - mise.toml    Language runtimes for the UI and the CrewAI project.
+#                Node here is 22 LTS (README requires ≥ 20; Dockerfile uses
+#                node:26-alpine for production images). Python is 3.12 because
+#                CrewAI requires >=3.10,<3.14.
+#
+# Quick start
+# -----------
+#   mise install          # download Node 22 + Python 3.12 + uv
+#   eval "$(mise activate zsh)"   # or: mise activate
+#   mise run setup        # npm install + uv sync for the crew
+#   mise run dev          # Next.js on :3000
+#   mise run crew         # start the CrewAI analysis crew
+#
+# Docs: https://mise.jdx.dev/
+
+[tools]
+# Next.js 16 / React 19 — 22 is the current Maintenance LTS and satisfies ≥ 20.
+node = "22"
+
+# CrewAI 1.15 supports 3.10–3.13. Pin 3.12 (stable, widely packaged).
+python = "3.12"
+
+# uv drives the crewai/ virtualenv (pyproject.toml).
+uv = "latest"
+
+[env]
+# Disable Next.js anonymous telemetry in every mise-managed shell.
+NEXT_TELEMETRY_DISABLED = "1"
+
+# CrewAI OpenTelemetry is noisy for local analysis runs.
+CREWAI_DISABLE_TELEMETRY = "true"
+
+# ---------------------------------------------------------------------------
+# Tasks  (`mise run <name>`)
+# ---------------------------------------------------------------------------
+
+[tasks.setup]
+description = "Install npm dependencies and the CrewAI Python env"
+run = [
+  "npm install",
+  "uv sync --project crewai --all-extras",
+]
+
+[tasks.dev]
+description = "Start the Next.js development server"
+run = "npm run dev"
+
+[tasks.build]
+description = "Build the Next.js production bundle"
+run = "npm run build"
+
+[tasks.lint]
+description = "Run ESLint"
+run = "npm run lint"
+
+[tasks.test]
+description = "Run Playwright E2E tests (Chromium project)"
+run = "npm run test"
+
+[tasks."test:e2e"]
+description = "Run Playwright E2E tests (alias of test)"
+run = "npm run test:e2e"
+
+[tasks.crew]
+description = "Run the CrewAI cobra-nats development crew"
+dir = "crewai"
+run = "uv run python -m cobra_nats_crew.main"
+
+[tasks."crew:check"]
+description = "Validate CrewAI config and imports without calling an LLM"
+dir = "crewai"
+run = "uv run python -m cobra_nats_crew.main --check"

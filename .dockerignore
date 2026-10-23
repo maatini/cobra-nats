@@ -13,5 +13,11 @@ Dockerfile
 .dockerignore
 README.md
 .claude
+.grok
+crewai
+docs
+mise.toml
+devbox.json
+devbox.lock
 coverage
 *.log

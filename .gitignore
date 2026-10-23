@@ -37,7 +37,25 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# python / CrewAI
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+crewai/.venv/
+crewai/.crewai/
+crewai/.checkpoints/
+crewai/output/*
+!crewai/output/.gitkeep
+
+# mise local overrides (mise.toml is committed)
+mise.local.toml
+.mise.local.toml
 
 # vercel
 .vercel
