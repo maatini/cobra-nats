@@ -21,7 +21,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "lucide-react": "^1.57.0",
+    "lucide-react": "^1.60.0",
     "marked": "^18.1.1",
     "nats": "^2.29.3",
     "next": "^16.4.2",
