@@ -19,6 +19,7 @@ import type {
 import { withJetStream, type ActionResponse } from "@/lib/server-action";
 import { serializeStreamInfo, serializeConsumerInfo } from "@/lib/nats/serialize";
 import { StreamMessagesOptionsSchema, parseNatsConnectionConfig } from "@/lib/validation/nats";
+import { StreamConfigImportSchema } from "@/features/streams/stream-form-utils";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Streams
@@ -45,6 +46,21 @@ export async function createStream(
 ): Promise<ActionResponse<StreamInfoDto>> {
     return withJetStream(config, "createStream", async ({ jsm }) => {
         const info = await jsm.streams.add(streamConfig);
+        return serializeStreamInfo(info);
+    });
+}
+
+/** Create a stream from exported config JSON; this does not restore messages. */
+export async function importStreamConfig(
+    config: NatsConnectionConfig,
+    input: unknown
+): Promise<ActionResponse<StreamInfoDto>> {
+    const parsed = StreamConfigImportSchema.safeParse(input);
+    if (!parsed.success) {
+        return { success: false, error: parsed.error.issues.map((issue) => issue.message).join("; ") };
+    }
+    return withJetStream(config, "importStreamConfig", async ({ jsm }) => {
+        const info = await jsm.streams.add(parsed.data as StreamConfig);
         return serializeStreamInfo(info);
     });
 }
@@ -142,17 +158,12 @@ export async function getJetStreamAccountInfo(
                 maxStreams: info.limits.max_streams,
                 maxConsumers: info.limits.max_consumers,
             },
-            api: {
-                total: info.api.total,
-                errors: info.api.errors,
-            },
+            api: { total: info.api.total, errors: info.api.errors },
         };
     });
 }
 
-/**
- * Fetch messages from a stream by sequence range, with optional subject filter.
- */
+/** Fetch messages from a stream by sequence range, with optional subject filter. */
 export async function getStreamMessages(
     config: NatsConnectionConfig,
     streamName: string,
@@ -167,42 +178,33 @@ export async function getStreamMessages(
     return withJetStream(parsedConfig.data, "getStreamMessages", async ({ jsm }) => {
         const validatedOptions = parsedOptions.data;
         const batchSize = validatedOptions.batchSize ?? 25;
-
         const info = await jsm.streams.info(streamName);
         const firstSeq = info.state.first_seq;
         const lastSeq = info.state.last_seq;
-
         const startSeq = validatedOptions.startSeq ?? firstSeq;
         const endSeq = validatedOptions.endSeq ?? lastSeq;
 
-        if (startSeq > lastSeq || endSeq < firstSeq) {
-            return { messages: [], hasMore: false };
-        }
+        if (startSeq > lastSeq || endSeq < firstSeq) return { messages: [], hasMore: false };
 
         const messages: StreamMessage[] = [];
         let currentSeq = startSeq;
-
         while (currentSeq <= endSeq && messages.length < batchSize) {
             try {
                 const msg = await jsm.streams.getMessage(streamName, { seq: currentSeq });
-
                 if (validatedOptions.subjectFilter && !subjectMatches(msg.subject, validatedOptions.subjectFilter)) {
                     currentSeq++;
                     continue;
                 }
-
                 const headers: Record<string, string[]> = {};
                 if (msg.header) {
-                    for (const [key, values] of msg.header) {
-                        headers[key] = values;
-                    }
+                    for (const [key, values] of msg.header) headers[key] = values;
                 }
-
                 messages.push({
                     seq: msg.seq,
                     subject: msg.subject,
                     timestamp: msg.timestamp,
                     data: msg.string(),
+                    dataBase64: Buffer.from(msg.data).toString("base64"),
                     headers,
                     size: msg.data.length,
                 });
@@ -215,28 +217,21 @@ export async function getStreamMessages(
             }
             currentSeq++;
         }
-
-        return {
-            messages,
-            hasMore: currentSeq <= endSeq,
-        };
+        return { messages, hasMore: currentSeq <= endSeq };
     });
 }
 
 // NATS subject matcher with * and > wildcards.
 function subjectMatches(subject: string, filter: string): boolean {
     if (filter === ">") return true;
-
     const subParts = subject.split(".");
     const filterParts = filter.split(".");
-
     for (let i = 0; i < filterParts.length; i++) {
         if (filterParts[i] === ">") return true;
         if (i >= subParts.length) return false;
         if (filterParts[i] === "*") continue;
         if (filterParts[i] !== subParts[i]) return false;
     }
-
     return subParts.length === filterParts.length;
 }
 
@@ -252,9 +247,7 @@ export async function listConsumers(
     return withJetStream(config, "listConsumers", async ({ jsm }) => {
         const iter = await jsm.consumers.list(stream);
         const consumerList: ConsumerInfoDto[] = [];
-        for await (const c of iter) {
-            consumerList.push(serializeConsumerInfo(c));
-        }
+        for await (const c of iter) consumerList.push(serializeConsumerInfo(c));
         return { consumers: consumerList };
     });
 }
@@ -294,10 +287,7 @@ export async function getConsumerInfo(
     });
 }
 
-/**
- * Update a durable consumer. Only fields allowed by `ConsumerUpdateConfig`
- * (ack_wait, max_deliver, filter_subject, max_ack_pending, …) may change.
- */
+/** Update a durable consumer. Only fields allowed by `ConsumerUpdateConfig` may change. */
 export async function updateConsumer(
     config: NatsConnectionConfig,
     stream: string,
@@ -310,43 +300,33 @@ export async function updateConsumer(
     });
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Consumer Stats
-// ──────────────────────────────────────────────────────────────────────────────
-
 export interface ConsumerStats {
     consumers: number;
     pending: number;
     ackPending: number;
 }
 
-/**
- * Aggregated consumer stats for multiple streams in a single round-trip.
- */
+/** Aggregated consumer stats for multiple streams in a single round-trip. */
 export async function getStreamConsumerStats(
     config: NatsConnectionConfig,
     streamNames: string[]
 ): Promise<ActionResponse<Record<string, ConsumerStats>>> {
     return withJetStream(config, "getStreamConsumerStats", async ({ jsm }) => {
         const result: Record<string, ConsumerStats> = {};
-
-        await Promise.all(
-            streamNames.map(async (name) => {
-                const stats: ConsumerStats = { consumers: 0, pending: 0, ackPending: 0 };
-                try {
-                    const iter = await jsm.consumers.list(name);
-                    for await (const c of iter) {
-                        stats.consumers++;
-                        stats.pending += c.num_pending ?? 0;
-                        stats.ackPending += c.num_ack_pending ?? 0;
-                    }
-                } catch {
-                    // Stream may have been deleted between list and fetch — ignore.
+        await Promise.all(streamNames.map(async (name) => {
+            const stats: ConsumerStats = { consumers: 0, pending: 0, ackPending: 0 };
+            try {
+                const iter = await jsm.consumers.list(name);
+                for await (const c of iter) {
+                    stats.consumers++;
+                    stats.pending += c.num_pending ?? 0;
+                    stats.ackPending += c.num_ack_pending ?? 0;
                 }
-                result[name] = stats;
-            })
-        );
-
+            } catch {
+                // Stream may have been deleted between list and fetch — ignore.
+            }
+            result[name] = stats;
+        }));
         return result;
     });
 }

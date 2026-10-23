@@ -182,6 +182,7 @@ mise run setup               # npm install + uv sync for crewai/
 | CrewAI crew | `mise run crew` |
 | CrewAI config check (no LLM) | `mise run crew:check` |
 | CrewAI implementation crew | `mise run crew:implement` |
+| CrewAI product+hygiene crew | `mise run crew:product` |
 
 `NEXT_TELEMETRY_DISABLED=1` is set automatically in mise-managed shells.
 
@@ -218,6 +219,9 @@ Connection profiles currently persist in browser `localStorage` under the key `c
 | `none` | — |
 | `user_pass` | Username + Password |
 | `token` | Token |
+| `nkey` | NKey seed |
+| `jwt` | User JWT (NKey seed optional) |
+| `creds` | Credentials file contents |
 
 ---
 
@@ -374,7 +378,7 @@ npx playwright test tests/functional-streams.spec.ts tests/functional-messaging.
 
 ## 🔒 Security Notes
 
-- NATS client connections are created server-side via Server Actions or the three documented API routes; the `nats` client is not run in the browser.
+- NATS client connections are created server-side via Server Actions or the documented API routes; the `nats` client is not run in the browser.
 - Connection profiles currently persist in browser `localStorage` under `cobra-nats-storage`, including configured auth fields. Treat browser storage as client-accessible; this documentation makes no claim that secrets are absent from the browser.
 - Monitor connection config is sent in a POST body, not in the URL/query string.
 - HTTP monitoring permits local targets such as `http://localhost:8222`, while rejecting link-local and recognized cloud metadata hosts. It allows only HTTP(S), rejects URL credentials/query/fragments and redirects, and limits paths to the supported monitoring endpoints.
@@ -405,6 +409,7 @@ npx playwright test tests/functional-streams.spec.ts tests/functional-messaging.
 mise run crew:check         # validate agents/tasks without an LLM
 mise run crew               # analysis run — needs keys in crewai/.env
 mise run crew:implement     # apply actions 1, 3–10 from the executive brief (skip 2)
+mise run crew:product       # product (visible) + hygiene — see crewai/knowledge/product_hygiene_brief.md
 ```
 
 Setup, agents, and output files: [crewai/README.md](./crewai/README.md). Copy [crewai/.env.example](./crewai/.env.example) to `crewai/.env` and set `OPENROUTER_API_KEY` (LiteLLM `MODEL=openrouter/…`) plus an optional `GITHUB_TOKEN` for remote-repo search.
@@ -414,4 +419,3 @@ Setup, agents, and output files: [crewai/README.md](./crewai/README.md). Copy [c
 ## 📄 License
 
 MIT
-

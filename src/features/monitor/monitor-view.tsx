@@ -25,15 +25,17 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { JsonViewer, tryParseJson } from "@/components/ui/json-viewer";
+import { tryParseJson } from "@/components/ui/json-viewer";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { formatDate } from "@/lib/date-format";
 import { buildPublishReplayHref } from "@/lib/publish-replay";
+import { PayloadViewer } from "@/components/ui/payload-viewer";
 
 interface NatsMessage {
     timestamp: number;
     subject: string;
     data: string;
+    dataBase64?: string;
     size: number;
     headers?: Record<string, string>;
 }
@@ -498,7 +500,7 @@ export function MonitorView() {
                                                     <ChevronRight className="size-3" />
                                                 )}
                                                 <span className="tabular-nums font-mono">
-                                                    {format(msg.timestamp, "HH:mm:ss.SSS")}
+                                                    {formatDate(msg.timestamp, { hour: "2-digit", minute: "2-digit", second: "2-digit", fractionalSecondDigits: 3, hour12: false })}
                                                 </span>
                                             </div>
                                             <div className="font-mono font-medium text-amber-400 truncate">
@@ -555,12 +557,7 @@ export function MonitorView() {
                                                         </div>
                                                     </div>
                                                     <div className="overflow-auto max-h-[300px]">
-                                                        <JsonViewer
-                                                            value={msg.data}
-                                                            className="text-xs"
-                                                            rawClassName="text-xs text-indigo-300"
-                                                            showBadge
-                                                        />
+                                                        <PayloadViewer payload={msg.data} base64={msg.dataBase64} />
                                                     </div>
 
                                                     {msg.headers && Object.keys(msg.headers).length > 0 && (

@@ -121,6 +121,7 @@ export function createMonitorStream({
                                 timestamp: Date.now(),
                                 subject: msg.subject,
                                 data: msg.string(),
+                                dataBase64: Buffer.from(msg.data).toString("base64"),
                                 size: msg.data.length,
                                 headers,
                             })

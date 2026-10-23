@@ -12,13 +12,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trash2, Clock, Eye } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatRelativeTime } from "@/lib/date-format";
 import { CreateConsumerDialog } from "./create-consumer-dialog";
 
 function lastActiveLabel(c: ConsumerInfoDto): string {
     if (c.ts) {
         try {
-            return formatDistanceToNow(new Date(c.ts), { addSuffix: true });
+            return formatRelativeTime(c.ts);
         } catch {
             // fall through
         }
@@ -26,12 +26,12 @@ function lastActiveLabel(c: ConsumerInfoDto): string {
     const nanos = c.delivered?.last_active;
     if (nanos && Number(nanos) > 1e15) {
         try {
-            return formatDistanceToNow(new Date(Number(nanos) / 1e6), { addSuffix: true });
+            return formatRelativeTime(Number(nanos) / 1e6);
         } catch {
             // fall through
         }
     }
-    return formatDistanceToNow(new Date(c.created), { addSuffix: true }) + " (created)";
+    return formatRelativeTime(c.created) + " (created)";
 }
 
 export function ConsumerList({

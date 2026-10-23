@@ -17,7 +17,7 @@ Client → Server Action | intentional API → withJetStream / withNatsConnectio
 | Path | Role |
 |---|---|
 | `src/app/(dashboard)/` | Routes only — thin pages that render feature UI |
-| `src/app/api/` | REST/SSE routes when Server Actions are insufficient (`monitor` SSE, `os/upload` multipart, `os/download` stream) |
+| `src/app/api/` | REST/SSE routes when Server Actions are insufficient (`monitor` and `kv/watch` SSE, `os/upload` multipart, `os/download` stream) |
 | `src/features/<domain>/` | Domain module: `actions.ts` (or `stream.ts`), `components/`, optional store/hooks |
 | `src/components/ui/` | shadcn primitives — add via CLI, do not hand-author replacements |
 | `src/components/layout/` | App chrome (sidebar, topbar, command palette, shortcuts, …) |
@@ -50,5 +50,8 @@ Feature folders today: `connections`, `dashboard`, `streams`, `kv`, `os`, `publi
 | `.claude/agents/*.md` | Specialized personas (ownership + deltas only); mirrored for Grok via `.grok/agents/` symlinks |
 | `.grok/rules/*.md` | Short auto-scanned pointers into the files above (no pattern dumps) |
 | `.grok/skills/cobra-*` | Task skills: new-feature, new-action, e2e, verify-prompts (index in `AGENTS.md`) |
+
+Do **not** paste full patterns into this file — they live once in `.claude/rules.md`.
+ (index in `AGENTS.md`) |
 
 Do **not** paste full patterns into this file — they live once in `.claude/rules.md`.

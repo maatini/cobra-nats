@@ -1,5 +1,6 @@
 import { expect, type Page, type TestInfo } from "@playwright/test";
 import { randomUUID } from "node:crypto";
+import { createConnection } from "node:net";
 import { mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -30,6 +31,20 @@ async function mkdtempForTest(testInfo: TestInfo): Promise<string> {
     const dir = path.join(os.tmpdir(), "cobra-nats-playwright", `${testInfo.workerIndex}-${randomUUID()}`);
     await mkdir(dir, { recursive: true });
     return dir;
+}
+
+/** Check whether the local NATS TCP endpoint is accepting connections. */
+export async function isLocalNatsAvailable(): Promise<boolean> {
+    return new Promise((resolve) => {
+        const socket = createConnection({ host: "127.0.0.1", port: 4222 });
+        const finish = (available: boolean) => {
+            socket.destroy();
+            resolve(available);
+        };
+        socket.setTimeout(1000, () => finish(false));
+        socket.once("connect", () => finish(true));
+        socket.once("error", () => finish(false));
+    });
 }
 
 export type SeedConnectionOptions = {

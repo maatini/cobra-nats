@@ -1,21 +1,25 @@
 # Architectural Decisions
 
-## ADR-001: Server-side NATS (Server Actions by default)
+## ADR-001: Server-side NATS execution and API transport exceptions
 
-**Decision**: NATS never runs in the browser. The default transport is a Next.js Server Action (`features/*/actions.ts` + `withNatsConnection` / `withJetStream`). Intentional exceptions use App Router API routes when Actions are the wrong tool:
-- `POST /api/monitor` — long-lived SSE with config in JSON body (`features/monitor/stream.ts`)
-- `POST /api/os/upload` — multipart binary (avoids RSC payload limits)
-- `POST /api/os/download` — streaming binary (avoids base64-encoding entire objects in memory)
+**Decision**: NATS client operations execute on the Next.js server. The default transport is a Server Action (`features/*/actions.ts` + `withNatsConnection` / `withJetStream`). App Router API routes are intentional exceptions where the operation needs a streaming or binary HTTP response:
+- `POST /api/monitor` — long-lived SSE with connection config and subject in the JSON body (`features/monitor/stream.ts`)
+- `POST /api/kv/watch` — long-lived KV watcher SSE with connection config and bucket in the JSON body (`features/kv/stream.ts`); it uses a dedicated connection and closes it when the request is aborted
+- `POST /api/os/upload` — multipart binary upload (avoids RSC payload limits)
+- `POST /api/os/download` — streaming binary download (avoids base64-encoding entire objects in memory)
+
+SSE routes accept request data in the POST body, not query strings. The KV watcher route validates its JSON request against `KVWatchRequestSchema` before starting the stream. API routes are server entry points and require their own request validation and resource cleanup; they do not inherit Server Action wrappers.
 
 **Rationale**:
-- Credentials never reach the browser.
-- The `nats` package imports Node.js builtins (`dns`, `fs`) that can't run in browsers.
-- Server Actions provide RPC-style serialization with full TypeScript type safety across the boundary for ordinary CRUD/publish ops.
+- The `nats` package imports Node.js builtins (`dns`, `fs`) that cannot run in browsers.
+- Server Actions provide RPC-style serialization with TypeScript contracts across the boundary for ordinary CRUD/publish operations.
+- Long-lived subscriptions and large binary transfers need response semantics that Server Actions do not provide.
 
 **Trade-offs**:
 - No offline-first capabilities (NATS requires a running server anyway).
-- Slightly higher latency vs. direct WebSocket connection.
-- Streaming and large binaries need dedicated routes instead of Actions.
+- Slightly higher latency versus direct client connections.
+- Streaming and large binaries require dedicated routes rather than Actions.
+- This decision concerns where NATS operations execute; it is not a statement about authentication, authorization, or connection-profile storage policy.
 
 ## ADR-002: Feature-based module organization
 
@@ -31,15 +35,17 @@
 
 ## ADR-003: Singleton NatsManager with connection pooling
 
-**Decision**: `NatsManager` is a singleton class that caches one `NatsConnection` per config ID and one `JetStreamManager` per config ID.
+**Decision**: `NatsManager` remains a singleton. The pool is bounded by `MAX_POOL_SIZE` (32 config IDs). It reuses a live `NatsConnection` per config ID, coalesces concurrent connection attempts for that ID, and uses per-ID generations to prevent work invalidated by `closeConnection()` from repopulating the pool. A `JetStreamManager` is cached only for the exact live connection that created it; pending manager creation is coalesced. `JetStreamClient` is created per use and is not cached.
 
 **Rationale**:
-- NATS connections are stateful (keep-alive, reconnect logic). Creating a new connection per action call would be wasteful and slow.
-- `JetStreamManager` creation involves a request round-trip, so caching it avoids latency.
-- `JetStreamClient` (from `nc.jetstream()`) is NOT cached because it's cheap to create.
+- NATS connections are stateful (keep-alive, reconnect logic). Reusing a connection avoids creating one for every action call.
+- Single-flight creation avoids duplicate concurrent connections for the same config ID.
+- Generation checks prevent late asynchronous connection work from restoring state after a close or replacement.
+- Binding the manager cache to its live connection avoids reusing a stale manager after connection changes.
 
 **Trade-offs**:
-- If a connection dies (e.g., NATS server restarts), the stale connection stays in the cache until `closeConnection()` is called. The `getConnection()` method checks `isClosed()` and reconnects.
+- The pool rejects new IDs when 32 live or connecting IDs are present. Closing an ID removes its connection and cached/in-flight state; a later request may reconnect.
+- The pool key is the config ID; the manager does not make that ID an authorization boundary.
 
 ## ADR-004: NATS enums re-defined, not re-exported
 
@@ -76,8 +82,40 @@
 
 ## ADR-008: Shadcn/ui primitives are generated, never hand-edited
 
-**Decision**: All `src/components/ui/*` files are generated by `npx shadcn add <component>` and must never be manually edited.
+**Decision**: All `src/components/ui/*` files generated by `npx shadcn add <component>` must never be manually edited. Feature-specific viewers (for example payload inspection) live outside that generated set.
 
 **Rationale**:
-- `shadcn add` overwrites the file on the next run, so manual edits would be silently lost.
+- `shadcn add` overwrites the generated primitive on the next run, so manual edits would be silently lost.
 - Custom styling goes through Tailwind classes on the consumer side, not by editing the primitive.
+
+## ADR-009: Browser-local bounded dashboard samples
+
+**Decision**: Dashboard time series live in React state only. Samples are capped at 60, segmented by connection ID and monitoring endpoint, and cleared when there is no active connection. Unavailable metrics stay `null` and are not drawn as zero.
+
+**Rationale**:
+- The roadmap asked for live charts without a database or alerting backend.
+- Connection changes must not mix series from different servers.
+
+## ADR-010: Same-stream message comparison workspaces
+
+**Decision**: Message comparison is a set of independent in-memory browsers for the current stream, capped at four tabs. Tabs do not persist payloads and reset when the active connection or stream changes.
+
+**Rationale**:
+- Operators need to compare positions in one stream without a multi-stream join.
+- Keeping state in memory avoids storing message bodies in `localStorage`.
+
+## ADR-011: Stream configuration import is not backup/restore
+
+**Decision**: JSON stream-config import creates a new empty stream from a validated config (the inverse of config export). It does not restore messages, consumers, or stream state.
+
+**Rationale**:
+- nats.js v2 does not expose a JetStream snapshot/restore API used by this app.
+- Presenting import as backup would be a false recovery path.
+
+## ADR-012: KV watch uses a dedicated SSE connection
+
+**Decision**: Live KV updates use `POST /api/kv/watch` with JSON body validation and a dedicated NATS connection (`kv-watch-${id}-…`), closed on abort. This is an ADR-001 exception, not a Server Action.
+
+**Rationale**:
+- A long-lived KV watcher would occupy the CRUD pool if it reused the shared connection.
+- Credentials stay out of the query string.

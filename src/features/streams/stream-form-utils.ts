@@ -1,7 +1,9 @@
 /**
- * Shared helpers for stream create/edit forms (max age, advanced fields, export).
+ * Shared helpers for stream create/edit forms (max age, advanced fields, export/import).
  * Client-safe — no nats package imports.
  */
+
+import { z } from "zod";
 
 export const MAX_AGE_UNITS = {
     s: { label: "Seconds", ns: 1_000_000_000 },
@@ -53,3 +55,33 @@ export function exportStreamConfig(config: Record<string, unknown>): Record<stri
     }
     return out;
 }
+
+/** Supported configuration fields for JSON import. This is configuration only, not message backup. */
+export const StreamConfigImportSchema = z.object({
+    name: z.string().trim().min(1).max(255),
+    subjects: z.array(z.string()).optional(),
+    retention: z.enum(["limits", "interest", "workqueue"]).optional(),
+    storage: z.enum(["file", "memory"]).optional(),
+    max_consumers: z.number().int().optional(),
+    max_msgs: z.number().int().optional(),
+    max_bytes: z.number().int().optional(),
+    max_age: z.number().nonnegative().optional(),
+    max_msgs_per_subject: z.number().int().optional(),
+    max_msg_size: z.number().int().optional(),
+    discard: z.enum(["old", "new"]).optional(),
+    discard_new_per_subject: z.boolean().optional(),
+    num_replicas: z.number().int().min(1).max(5).optional(),
+    description: z.string().optional(),
+    duplicate_window: z.number().nonnegative().optional(),
+    compression: z.enum(["none", "s2"]).optional(),
+    allow_rollup_hdrs: z.boolean().optional(),
+    deny_delete: z.boolean().optional(),
+    deny_purge: z.boolean().optional(),
+    allow_direct: z.boolean().optional(),
+    mirror_direct: z.boolean().optional(),
+    mirror: z.record(z.string(), z.unknown()).optional(),
+    sources: z.array(z.record(z.string(), z.unknown())).optional(),
+    metadata: z.record(z.string(), z.string()).optional(),
+});
+
+export type StreamConfigImport = z.infer<typeof StreamConfigImportSchema>;

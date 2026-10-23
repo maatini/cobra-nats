@@ -26,7 +26,7 @@ import {
     Layers,
     Search
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatRelativeTime } from "@/lib/date-format";
 
 import {
     Table,
@@ -204,7 +204,7 @@ export function StreamTable({ data, consumerStats, onDelete, onRefresh, isLoadin
                     const date = new Date(row.original.created);
                     return (
                         <span className="text-muted-foreground text-xs">
-                            {formatDistanceToNow(date, { addSuffix: true })}
+                            {formatRelativeTime(date)}
                         </span>
                     );
                 } catch {

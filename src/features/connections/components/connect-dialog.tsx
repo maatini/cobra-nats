@@ -119,11 +119,13 @@ function buildConfigFields(values: FormValues): Omit<NatsConnectionConfig, "id">
 interface ConnectDialogProps {
     trigger?: React.ReactNode;
     editingConfig?: NatsConnectionConfig;
+    open?: boolean;
     onOpenChange?: (open: boolean) => void;
 }
 
-export function ConnectDialog({ trigger, editingConfig, onOpenChange }: ConnectDialogProps) {
-    const [open, setOpen] = React.useState(false);
+export function ConnectDialog({ trigger, editingConfig, open: controlledOpen, onOpenChange }: ConnectDialogProps) {
+    const [internalOpen, setInternalOpen] = React.useState(false);
+    const open = controlledOpen ?? internalOpen;
     const [isTesting, setIsTesting] = React.useState(false);
     const { addConnection, updateConnection } = useNatsStore();
 
@@ -151,7 +153,7 @@ export function ConnectDialog({ trigger, editingConfig, onOpenChange }: ConnectD
     const tlsEnabled = form.watch("tlsEnabled");
 
     const handleOpenChange = (newOpen: boolean) => {
-        setOpen(newOpen);
+        setInternalOpen(newOpen);
         onOpenChange?.(newOpen);
         if (!newOpen) form.reset();
     };

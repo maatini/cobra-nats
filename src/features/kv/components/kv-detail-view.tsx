@@ -20,9 +20,11 @@ import {
     Trash2,
     Search,
     Key,
-    Eye,
     History,
-    RotateCcw,
+    Play,
+    Pause,
+    Wifi,
+    WifiOff,
     Eraser,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,7 +45,7 @@ import { DataTableSkeleton } from "@/components/ui/data-table-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PutEntryDialog } from "@/features/kv/components/put-entry-dialog";
 import Link from "next/link";
-import { format } from "date-fns";
+import { formatDate } from "@/lib/date-format";
 
 export function KVDetailView() {
     const { bucket } = useParams();
@@ -57,6 +59,16 @@ export function KVDetailView() {
     const [selectedEntry, setSelectedEntry] = React.useState<KvEntryResult | null>(null);
     const [history, setHistory] = React.useState<KvEntryResult[]>([]);
     const [isFetchingHistory, setIsFetchingHistory] = React.useState(false);
+    const [isWatching, setIsWatching] = React.useState(false);
+    const [isWatchPaused, setIsWatchPaused] = React.useState(false);
+    const [watchPausedCount, setWatchPausedCount] = React.useState(0);
+    const watchControllerRef = React.useRef<AbortController | null>(null);
+    const watchPausedRef = React.useRef(false);
+    const watchQueueRef = React.useRef<KvEntryResult[]>([]);
+
+    React.useEffect(() => {
+        watchPausedRef.current = isWatchPaused;
+    }, [isWatchPaused]);
 
     const fetchKeys = React.useCallback(async () => {
         if (!activeConnection || !bucket) return;
@@ -75,6 +87,127 @@ export function KVDetailView() {
         fetchKeys();
     }, [fetchKeys]);
 
+    const applyWatchEntry = React.useCallback((entry: KvEntryResult) => {
+        if (entry.operation === "PUT") {
+            setKeys((current) => current.includes(entry.key) ? current : [...current, entry.key].sort());
+            if (selectedEntry?.key === entry.key) {
+                setSelectedEntry(entry);
+                if (activeConnection && bucket) {
+                    void getKVHistory(activeConnection, bucket as string, entry.key).then((result) => {
+                        if (result.success) setHistory(result.data.entries);
+                    });
+                }
+            }
+        } else {
+            setKeys((current) => current.filter((key) => key !== entry.key));
+            if (selectedEntry?.key === entry.key) {
+                setSelectedEntry(null);
+                setHistory([]);
+            }
+        }
+    }, [activeConnection, bucket, selectedEntry]);
+
+    const stopWatch = React.useCallback((notify = false) => {
+        watchControllerRef.current?.abort();
+        watchControllerRef.current = null;
+        setIsWatching(false);
+        setIsWatchPaused(false);
+        watchPausedRef.current = false;
+        watchQueueRef.current = [];
+        setWatchPausedCount(0);
+        if (notify) toast.info("KV watch stopped");
+    }, []);
+
+    React.useEffect(() => () => watchControllerRef.current?.abort(), [activeConnection?.id, bucket]);
+
+    const startWatch = async () => {
+        if (!activeConnection || !bucket) {
+            toast.error("No active connection selected");
+            return;
+        }
+
+        const controller = new AbortController();
+        watchControllerRef.current = controller;
+        watchQueueRef.current = [];
+        setWatchPausedCount(0);
+        try {
+            const response = await fetch("/api/kv/watch", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ config: activeConnection, bucket }),
+                signal: controller.signal,
+            });
+            if (!response.ok || !response.body) {
+                const text = await response.text().catch(() => "KV watch connection failed");
+                toast.error(text || "KV watch connection failed");
+                watchControllerRef.current = null;
+                return;
+            }
+
+            setIsWatching(true);
+            toast.success(`Watching KV bucket ${bucket}`);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            const handleFrame = (frame: string) => {
+                let event = "message";
+                const data: string[] = [];
+                for (const line of frame.split("\n")) {
+                    if (line.startsWith("event:")) event = line.slice(6).trim();
+                    else if (line.startsWith("data:")) data.push(line.slice(5).trim());
+                }
+                if (event === "error") {
+                    toast.error(data.join("\n") || "KV watch error");
+                    stopWatch();
+                    return;
+                }
+                if (event !== "entry" || !data.length) return;
+                try {
+                    const entry = JSON.parse(data.join("\n")) as KvEntryResult;
+                    if (watchPausedRef.current) {
+                        watchQueueRef.current.push(entry);
+                        setWatchPausedCount(watchQueueRef.current.length);
+                    } else {
+                        applyWatchEntry(entry);
+                    }
+                } catch {
+                    toast.error("Received an invalid KV watch update");
+                }
+            };
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const frames = buffer.split("\n\n");
+                buffer = frames.pop() ?? "";
+                for (const frame of frames) handleFrame(frame);
+            }
+            if (!controller.signal.aborted) setIsWatching(false);
+        } catch (error: unknown) {
+            if (error instanceof DOMException && error.name === "AbortError") return;
+            console.error("KV watch stream error:", error);
+            toast.error("KV watch connection error");
+            setIsWatching(false);
+        } finally {
+            if (watchControllerRef.current === controller) watchControllerRef.current = null;
+        }
+    };
+
+    const toggleWatchPause = () => {
+        if (isWatchPaused) {
+            watchPausedRef.current = false;
+            setIsWatchPaused(false);
+            const queued = watchQueueRef.current;
+            watchQueueRef.current = [];
+            setWatchPausedCount(0);
+            for (const entry of queued) applyWatchEntry(entry);
+        } else {
+            watchPausedRef.current = true;
+            setIsWatchPaused(true);
+        }
+    };
+
     const handleFetchEntry = async (key: string) => {
         if (!activeConnection || !bucket) return;
         setIsFetchingHistory(true);
@@ -82,17 +215,13 @@ export function KVDetailView() {
             getKVEntry(activeConnection, bucket as string, key),
             getKVHistory(activeConnection, bucket as string, key),
         ]);
-        if (entryResult.success) {
-            setSelectedEntry(entryResult.data.entry);
-        } else {
+        if (entryResult.success) setSelectedEntry(entryResult.data.entry);
+        else {
             toast.error("Failed to load entry data");
             setSelectedEntry(null);
         }
-        if (historyResult.success) {
-            setHistory(historyResult.data.entries || []);
-        } else {
-            setHistory([]);
-        }
+        if (historyResult.success) setHistory(historyResult.data.entries || []);
+        else setHistory([]);
         setIsFetchingHistory(false);
     };
 
@@ -108,15 +237,12 @@ export function KVDetailView() {
             confirmText: "Restore",
         });
         if (!ok) return;
-
         const result = await putKVEntry(activeConnection, bucket as string, entry.key, entry.value);
         if (result.success) {
             toast.success(`Restored as revision ${result.data.revision}`);
-            handleFetchEntry(entry.key);
-            fetchKeys();
-        } else {
-            toast.error("Failed to restore revision", { description: result.error });
-        }
+            void handleFetchEntry(entry.key);
+            void fetchKeys();
+        } else toast.error("Failed to restore revision", { description: result.error });
     };
 
     const handleDeleteKey = async (key: string) => {
@@ -127,7 +253,6 @@ export function KVDetailView() {
             confirmText: "Delete Key",
         });
         if (!ok) return;
-
         const result = await deleteKVEntry(activeConnection, bucket as string, key);
         if (result.success) {
             toast.success(`Key "${key}" deleted`);
@@ -135,10 +260,8 @@ export function KVDetailView() {
                 setSelectedEntry(null);
                 setHistory([]);
             }
-            fetchKeys();
-        } else {
-            toast.error("Failed to delete key", { description: result.error });
-        }
+            void fetchKeys();
+        } else toast.error("Failed to delete key", { description: result.error });
     };
 
     const handlePurgeKey = async (key: string) => {
@@ -150,7 +273,6 @@ export function KVDetailView() {
             typedName: key,
         });
         if (!ok) return;
-
         const result = await purgeKVEntry(activeConnection, bucket as string, key);
         if (result.success) {
             toast.success(`Key "${key}" purged`);
@@ -158,10 +280,8 @@ export function KVDetailView() {
                 setSelectedEntry(null);
                 setHistory([]);
             }
-            fetchKeys();
-        } else {
-            toast.error("Failed to purge key", { description: result.error });
-        }
+            void fetchKeys();
+        } else toast.error("Failed to purge key", { description: result.error });
     };
 
     const handleDeleteBucket = async () => {
@@ -173,17 +293,15 @@ export function KVDetailView() {
             typedName: bucket as string,
         });
         if (!ok) return;
-
+        stopWatch();
         const result = await deleteKVBucket(activeConnection, bucket as string);
         if (result.success) {
             toast.success("Bucket deleted");
             router.push("/kv");
-        } else {
-            toast.error("Failed to delete bucket");
-        }
+        } else toast.error("Failed to delete bucket");
     };
 
-    const filteredKeys = keys.filter(k => k.toLowerCase().includes(filter.toLowerCase()));
+    const filteredKeys = keys.filter((key) => key.toLowerCase().includes(filter.toLowerCase()));
 
     if (!activeConnection) return <div className="p-8 text-center text-muted-foreground">No active connection</div>;
 
@@ -192,9 +310,7 @@ export function KVDetailView() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" asChild className="text-muted-foreground hover:text-foreground">
-                        <Link href="/kv">
-                            <ChevronLeft className="size-5" />
-                        </Link>
+                        <Link href="/kv"><ChevronLeft className="size-5" /></Link>
                     </Button>
                     <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2">
@@ -204,6 +320,19 @@ export function KVDetailView() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    {isWatching ? (
+                        <>
+                            <Badge variant="outline" className="text-emerald-500 border-emerald-500/30"><Wifi className="size-3 mr-1" /> Live</Badge>
+                            {isWatchPaused && <Badge variant="secondary">Paused{watchPausedCount ? ` · ${watchPausedCount} queued` : ""}</Badge>}
+                            <Button variant="outline" size="sm" onClick={toggleWatchPause}>
+                                {isWatchPaused ? <Play className="size-4 mr-2" /> : <Pause className="size-4 mr-2" />}
+                                {isWatchPaused ? "Resume" : "Pause"}
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => stopWatch(true)}><WifiOff className="size-4 mr-2" /> Stop watch</Button>
+                        </>
+                    ) : (
+                        <Button variant="outline" size="sm" onClick={startWatch}><Wifi className="size-4 mr-2" /> Watch live</Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={fetchKeys} className="bg-card border-border text-foreground/80">
                         <RefreshCcw className="size-4 mr-2" /> Refresh
                     </Button>
@@ -218,50 +347,25 @@ export function KVDetailView() {
                     <div className="flex items-center gap-2">
                         <div className="relative flex-1">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Filter keys..."
-                                className="pl-9 bg-card border-border focus:border-emerald-500 h-9"
-                                value={filter}
-                                onChange={(e) => setFilter(e.target.value)}
-                            />
+                            <Input placeholder="Filter keys..." className="pl-9 bg-card border-border focus:border-emerald-500 h-9" value={filter} onChange={(event) => setFilter(event.target.value)} />
                         </div>
                         <PutEntryDialog bucket={bucket as string} onSuccess={fetchKeys} />
                     </div>
-
                     <div className="flex-1 rounded-md border border-border bg-card/50 overflow-hidden flex flex-col">
                         <ScrollArea className="flex-1">
                             <Table>
                                 <TableHeader className="bg-card sticky top-0 z-10">
-                                    <TableRow className="border-border hover:bg-transparent">
-                                        <TableHead className="text-muted-foreground font-medium h-9 text-xs">Keys ({filteredKeys.length})</TableHead>
-                                    </TableRow>
+                                    <TableRow className="border-border hover:bg-transparent"><TableHead className="text-muted-foreground font-medium h-9 text-xs">Keys ({filteredKeys.length})</TableHead></TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {isLoading && keys.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell className="p-3">
-                                                <DataTableSkeleton rows={8} columns={1} />
-                                            </TableCell>
+                                        <TableRow><TableCell className="p-3"><DataTableSkeleton rows={8} columns={1} /></TableCell></TableRow>
+                                    ) : filteredKeys.length ? filteredKeys.map((key) => (
+                                        <TableRow key={key} className={`border-border/50 cursor-pointer hover:bg-muted/50 transition-colors ${selectedEntry?.key === key ? "bg-emerald-500/10" : ""}`} onClick={() => void handleFetchEntry(key)}>
+                                            <TableCell className="py-2.5 px-4 font-mono text-xs text-foreground/80 flex items-center gap-2"><Key className="size-3 text-emerald-500/50" />{key}</TableCell>
                                         </TableRow>
-                                    ) : filteredKeys.length > 0 ? (
-                                        filteredKeys.map((k) => (
-                                            <TableRow
-                                                key={k}
-                                                className={`border-border/50 cursor-pointer hover:bg-muted/50 transition-colors ${selectedEntry?.key === k && 'bg-emerald-500/10'}`}
-                                                onClick={() => handleFetchEntry(k)}
-                                            >
-                                                <TableCell className="py-2.5 px-4 font-mono text-xs text-foreground/80 flex items-center gap-2">
-                                                    <Key className="size-3 text-emerald-500/50" />
-                                                    {k}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell className="h-24 text-center text-muted-foreground/70 text-xs italic">
-                                                No keys found
-                                            </TableCell>
-                                        </TableRow>
+                                    )) : (
+                                        <TableRow><TableCell className="h-24 text-center text-muted-foreground/70 text-xs italic">No keys found</TableCell></TableRow>
                                     )}
                                 </TableBody>
                             </Table>
@@ -278,144 +382,43 @@ export function KVDetailView() {
                                     <div className="text-lg font-mono font-medium text-emerald-400">{selectedEntry.key}</div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <PutEntryDialog
-                                        bucket={bucket as string}
-                                        initialKey={selectedEntry.key}
-                                        initialValue={selectedEntry.value}
-                                        onSuccess={() => {
-                                            fetchKeys();
-                                            handleFetchEntry(selectedEntry.key);
-                                        }}
-                                        trigger={
-                                            <Button variant="outline" size="sm" className="bg-muted border-border hover:bg-muted">
-                                                Edit Value
-                                            </Button>
-                                        }
-                                    />
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
-                                        onClick={() => handlePurgeKey(selectedEntry.key)}
-                                    >
-                                        <Eraser className="size-3.5 mr-1" />
-                                        Purge
-                                    </Button>
-                                    <Button
-                                        variant="destructive"
-                                        size="sm"
-                                        onClick={() => handleDeleteKey(selectedEntry.key)}
-                                    >
-                                        <Trash2 className="size-3.5 mr-1" />
-                                        Delete
-                                    </Button>
+                                    <PutEntryDialog bucket={bucket as string} initialKey={selectedEntry.key} initialValue={selectedEntry.value} onSuccess={() => { void fetchKeys(); void handleFetchEntry(selectedEntry.key); }} trigger={<Button variant="outline" size="sm" className="bg-muted border-border hover:bg-muted">Edit Value</Button>} />
+                                    <Button variant="outline" size="sm" className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10" onClick={() => void handlePurgeKey(selectedEntry.key)}><Eraser className="size-3.5 mr-1" />Purge</Button>
+                                    <Button variant="destructive" size="sm" onClick={() => void handleDeleteKey(selectedEntry.key)}><Trash2 className="size-3.5 mr-1" />Delete</Button>
                                 </div>
                             </div>
-
                             <div className="grid grid-cols-3 gap-4">
-                                <div className="bg-card/50 border border-border p-3 rounded-lg flex flex-col gap-1">
-                                    <span className="text-[10px] text-muted-foreground uppercase">Revision</span>
-                                    <span className="text-sm font-mono text-foreground">{selectedEntry.revision}</span>
-                                </div>
-                                <div className="bg-card/50 border border-border p-3 rounded-lg flex flex-col gap-1">
-                                    <span className="text-[10px] text-muted-foreground uppercase">Last Updated</span>
-                                    <span className="text-[10px] text-foreground/80">{format(new Date(selectedEntry.created), "MMM d, HH:mm:ss")}</span>
-                                </div>
-                                <div className="bg-card/50 border border-border p-3 rounded-lg flex flex-col gap-1">
-                                    <span className="text-[10px] text-muted-foreground uppercase">Operation</span>
-                                    <Badge variant="outline" className="text-[9px] w-fit border-emerald-500/30 text-emerald-500 bg-emerald-500/5">{selectedEntry.operation}</Badge>
-                                </div>
+                                <div className="bg-card/50 border border-border p-3 rounded-lg flex flex-col gap-1"><span className="text-[10px] text-muted-foreground uppercase">Revision</span><span className="text-sm font-mono text-foreground">{selectedEntry.revision}</span></div>
+                                <div className="bg-card/50 border border-border p-3 rounded-lg flex flex-col gap-1"><span className="text-[10px] text-muted-foreground uppercase">Last Updated</span><span className="text-[10px] text-foreground/80">{formatDate(selectedEntry.created, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}</span></div>
+                                <div className="bg-card/50 border border-border p-3 rounded-lg flex flex-col gap-1"><span className="text-[10px] text-muted-foreground uppercase">Operation</span><Badge variant="outline" className="text-[9px] w-fit border-emerald-500/30 text-emerald-500 bg-emerald-500/5">{selectedEntry.operation}</Badge></div>
                             </div>
-
                             <div className="flex-1 rounded-lg border border-border bg-background flex flex-col overflow-hidden min-h-0">
-                                <div className="px-4 py-2 border-b border-border bg-card flex items-center justify-between">
-                                    <span className="text-xs font-semibold text-muted-foreground">Value</span>
-                                    <span className="text-[10px] text-muted-foreground/70 font-mono">{(selectedEntry.value.length / 1024).toFixed(2)} KB</span>
-                                </div>
-                                <CodeViewer
-                                    value={selectedEntry.value}
-                                    fileName={selectedEntry.key}
-                                    className="border-0 rounded-none"
-                                    maxHeight="calc(100vh - 520px)"
-                                />
+                                <div className="px-4 py-2 border-b border-border bg-card flex items-center justify-between"><span className="text-xs font-semibold text-muted-foreground">Value</span><span className="text-[10px] text-muted-foreground/70 font-mono">{(selectedEntry.value.length / 1024).toFixed(2)} KB</span></div>
+                                <CodeViewer value={selectedEntry.value} fileName={selectedEntry.key} className="border-0 rounded-none" maxHeight="calc(100vh - 520px)" />
                             </div>
-
                             <div className="rounded-lg border border-border bg-card/50 overflow-hidden max-h-48 flex flex-col">
-                                <div className="px-4 py-2 border-b border-border bg-card flex items-center gap-2">
-                                    <History className="size-3.5 text-emerald-500" />
-                                    <span className="text-xs font-semibold text-muted-foreground">
-                                        Revision History
-                                    </span>
-                                    {isFetchingHistory && (
-                                        <RefreshCcw className="size-3 animate-spin text-muted-foreground ml-auto" />
-                                    )}
-                                </div>
+                                <div className="px-4 py-2 border-b border-border bg-card flex items-center gap-2"><History className="size-3.5 text-emerald-500" /><span className="text-xs font-semibold text-muted-foreground">Revision History</span>{isFetchingHistory && <RefreshCcw className="size-3 animate-spin text-muted-foreground ml-auto" />}</div>
                                 <ScrollArea className="flex-1">
-                                    {history.length > 0 ? (
-                                        <div className="divide-y divide-border/50">
-                                            {history.map((h) => (
-                                                <div
-                                                    key={`${h.revision}-${h.operation}`}
-                                                    className={`flex items-center justify-between gap-3 px-4 py-2 text-xs ${
-                                                        h.revision === selectedEntry.revision
-                                                            ? "bg-emerald-500/10"
-                                                            : "hover:bg-muted/40"
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center gap-3 min-w-0">
-                                                        <span className="font-mono tabular-nums text-foreground">
-                                                            rev {h.revision}
-                                                        </span>
-                                                        <Badge
-                                                            variant="outline"
-                                                            className={`text-[9px] ${
-                                                                h.operation === "PUT"
-                                                                    ? "border-emerald-500/30 text-emerald-500"
-                                                                    : h.operation === "DEL"
-                                                                      ? "border-rose-500/30 text-rose-400"
-                                                                      : "border-amber-500/30 text-amber-500"
-                                                            }`}
-                                                        >
-                                                            {h.operation}
-                                                        </Badge>
-                                                        <span className="text-muted-foreground truncate">
-                                                            {format(new Date(h.created), "MMM d, HH:mm:ss")}
-                                                        </span>
-                                                    </div>
-                                                    {h.operation === "PUT" && h.revision !== selectedEntry.revision && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-7 text-[10px] text-muted-foreground hover:text-emerald-400"
-                                                            onClick={() => handleRestoreRevision(h)}
-                                                        >
-                                                            <RotateCcw className="size-3 mr-1" />
-                                                            Restore
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            ))}
+                                    {history.length ? <div className="divide-y divide-border/50">{history.map((entry) => (
+                                        <div key={`${entry.revision}-${entry.operation}`} className={`flex items-center justify-between gap-3 px-4 py-2 text-xs ${entry.revision === selectedEntry.revision ? "bg-emerald-500/5" : ""}`}>
+                                            <div className="flex items-center gap-3"><Badge variant="outline" className="font-mono">rev {entry.revision}</Badge><span className="text-muted-foreground">{formatDate(entry.created, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}</span><Badge variant="outline">{entry.operation}</Badge></div>
+                                            {entry.operation === "PUT" && <Button variant="ghost" size="sm" onClick={() => void handleRestoreRevision(entry)}><RefreshCcw className="size-3 mr-1" />Restore</Button>}
                                         </div>
-                                    ) : (
-                                        <div className="px-4 py-6 text-center text-muted-foreground/70 text-xs italic">
-                                            {isFetchingHistory
-                                                ? "Loading history…"
-                                                : "No revision history (bucket history may be 1)."}
-                                        </div>
-                                    )}
+                                    ))}</div> : <EmptyHistory />}
                                 </ScrollArea>
                             </div>
                         </div>
-                    ) : (
-                        <EmptyState
-                            icon={Eye}
-                            title="Select a key to view details"
-                            description="Choose a key from the list on the left to inspect its value and revision history."
-                            className="flex-1 py-24 border-2 bg-card/20"
-                        />
-                    )}
+                    ) : <EmptySelection />}
                 </div>
             </div>
         </div>
     );
+}
+
+function EmptyHistory() {
+    return <div className="p-6 text-center text-xs text-muted-foreground">No revision history available</div>;
+}
+
+function EmptySelection() {
+    return <div className="flex-1"><EmptyState icon={Key} title="Select a key" description="Choose a key to view its value and revision history." /></div>;
 }

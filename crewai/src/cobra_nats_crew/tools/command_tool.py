@@ -32,6 +32,8 @@ _ALLOWED = [
     re.compile(r"^npm run lint$"),
     re.compile(r"^npm run build$"),
     re.compile(r"^npm (install|ci)( --save-dev| -D)?( [@A-Za-z0-9/_.\-]+)*$"),
+    re.compile(r"^npm uninstall( [@A-Za-z0-9/_.\-]+)+$"),
+    re.compile(r"^npx shadcn(@latest)? add( [\w\-]+)+$"),
     re.compile(r"^npx playwright test( --project=chromium)?( [\w./\-]+)*$"),
     re.compile(r"^npx vitest( run)?( --reporter=dot)?( [\w./\-]+)*$"),
     re.compile(r"^npx vitest related( [\w./\-]+)*$"),
@@ -61,7 +63,8 @@ class RunAllowedCommandTool(BaseTool):
     description: str = (
         "Run one allowlisted verification command in the cobra-nats repo root: "
         "npx tsc --noEmit, npm run lint, npm run build, npx vitest, "
-        "npx playwright test, npm install -D, git status/diff/log. "
+        "npx playwright test, npm install/uninstall, npx shadcn add, "
+        "git status/diff/log. "
         "Forbidden: git commit/push/add, gh, rm, curl, sudo, pipes, &&."
     )
     args_schema: type[BaseModel] = RunAllowedCommandInput
@@ -77,7 +80,8 @@ class RunAllowedCommandTool(BaseTool):
         if not any(pat.fullmatch(cmd) for pat in _ALLOWED):
             return (
                 "Command not on the allowlist. Allowed families: "
-                "npx tsc --noEmit, npm run lint, npm run build, npm install -D <pkg>, "
+                "npx tsc --noEmit, npm run lint, npm run build, npm install, "
+                "npm uninstall, npx shadcn@latest add, "
                 "npx playwright test [files], npx vitest run [files], "
                 "git status --short, git diff, git log -5, ls, wc -l."
             )
@@ -93,6 +97,8 @@ class RunAllowedCommandTool(BaseTool):
                 cwd=str(repo_root()),
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=timeout,
                 env=env,
                 check=False,

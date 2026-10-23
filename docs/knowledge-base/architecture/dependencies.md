@@ -68,7 +68,7 @@ graph TD
 | `next-themes` | ^0.4.6 | Dark/light mode | `providers/root-provider.tsx` |
 | `tailwind-merge` + `clsx` | ^3.6.0 / ^2.1.1 | CSS class merging | `lib/utils.ts` (`cn()`) |
 | `class-variance-authority` | ^0.7.1 | Variant-based component styling | shadcn/ui components |
-| `date-fns` | ^4.4.0 | Date formatting | Various UI components |
+| `Intl` via `src/lib/date-format.ts` | platform | Relative and absolute date display | Stream, consumer, KV, monitor UI |
 | `marked` | ^18.0.5 | Markdown rendering | Help/popup content |
 | `shiki` | ^4.2.0 | Syntax highlighting | `components/ui/code-viewer.tsx` |
 

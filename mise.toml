@@ -89,3 +89,13 @@ run = "uv run python -m cobra_nats_crew.main --implement"
 description = "Validate the CrewAI implementation crew without calling an LLM"
 dir = "crewai"
 run = "uv run python -m cobra_nats_crew.main --check --implement"
+
+[tasks."crew:product"]
+description = "Run the CrewAI product+hygiene crew (visible features and maintenance)"
+dir = "crewai"
+run = "uv run python -m cobra_nats_crew.main --product"
+
+[tasks."crew:product-check"]
+description = "Validate the CrewAI product+hygiene crew without calling an LLM"
+dir = "crewai"
+run = "uv run python -m cobra_nats_crew.main --check --product"

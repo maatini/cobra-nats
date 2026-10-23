@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
     Activity,
@@ -23,12 +23,19 @@ import {
 import type { JetStreamAccountOverview, NatsConnectionConfig } from "@/types/nats";
 import { useActiveConnection } from "@/features/connections/hooks";
 import { useNatsStore } from "@/features/connections/store";
-import { getServerInfo } from "@/features/connections/actions";
+import { fetchHttpMonitoring, getServerInfo } from "@/features/connections/actions";
 import { listStreams, getJetStreamAccountInfo } from "@/features/streams/actions";
 import { listKVBuckets } from "@/features/kv/actions";
 import { listOSBuckets } from "@/features/os/actions";
 import { ConnectDialog } from "@/features/connections/components/connect-dialog";
 import { HttpMonitoringCard } from "@/features/dashboard/http-monitoring-card";
+import { DashboardTimeSeries } from "@/features/dashboard/dashboard-time-series";
+import {
+    EMPTY_DASHBOARD_HISTORY,
+    recordDashboardSample,
+    resetDashboardHistory,
+    type DashboardSampleHistory,
+} from "@/features/dashboard/sampler";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,8 +80,12 @@ export function DashboardOverview() {
     const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [history, setHistory] = useState<DashboardSampleHistory>(EMPTY_DASHBOARD_HISTORY);
+    const requestGeneration = useRef(0);
+    const monitoringEndpoint = "varz" as const;
 
     const fetchDashboardData = useCallback(async (connection: NatsConnectionConfig) => {
+        const generation = requestGeneration.current;
         setLoading(true);
         setError(null);
 
@@ -86,6 +97,9 @@ export function DashboardOverview() {
                     listKVBuckets(connection),
                     listOSBuckets(connection),
                     getJetStreamAccountInfo(connection),
+                    connection.monitoringUrl?.trim()
+                        ? fetchHttpMonitoring(connection.monitoringUrl.trim(), monitoringEndpoint)
+                        : Promise.resolve(null),
                 ]);
 
             const next: DashboardStats = { ...EMPTY_STATS };
@@ -97,45 +111,80 @@ export function DashboardOverview() {
                 next.jetstream = !!info.jetstream;
             }
 
-            // Streams/KV/OS may fail if JetStream is not enabled — treat as 0, not error.
+            // A failed or unsupported source is unavailable, not a measured zero.
             next.streamCount =
                 streamsResult.status === "fulfilled" && streamsResult.value.success
                     ? streamsResult.value.data.length
-                    : 0;
+                    : null;
 
             next.kvBucketCount =
                 kvResult.status === "fulfilled" && kvResult.value.success
                     ? kvResult.value.data.buckets.length
-                    : 0;
+                    : null;
 
             next.osBucketCount =
                 osResult.status === "fulfilled" && osResult.value.success
                     ? osResult.value.data.buckets.length
-                    : 0;
+                    : null;
 
             if (accountResult.status === "fulfilled" && accountResult.value.success) {
                 next.account = accountResult.value.data;
                 next.consumerTotal = accountResult.value.data.consumers;
                 next.jetstream = true;
             } else {
-                next.consumerTotal = 0;
+                next.consumerTotal = null;
             }
 
+            if (generation !== requestGeneration.current) return;
             setStats(next);
+            const hasSuccessfulSource =
+                (streamsResult.status === "fulfilled" && streamsResult.value.success) ||
+                (accountResult.status === "fulfilled" && accountResult.value.success);
+            const monitoringResult = serverResult.status === "fulfilled" && serverResult.value.success
+                ? await Promise.resolve(connection.monitoringUrl?.trim()
+                    ? fetchHttpMonitoring(connection.monitoringUrl.trim(), monitoringEndpoint)
+                    : null).then((result) => result === null ? null : ({ status: "fulfilled" as const, value: result })).catch(() => null)
+                : null;
+            if (hasSuccessfulSource || monitoringResult?.value.success) {
+                setHistory((current) => recordDashboardSample(current, connection.id, {
+                    sampledAt: Date.now(),
+                    streamCount: next.streamCount,
+                    consumers: next.consumerTotal,
+                    storageBytes: next.account ? next.account.storage : null,
+                    serverConnections:
+                        monitoringResult?.status === "fulfilled" && monitoringResult.value.success &&
+                        typeof monitoringResult.value.data.data.connections === "number"
+                            ? monitoringResult.value.data.data.connections
+                            : null,
+                    inboundMessages:
+                        monitoringResult?.status === "fulfilled" && monitoringResult.value.success &&
+                        typeof monitoringResult.value.data.data.in_msgs === "number"
+                            ? monitoringResult.value.data.data.in_msgs
+                            : null,
+                    outboundMessages:
+                        monitoringResult?.status === "fulfilled" && monitoringResult.value.success &&
+                        typeof monitoringResult.value.data.data.out_msgs === "number"
+                            ? monitoringResult.value.data.data.out_msgs
+                            : null,
+                }, connection.monitoringUrl?.trim() ? monitoringEndpoint : null));
+            }
         } catch {
-            setError("Failed to fetch dashboard data");
+            if (generation === requestGeneration.current) setError("Failed to fetch dashboard data");
         } finally {
-            setLoading(false);
+            if (generation === requestGeneration.current) setLoading(false);
         }
     }, []);
 
     useEffect(() => {
+        requestGeneration.current += 1;
         if (activeConnection) {
-            fetchDashboardData(activeConnection);
+            setHistory((current) => current.connectionId === activeConnection.id ? current : resetDashboardHistory());
+            void fetchDashboardData(activeConnection);
         } else {
             setStats(EMPTY_STATS);
+            setHistory(resetDashboardHistory());
         }
-    }, [activeConnection, fetchDashboardData]);
+    }, [activeConnection?.id, fetchDashboardData]);
 
     const { interval, setInterval } = useAutoRefresh(
         () => {
@@ -482,6 +531,8 @@ export function DashboardOverview() {
                     </CardContent>
                 </Card>
             </div>
+
+            {activeConnection && <DashboardTimeSeries samples={history.connectionId === activeConnection.id ? history.samples : []} />}
 
             {activeConnection && <HttpMonitoringCard connection={activeConnection} />}
         </div>

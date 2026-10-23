@@ -116,6 +116,8 @@ export interface StreamMessage {
     subject: string;
     timestamp: string;
     data: string;
+    /** Base64 of the exact serialized payload bytes, used for client-side format inspection. */
+    dataBase64?: string;
     headers: Record<string, string[]>;
     size: number;
 }

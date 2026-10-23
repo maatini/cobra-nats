@@ -23,30 +23,17 @@ import {
     Send,
 } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { formatDate } from "@/lib/date-format";
 import Link from "next/link";
 import { useConfirm } from "@/components/providers/confirm-provider";
 import { buildPublishReplayHref } from "@/lib/publish-replay";
+import { PayloadViewer } from "@/components/ui/payload-viewer";
 
 interface MessageBrowserProps {
     config: NatsConnectionConfig;
     streamName: string;
     firstSeq: number;
     lastSeq: number;
-}
-
-// Try to pretty-print a string as JSON; return null if not valid JSON.
-function tryPrettyJson(value: string): string | null {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    const firstChar = trimmed[0];
-    if (firstChar !== "{" && firstChar !== "[" && firstChar !== '"') return null;
-    try {
-        const parsed: unknown = JSON.parse(trimmed);
-        return JSON.stringify(parsed, null, 2);
-    } catch {
-        return null;
-    }
 }
 
 export function MessageBrowser({ config, streamName, firstSeq, lastSeq }: MessageBrowserProps) {
@@ -57,6 +44,7 @@ export function MessageBrowser({ config, streamName, firstSeq, lastSeq }: Messag
     const [messages, setMessages] = React.useState<StreamMessage[]>([]);
     const [isLoading, setIsLoading] = React.useState(false);
     const [hasMore, setHasMore] = React.useState(false);
+    const [loadError, setLoadError] = React.useState<string | null>(null);
     const [expanded, setExpanded] = React.useState<Set<number>>(new Set());
     const [focusedSeq, setFocusedSeq] = React.useState<number | null>(null);
     const [deletingSeq, setDeletingSeq] = React.useState<number | null>(null);
@@ -91,21 +79,32 @@ export function MessageBrowser({ config, streamName, firstSeq, lastSeq }: Messag
     const fetchBatch = React.useCallback(
         async (fromSeq: number, append: boolean) => {
             setIsLoading(true);
-            const result = await getStreamMessages(config, streamName, {
-                startSeq: fromSeq,
-                batchSize: Number(batchSize) || 25,
-                subjectFilter: subjectFilter.trim() || undefined,
-            });
-            setIsLoading(false);
+            setLoadError(null);
+            const requestedBatch = Number(batchSize) || 25;
+            const boundedBatch = Math.min(200, Math.max(1, requestedBatch));
+            if (String(boundedBatch) !== batchSize) setBatchSize(String(boundedBatch));
+            try {
+                const result = await getStreamMessages(config, streamName, {
+                    startSeq: fromSeq,
+                    batchSize: boundedBatch,
+                    subjectFilter: subjectFilter.trim() || undefined,
+                });
+                if (!result.success) {
+                    setLoadError(result.error);
+                    toast.error(`Failed to load messages: ${result.error}`);
+                    return;
+                }
 
-            if (!result.success) {
-                toast.error(`Failed to load messages: ${result.error}`);
-                return;
+                setMessages(prev => (append ? [...prev, ...result.data.messages] : result.data.messages));
+                setHasMore(result.data.hasMore);
+                if (!append) setExpanded(new Set());
+            } catch (error: unknown) {
+                const message = error instanceof Error ? error.message : "Unexpected error while loading messages.";
+                setLoadError(message);
+                toast.error(`Failed to load messages: ${message}`);
+            } finally {
+                setIsLoading(false);
             }
-
-            setMessages(prev => (append ? [...prev, ...result.data.messages] : result.data.messages));
-            setHasMore(result.data.hasMore);
-            if (!append) setExpanded(new Set());
         },
         [config, streamName, batchSize, subjectFilter]
     );
@@ -209,7 +208,7 @@ export function MessageBrowser({ config, streamName, firstSeq, lastSeq }: Messag
                             value={batchSize}
                             onChange={e => setBatchSize(e.target.value)}
                             min={1}
-                            max={500}
+                            max={200}
                             className="bg-background border-border text-foreground h-9"
                         />
                     </div>
@@ -241,6 +240,12 @@ export function MessageBrowser({ config, streamName, firstSeq, lastSeq }: Messag
                     </p>
                 )}
 
+                {loadError && (
+                    <div role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                        Unable to load this tab’s messages: {loadError}
+                    </div>
+                )}
+
                 {/* Empty state */}
                 {messages.length === 0 && !isLoading && (
                     <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border rounded-lg">
@@ -264,8 +269,6 @@ export function MessageBrowser({ config, streamName, firstSeq, lastSeq }: Messag
                         <div className="divide-y divide-border" ref={listRef}>
                             {messages.map(msg => {
                                 const isOpen = expanded.has(msg.seq);
-                                const pretty = tryPrettyJson(msg.data);
-                                const isJson = pretty !== null;
                                 const headerEntries = Object.entries(msg.headers);
                                 const isFocused = focusedSeq === msg.seq;
                                 return (
@@ -298,7 +301,7 @@ export function MessageBrowser({ config, streamName, firstSeq, lastSeq }: Messag
                                             </span>
                                             <span className="text-[10px] text-muted-foreground font-mono tabular-nums shrink-0 flex items-center gap-1">
                                                 <Clock className="size-3" />
-                                                {format(new Date(msg.timestamp), "yyyy-MM-dd HH:mm:ss")}
+                                                {formatDate(msg.timestamp, { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                                             </span>
                                             <span className="text-[10px] text-muted-foreground/70 font-mono tabular-nums shrink-0 w-16 text-right">
                                                 {msg.size} B
@@ -328,14 +331,7 @@ export function MessageBrowser({ config, streamName, firstSeq, lastSeq }: Messag
                                                             <span className="text-[10px] text-muted-foreground uppercase font-bold">
                                                                 Payload
                                                             </span>
-                                                            {isJson && (
-                                                                <Badge
-                                                                    variant="outline"
-                                                                    className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] py-0 px-1.5"
-                                                                >
-                                                                    JSON
-                                                                </Badge>
-                                                            )}
+
                                                         </div>
                                                         <div className="flex items-center gap-1">
                                                             <Button
@@ -377,9 +373,7 @@ export function MessageBrowser({ config, streamName, firstSeq, lastSeq }: Messag
                                                             </Button>
                                                         </div>
                                                     </div>
-                                                    <pre className="rounded border border-border bg-background p-3 text-[11px] text-foreground font-mono overflow-x-auto whitespace-pre-wrap break-words max-h-96">
-                                                        {pretty ?? msg.data ?? <span className="text-muted-foreground/70 italic">(empty)</span>}
-                                                    </pre>
+                                                    <PayloadViewer payload={msg.data} base64={msg.dataBase64} />
                                                 </div>
                                             </div>
                                         )}

@@ -26,6 +26,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SubjectCombobox, useSubjectHistory } from "@/features/publish/components/subject-combobox";
 import { ReplyOutput } from "@/features/publish/components/reply-output";
 import { parsePublishReplayParams } from "@/lib/publish-replay";
+import { PayloadViewer } from "@/components/ui/payload-viewer";
 
 const publishSchema = z.object({
     subject: z.string().min(1, "Subject is required"),
@@ -170,6 +171,10 @@ export function PublishView() {
                                             />
                                         </FormControl>
                                         <FormMessage />
+                                        <div className="space-y-1 pt-2">
+                                            <FormLabel className="text-xs">Serialized payload preview</FormLabel>
+                                            <PayloadViewer payload={field.value} />
+                                        </div>
                                     </FormItem>
                                 )}
                             />

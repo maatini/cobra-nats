@@ -15,7 +15,7 @@ import {
     GitBranch,
     Copy,
 } from "lucide-react";
-import { format } from "date-fns";
+import { formatDate } from "@/lib/date-format";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -194,7 +194,7 @@ export function StreamInfoView({ info }: { info: StreamInfoDto }) {
                                 Metadata
                             </div>
                             <div className="text-xs text-muted-foreground">
-                                Created: {format(new Date(info.created), "PPP p")}
+                                Created: {formatDate(info.created, { dateStyle: "long", timeStyle: "short" })}
                             </div>
                         </div>
                     </CardContent>

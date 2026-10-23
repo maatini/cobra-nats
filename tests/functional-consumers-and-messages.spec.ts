@@ -4,6 +4,8 @@ import {
     createStreamViaUi,
     gotoStreamDetail,
     deleteStreamViaUi,
+    isLocalNatsAvailable,
+    uniqueNatsName,
 } from './helpers';
 
 /**
@@ -17,15 +19,19 @@ import {
  * the same flow. Finally the stream is deleted via the Radix confirm dialog.
  */
 test.describe('Consumer Creation + Message Browser', () => {
+    test.beforeAll(async () => {
+        test.skip(!(await isLocalNatsAvailable()), 'Requires NATS on localhost:4222.');
+    });
+
     test.beforeEach(async ({ page }) => {
         await seedConnection(page, { name: 'Real NATS' });
         await page.goto('/');
     });
 
-    test('browse messages, create + delete a pull consumer, then clean up', async ({ page }) => {
-        const streamName = `TEST_MB_${Date.now()}`;
+    test('browse messages, create + delete a pull consumer, then clean up', async ({ page }, testInfo) => {
+        const streamName = uniqueNatsName('TEST_MB', testInfo);
         const baseSubject = `${streamName}.orders`;
-        const consumerName = 'e2e-pull';
+        const consumerName = uniqueNatsName('PULL', testInfo);
 
         // --- 1. Create stream ---
         await createStreamViaUi(page, streamName);
@@ -45,18 +51,29 @@ test.describe('Consumer Creation + Message Browser', () => {
         await page.getByRole('tab', { name: /Messages/ }).click();
         await expect(page.getByText(/Message Browser/)).toBeVisible();
 
-        const loadBtn = page.getByRole('button', { name: 'Load Messages' });
+        const comparisonOne = page.getByRole('tabpanel', { name: /Comparison 1/ });
+        const loadBtn = comparisonOne.getByRole('button', { name: 'Load Messages' });
         await expect(loadBtn).toBeEnabled();
         await loadBtn.click();
 
         // First message should be visible with sequence #1 and correct subject
-        await expect(page.getByText('#1', { exact: true })).toBeVisible({ timeout: 10000 });
-        await expect(page.getByText(baseSubject, { exact: true }).first()).toBeVisible();
+        await expect(comparisonOne.getByText('#1', { exact: true })).toBeVisible({ timeout: 10000 });
+        await expect(comparisonOne.getByText(baseSubject, { exact: true }).first()).toBeVisible();
+
+        // Add a second independent comparison tab, load it, then switch back.
+        await page.getByRole('button', { name: /Add comparison/ }).click();
+        await page.getByRole('tab', { name: 'Comparison 2' }).click();
+        const comparisonTwo = page.getByRole('tabpanel', { name: /Comparison 2/ });
+        await expect(comparisonTwo.getByText('Click "Load Messages" to browse stream contents.')).toBeVisible();
+        await comparisonTwo.getByRole('button', { name: 'Load Messages' }).click();
+        await expect(comparisonTwo.getByText('#1', { exact: true })).toBeVisible({ timeout: 10000 });
+        await page.getByRole('tab', { name: 'Comparison 1' }).click();
+        await expect(comparisonOne.getByText('#1', { exact: true })).toBeVisible();
 
         // Expand the row and assert the JSON badge + highlighted key appear
-        await page.getByText('#1', { exact: true }).click();
-        await expect(page.getByText('JSON', { exact: true }).first()).toBeVisible();
-        await expect(page.getByText('"status"', { exact: false })).toBeVisible();
+        await comparisonOne.getByText('#1', { exact: true }).click();
+        await expect(comparisonOne.getByText('JSON', { exact: true })).toBeVisible();
+        await expect(comparisonOne.getByText('"status"', { exact: false })).toBeVisible();
 
         // --- 5. Consumer Creation ---
         await page.getByRole('tab', { name: /Consumers/ }).click();
@@ -90,8 +107,8 @@ test.describe('Consumer Creation + Message Browser', () => {
         await deleteStreamViaUi(page, streamName);
     });
 
-    test('cancel on confirm dialog keeps the stream alive', async ({ page }) => {
-        const streamName = `TEST_CANCEL_${Date.now()}`;
+    test('cancel on confirm dialog keeps the stream alive', async ({ page }, testInfo) => {
+        const streamName = uniqueNatsName('TEST_CANCEL', testInfo);
 
         await createStreamViaUi(page, streamName);
         await gotoStreamDetail(page, streamName);

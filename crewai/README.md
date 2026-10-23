@@ -74,6 +74,8 @@ mise run crew:check              # syntax / wiring, no LLM
 mise run crew                    # analysis run (needs API keys)
 mise run crew:implement-check    # implementation crew wiring
 mise run crew:implement          # apply ranked actions 1, 3–10 (skip 2)
+mise run crew:product-check      # product+hygiene crew wiring
+mise run crew:product            # visible features + hygiene (skip credential trust)
 ```
 
 From `crewai/`:
@@ -96,3 +98,27 @@ Outputs:
 | `output/run-*.md` | Combined kickoff log |
 
 `output/` is gitignored except `.gitkeep`.
+
+## Product + hygiene mode
+
+`mise run crew:product` applies the ranked **visible product** and **hygiene**
+items in `crewai/knowledge/product_hygiene_brief.md`. Sequential process,
+write tools, no git commit/push/PR. Credential trust stays skipped.
+
+Gates: nats.js v3 is required before NATS 2.12 stream flags and prioritized
+pull; cluster topology requires a discovery spike before UI.
+
+| Agent | Focus |
+|-------|--------|
+| `hygiene_engineer` | Dependabot prod bumps, Dockerfile Node 22, README auth table, ADR-003, date-fns |
+| `nats_client_engineer` | nats.js v2 → v3 go/no-go |
+| `frontend_engineer` | Dashboard charts, message comparison, payload formats, palette actions |
+| `backend_engineer` | KV watch, 2.12 flags, topology, Services API, backup/config import |
+| `qa_engineer` | Vitest + named Playwright for what landed |
+| `docs_writer` | README checkboxes and knowledge-base vs actual code |
+| `implement_reporter` | `output/ph-00-report.md` |
+
+| File | Source |
+|------|--------|
+| `output/ph-01-hygiene.md` … `ph-11-docs.md` | Per-task notes |
+| `output/ph-00-report.md` | Final report |

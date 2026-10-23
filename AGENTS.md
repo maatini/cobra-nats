@@ -43,6 +43,7 @@ Product invariants + mental model: `CLAUDE.md`.
 NATS never runs in the browser. Default: Server Actions + wrappers. Exceptions:
 
 - `POST /api/monitor` — SSE (connection config in body; no secrets in query)
+- `POST /api/kv/watch` — SSE for long-lived KV updates (config and bucket in JSON body; dedicated connection; no secrets in query)
 - `POST /api/os/upload` — multipart binary
 - `POST /api/os/download` — streaming binary
 

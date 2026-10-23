@@ -32,6 +32,11 @@ export const MonitorRequestSchema = z.object({
     subject: z.string().optional(),
 });
 
+export const KVWatchRequestSchema = z.object({
+    config: NatsConnectionConfigSchema,
+    bucket: z.string().trim().min(1),
+});
+
 export const OsDownloadRequestSchema = z.object({
     config: NatsConnectionConfigSchema,
     bucket: z.string().trim().min(1),

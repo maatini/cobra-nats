@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDate, formatRelativeTime } from "@/lib/date-format";
 import { Loader2, Users, Download } from "lucide-react";
 import type { ConsumerInfoDto } from "@/types/nats";
 
@@ -63,7 +63,7 @@ function formatLastActive(info: ConsumerInfoDto): string {
         const ms = Number(nanos) > 1e15 ? Number(nanos) / 1e6 : Number(nanos) / 1e6;
         if (ms > 1e12) {
             try {
-                return formatDistanceToNow(new Date(ms), { addSuffix: true });
+                return formatRelativeTime(ms);
             } catch {
                 // fall through
             }
@@ -71,12 +71,12 @@ function formatLastActive(info: ConsumerInfoDto): string {
     }
     if (info.ts) {
         try {
-            return formatDistanceToNow(new Date(info.ts), { addSuffix: true });
+            return formatRelativeTime(info.ts);
         } catch {
             // fall through
         }
     }
-    return formatDistanceToNow(new Date(info.created), { addSuffix: true }) + " (created)";
+    return formatRelativeTime(info.created) + " (created)";
 }
 
 export function ConsumerDetailSheet({
@@ -199,7 +199,7 @@ export function ConsumerDetailSheet({
                             <Stat label="Last Active" value={formatLastActive(info)} />
                             <Stat
                                 label="Created"
-                                value={format(new Date(info.created), "MMM d, HH:mm:ss")}
+                                value={formatDate(info.created, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                             />
                         </div>
 

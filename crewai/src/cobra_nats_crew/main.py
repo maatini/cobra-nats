@@ -26,17 +26,21 @@ def _load_env() -> None:
     apply_llm_env()
 
 
-def default_inputs(*, implement: bool = False) -> dict[str, str]:
+def default_inputs(*, implement: bool = False, product: bool = False) -> dict[str, str]:
     inputs = {
         "repo_path": str(repo_root()),
         "repo_url": repo_url(),
         "current_version": os.getenv("COBRA_NATS_VERSION", "0.6.0"),
         "roadmap_items": ROADMAP_ITEMS,
         "skip_item": "2",
+        "brief_path": "crewai/knowledge/project_brief.md",
     }
     if implement:
         inputs["mode"] = "implement"
         inputs["brief_path"] = "crewai/knowledge/implement_brief.md"
+    if product:
+        inputs["mode"] = "product"
+        inputs["brief_path"] = "crewai/knowledge/product_hygiene_brief.md"
     return inputs
 
 
@@ -89,12 +93,19 @@ def _print_check(label: str, crew_app: object, built: object) -> None:
         print(f"    - {getattr(tool, 'name', type(tool).__name__)}")
 
 
-def check(*, implement: bool = False) -> int:
+def check(*, implement: bool = False, product: bool = False) -> int:
     """Load YAML, build the crew, and exit without calling an LLM."""
     _load_env()
     os.environ["CREW_CHECK"] = "true"
     os.environ.setdefault("CREW_MEMORY", "false")
     os.environ.setdefault("CREW_PLANNING", "false")
+
+    if product:
+        from cobra_nats_crew.product_crew import CobraNatsProductCrew
+
+        crew_app = CobraNatsProductCrew()
+        _print_check("product", crew_app, crew_app.crew())
+        return 0
 
     if implement:
         from cobra_nats_crew.implement_crew import CobraNatsImplementCrew
@@ -110,7 +121,7 @@ def check(*, implement: bool = False) -> int:
     return 0
 
 
-def run(*, implement: bool = False) -> int:
+def run(*, implement: bool = False, product: bool = False) -> int:
     _load_env()
     ensure_output_dir()
     # FileReadTool / DirectoryReadTool sandbox against cwd unless base_dir is set.
@@ -134,7 +145,12 @@ def run(*, implement: bool = False) -> int:
         )
         return 2
 
-    if implement:
+    if product:
+        from cobra_nats_crew.product_crew import CobraNatsProductCrew
+
+        crew_app = CobraNatsProductCrew()
+        mode = "product (hygiene + visible features; skip credential trust)"
+    elif implement:
         from cobra_nats_crew.implement_crew import CobraNatsImplementCrew
 
         crew_app = CobraNatsImplementCrew()
@@ -145,15 +161,15 @@ def run(*, implement: bool = False) -> int:
         crew_app = CobraNatsCrew()
         mode = "analyze"
 
-    inputs = default_inputs(implement=implement)
+    inputs = default_inputs(implement=implement, product=product)
     provider = "openrouter" if using_openrouter() else "llm"
     print(
         f"Starting cobra-nats crew [{mode}] against {inputs['repo_path']} ({inputs['repo_url']})"
     )
     print(f"cwd: {Path.cwd()}")
     print(f"LLM: {describe_llm()} ({provider}, model={model_name()})")
-    if implement:
-        print("Skip: action 2 (credential trust model). No git commit/push/PR.")
+    if implement or product:
+        print("Skip: credential trust model. No git commit/push/PR.")
     result = crew_app.crew().kickoff(inputs=inputs)
 
     raw = getattr(result, "raw", None) or str(result)
@@ -178,16 +194,25 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Validate config and imports without calling an LLM.",
     )
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--implement",
         action="store_true",
         help="Run the implementation crew (actions 1, 3–10; skip 2). Writes source, never git commit/push.",
     )
+    mode.add_argument(
+        "--product",
+        action="store_true",
+        help=(
+            "Run the product+hygiene crew (visible features and maintenance). "
+            "Writes source, never git commit/push."
+        ),
+    )
     args = parser.parse_args(argv)
     code = (
-        check(implement=args.implement)
+        check(implement=args.implement, product=args.product)
         if args.check
-        else run(implement=args.implement)
+        else run(implement=args.implement, product=args.product)
     )
     raise SystemExit(code)
 

@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StreamInfoView } from "@/features/streams/components/stream-info-view";
 import { ConsumerList } from "@/features/streams/components/consumer-list";
 import { CreateConsumerDialog } from "@/features/streams/components/create-consumer-dialog";
-import { MessageBrowser } from "@/features/streams/components/message-browser";
+import { MessageComparisonTabs } from "@/features/streams/components/message-comparison-tabs";
 import { EditStreamDialog } from "@/features/streams/components/edit-stream-dialog";
 import { PurgeStreamDialog } from "@/features/streams/components/purge-stream-dialog";
 import { ConsumerDetailSheet } from "@/features/streams/components/consumer-detail-sheet";
@@ -177,7 +177,8 @@ export function StreamDetailView() {
                 </TabsContent>
 
                 <TabsContent value="messages" className="outline-none">
-                    <MessageBrowser
+                    <MessageComparisonTabs
+                        key={`${activeConnection.id}:${name as string}`}
                         config={activeConnection}
                         streamName={name as string}
                         firstSeq={streamInfo.state.first_seq}

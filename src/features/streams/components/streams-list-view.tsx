@@ -10,6 +10,7 @@ import {
 import type { StreamInfoDto } from "@/types/nats";
 import { StreamTable } from "@/features/streams/components/stream-table";
 import { CreateStreamDialog } from "@/features/streams/components/create-stream-dialog";
+import { ImportStreamConfigDialog } from "@/features/streams/components/import-stream-config-dialog";
 import { Layers } from "lucide-react";
 import { useConfirm } from "@/components/providers/confirm-provider";
 import { useActiveConnection } from "@/features/connections/hooks";
@@ -96,7 +97,10 @@ export function StreamsListView() {
                         Manage your persistent message streams and configurations.
                     </p>
                 </div>
-                <CreateStreamDialog onCreated={fetchStreams} />
+                <div className="flex items-center gap-2">
+                    <ImportStreamConfigDialog onImported={fetchStreams} />
+                    <CreateStreamDialog onCreated={fetchStreams} />
+                </div>
             </div>
 
             {!activeConnection ? (
