@@ -6,6 +6,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![Playwright](https://img.shields.io/badge/Playwright-E2E_Tests-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev/)
 [![Devbox](https://img.shields.io/badge/Devbox-reproducible_env-7C3AED?logo=nixos&logoColor=white)](https://www.jetpack.io/devbox/)
+[![mise](https://img.shields.io/badge/mise-Node_22_+_Python_3.12-yellow?logo=gnubash&logoColor=white)](https://mise.jdx.dev/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > **v0.6.0** — A modern, professional management UI for NATS and JetStream.
@@ -151,6 +152,40 @@ nats-server -js -m 8222
 
 ---
 
+## Development Environment (mise)
+
+[mise](https://mise.jdx.dev/) pins **Node.js 22** (Next.js 16 UI) and **Python 3.12** (CrewAI crew) so the toolchain matches across machines. It sits next to `devbox.json`: use Devbox when you need `nats-server` / `natscli`; use mise for language runtimes and project tasks.
+
+Install mise once (macOS Homebrew shown; see [mise install](https://mise.jdx.dev/getting-started.html) for other platforms):
+
+```bash
+brew install mise
+```
+
+Then in this repository:
+
+```bash
+mise install                 # download Node 22, Python 3.12, uv
+eval "$(mise activate zsh)"  # activate in the current shell
+mise run setup               # npm install + uv sync for crewai/
+```
+
+`mise activate` can also be added to `~/.zshrc`. After that, `node`, `python`, and `uv` in this directory are the pinned versions.
+
+| Task | Command |
+|------|---------|
+| Install JS + Python deps | `mise run setup` |
+| Next.js dev server | `mise run dev` |
+| Production build | `mise run build` |
+| ESLint | `mise run lint` |
+| Playwright (Chromium) | `mise run test` |
+| CrewAI crew | `mise run crew` |
+| CrewAI config check (no LLM) | `mise run crew:check` |
+
+`NEXT_TELEMETRY_DISABLED=1` is set automatically in mise-managed shells.
+
+---
+
 ### Running the UI
 
 ```bash
@@ -235,8 +270,10 @@ cobra-nats/
 │   └── types/nats.ts                # Shared domain types & enums
 │
 ├── tests/                           # Playwright E2E (flat, incl. functional-*)
+├── crewai/                          # CrewAI analysis crew (docs, tests, roadmap)
 ├── docker-compose.yml
-└── devbox.json
+├── mise.toml                        # Node 22 + Python 3.12 toolchain
+└── devbox.json                      # Nix env (nats-server, natscli, nodejs_20)
 ```
 
 ### Key Technologies
@@ -353,6 +390,19 @@ npx playwright test tests/functional-streams.spec.ts tests/functional-messaging.
 - [ ] Live dashboard charts / time series
 - [ ] NATS Cluster topology view
 - [ ] Multi-tab message comparison
+
+---
+
+## Development Tools / CrewAI
+
+`crewai/` is a CrewAI project that analyses this repository and writes markdown reports (architecture, docs, Playwright gaps, performance, roadmap slices). It does **not** commit or open pull requests.
+
+```bash
+mise run crew:check    # validate agents/tasks without an LLM
+mise run crew          # full run — needs keys in crewai/.env
+```
+
+Setup, agents, and output files: [crewai/README.md](./crewai/README.md). Copy [crewai/.env.example](./crewai/.env.example) to `crewai/.env` and set `OPENAI_API_KEY` (or another LiteLLM `MODEL`) plus an optional `GITHUB_TOKEN` for remote-repo search.
 
 ---
 
