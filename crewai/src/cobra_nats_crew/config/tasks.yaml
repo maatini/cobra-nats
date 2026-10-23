@@ -1,0 +1,164 @@
+architecture_analysis:
+  description: >
+    Analyse the cobra-nats codebase at {repo_path} (remote {repo_url},
+    version {current_version}).
+
+    Work locally first: list the tree, then read README.md, CLAUDE.md,
+    AGENTS.md, docs/knowledge-base/ (start at index.md), docs/recommendations.md,
+    src/lib/nats/manager.ts, src/lib/server-action.ts, src/types/nats.ts,
+    src/features/* (actions, components, stores), src/app/ routing, Dockerfile,
+    next.config.ts, package.json, and tests/*.spec.ts.
+
+    If GithubSearchTool is available, cross-check the remote repo for recent
+    issues/PRs that affect architecture.
+
+    Cover:
+    1. Feature-folder architecture vs CLAUDE.md invariants
+    2. NatsManager pooling, lifecycle, error handling
+    3. Server Action wrappers and remaining REST/SSE exceptions
+    4. Technical debt and coupling
+    5. Highest-leverage refactors that do not violate the server boundary
+
+    Hard rule: analysis and recommendations only. Do not commit, push, or
+    open a pull request.
+  expected_output: >
+    A markdown architecture report with: executive summary; current structure
+    (paths); NatsManager / Server Action findings; debt list with severity;
+    recommended refactors. Cite file paths. No git commands.
+  agent: repo_analyst
+  output_file: output/01-architecture.md
+
+documentation_improvements:
+  description: >
+    Using the architecture analysis, propose documentation improvements for
+    cobra-nats at {repo_path}.
+
+    Review README.md, CLAUDE.md, AGENTS.md, docs/knowledge-base/, and
+    inline comments on NatsManager and server-action wrappers.
+
+    Propose:
+    1. Focused README patches (not a full rewrite)
+    2. New or updated ADR outlines under docs/knowledge-base/
+    3. Inline documentation for public functions in src/lib/
+    4. Gaps between CLAUDE.md / AGENTS.md and the live tree
+
+    Hard rule: write proposals only. Do not commit, push, or open a PR.
+  expected_output: >
+    A markdown doc plan with proposed patches (before/after or new file
+    outlines), ADR stubs, and a prioritized list of doc gaps.
+  agent: docs_writer
+  context:
+    - architecture_analysis
+  output_file: output/02-documentation.md
+
+test_coverage_expansion:
+  description: >
+    Using the architecture analysis, audit Playwright coverage for cobra-nats
+    at {repo_path}.
+
+    Read tests/*.spec.ts, tests/helpers.ts, and playwright.config.ts.
+    Map specs to features: Streams, KV, Object Store, Monitor, Publish,
+    Consumers, Connections, Settings.
+
+    Identify gaps, especially:
+    - error states (NATS down, auth failure, JetStream disabled)
+    - empty states
+    - Monitor SSE pause/resume, backpressure, replay
+    - Stream purge filters, consumer update, KV history restore
+    - Object Store seal / download / prefix
+    - flaky-test risks (timing, shared NATS subjects)
+
+    Propose new functional E2E specs with title, preconditions, steps, and
+    assertions. Follow the existing helper patterns (cobra-nats-storage seed).
+
+    Hard rule: proposals only. Do not commit, push, or open a PR.
+  expected_output: >
+    A markdown QA report: coverage matrix, gap list, and 5–12 proposed
+    Playwright specs with enough detail to implement.
+  agent: test_engineer
+  context:
+    - architecture_analysis
+  output_file: output/03-tests.md
+
+performance_optimizations:
+  description: >
+    Using the architecture analysis, propose resource and performance
+    optimizations for cobra-nats at {repo_path}.
+
+    Inspect package.json, next.config.ts, Dockerfile, docker-compose.yml,
+    src/lib/nats/manager.ts, layout/providers, and large client components.
+    Consider:
+    1. JS bundle (shiki, marked, date-fns, lucide, client vs server)
+    2. Rendering (RSC boundaries, client waterfalls)
+    3. NATS connection pooling / idle timeout / max connections
+    4. Docker image (node:26-alpine, standalone output, layers)
+    5. Server memory (connection maps, SSE buffers, OS upload 20mb limit)
+
+    Each recommendation needs: change, expected impact, effort, risk.
+    Do not suggest running nats in the browser.
+
+    Hard rule: proposals only. Do not commit, push, or open a PR.
+  expected_output: >
+    A markdown performance report with a prioritized table of optimizations
+    (bundle, render, NATS pool, Docker, memory) plus quick wins vs larger bets.
+  agent: performance_optimizer
+  context:
+    - architecture_analysis
+  output_file: output/04-performance.md
+
+feature_planning:
+  description: >
+    Using the prior reports, break open roadmap work into concrete tasks
+    for cobra-nats {current_version} at {repo_path}.
+
+    Open README roadmap items:
+    {roadmap_items}
+
+    Also consider remaining optional backlog in docs/recommendations.md
+    (U4, M4, M5, K3, K4, A4, Q2, Q5, P2) without treating it as a gap
+    analysis of already-shipped P0–P4 work.
+
+    For each item produce: user outcome, feature folder, types/actions/UI/route
+    /tests, dependencies, effort (S/M/L), and acceptance criteria. Sequence
+    the work. Stay inside cobra-nats coding laws.
+
+    Hard rule: planning only. Do not commit, push, or open a PR.
+  expected_output: >
+    A markdown delivery plan: sequenced epics and vertical-slice tasks with
+    paths, dependencies, effort, and acceptance criteria for the three
+    roadmap items plus any high-value backlog slices.
+  agent: feature_planner
+  context:
+    - architecture_analysis
+    - documentation_improvements
+    - test_coverage_expansion
+    - performance_optimizations
+  output_file: output/05-feature-plan.md
+
+consolidated_report:
+  description: >
+    Consolidate every specialist report into one executive brief for
+    cobra-nats {current_version} ({repo_url}, local {repo_path}).
+
+    Include:
+    1. One-page summary of current health
+    2. Top 10 actions ranked by leverage (owner role, effort, risk)
+    3. Pointers to the detailed reports (architecture, docs, tests,
+       performance, feature plan)
+    4. Explicit reminder that this crew does not commit or open PRs —
+       humans apply the suggestions.
+
+    Hard rule: this is the final analysis artifact. Do not commit, push,
+    or open a pull request.
+  expected_output: >
+    A single markdown report suitable to paste into a GitHub discussion:
+    health summary, ranked actions, links to the five detailed reports,
+    and out-of-scope notes.
+  agent: manager
+  context:
+    - architecture_analysis
+    - documentation_improvements
+    - test_coverage_expansion
+    - performance_optimizations
+    - feature_planning
+  output_file: output/00-consolidated-report.md
