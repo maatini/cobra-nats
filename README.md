@@ -9,7 +9,7 @@
 [![mise](https://img.shields.io/badge/mise-Node_22_+_Python_3.12-yellow?logo=gnubash&logoColor=white)](https://mise.jdx.dev/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **v0.6.0** — A modern, professional management UI for NATS and JetStream.
+> **v0.7.0** — A modern, professional management UI for NATS and JetStream.
 
 ![Cobra NATS](./cobra_nats.png)
 
@@ -25,6 +25,7 @@ Cobra NATS is a web-based administration dashboard for [NATS](https://nats.io), 
 - Support for `none`, username/password, token, NKey, JWT, and credentials-file auth; optional TLS client certs
 - Quickly switch between connections from the top bar
 - Connection status indicator in the dashboard
+- Dashboard **time series** (in-memory sparklines, last 60 samples, per connection)
 
 ### 📡 JetStream Streams
 - **List** all streams with sortable columns (name, subjects, messages, size, created)
@@ -33,6 +34,7 @@ Cobra NATS is a web-based administration dashboard for [NATS](https://nats.io), 
 - **Purge** messages (optional subject filter / sequence / keep last N)
 - **Delete** streams with confirmation
 - **View details**: stream configuration, state, and all attached consumers
+- **Import** stream configuration JSON (creates an empty stream; does not restore messages)
 - Filter/search streams by name or subject
 
 ### 🗄️ Key-Value Stores
@@ -41,6 +43,7 @@ Cobra NATS is a web-based administration dashboard for [NATS](https://nats.io), 
 - **Browse** all keys inside a bucket
 - **Get** and **Put** key-value entries
 - **Revision history** per key with optional restore
+- **Watch** live key updates (SSE, dedicated connection)
 - **Delete** buckets
 
 ### 📦 Object Stores
@@ -73,10 +76,11 @@ Cobra NATS is a web-based administration dashboard for [NATS](https://nats.io), 
 - **Detail sheet** with delivered/ack floor, pending, and redelivery stats
 - **Update** consumer settings (ack wait, max deliver, filter, max ack pending)
 - **Delete** consumers
-- **Browse** messages on a stream (message browser with payload/header inspection)
+- **Browse** messages on a stream (JSON / CBOR / hex / protobuf-with-schema payload inspection)
+- **Compare** up to four independent browsers on the same stream
 
 ### ⚡ Productivity
-- **Command Palette** (`Cmd/Ctrl+K`) — quick navigation across all features
+- **Command Palette** (`Cmd/Ctrl+K`) — navigation plus New Connection, Publish, Purge/Delete
 - **Global Keyboard Shortcuts** with an in-app help dialog (`?`)
 - **Auto-Breadcrumbs** derived from the current route
 - **Auto-Refresh** selector on list views (configurable intervals)

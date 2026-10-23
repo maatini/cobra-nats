@@ -1,6 +1,6 @@
 # Remaining optional backlog — Cobra NATS
 
-**Stand:** after P0–P4 implementation (v0.6.0)  
+**Stand:** after v0.7.0 product/hygiene release  
 **Scope:** open nice-to-haves only. Completed work is in git history; do not treat this file as a gap analysis of the current tree.
 
 Architecture constraints still apply: NATS only on the server; Server Actions + wrappers; SSE/Multipart only as intentional exceptions (`CLAUDE.md`, `docs/knowledge-base/`).

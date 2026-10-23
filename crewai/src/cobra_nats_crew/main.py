@@ -30,7 +30,7 @@ def default_inputs(*, implement: bool = False, product: bool = False) -> dict[st
     inputs = {
         "repo_path": str(repo_root()),
         "repo_url": repo_url(),
-        "current_version": os.getenv("COBRA_NATS_VERSION", "0.6.0"),
+        "current_version": os.getenv("COBRA_NATS_VERSION", "0.7.0"),
         "roadmap_items": ROADMAP_ITEMS,
         "skip_item": "2",
         "brief_path": "crewai/knowledge/project_brief.md",
