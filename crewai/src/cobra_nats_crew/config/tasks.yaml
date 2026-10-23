@@ -3,10 +3,13 @@ architecture_analysis:
     Analyse the cobra-nats codebase at {repo_path} (remote {repo_url},
     version {current_version}).
 
-    Work locally first: list the tree, then read README.md, CLAUDE.md,
-    AGENTS.md, docs/knowledge-base/ (start at index.md), docs/recommendations.md,
-    src/lib/nats/manager.ts, src/lib/server-action.ts, src/types/nats.ts,
-    src/features/* (actions, components, stores), src/app/ routing, Dockerfile,
+    Work locally first. Paths are relative to {repo_path}. Use list_repo_tree,
+    then read_repo_file (preferred) or the file-read tool. Do not guess contents.
+    If a read fails, report the tool error instead of inventing the file.
+
+    Read at least: README.md, CLAUDE.md, AGENTS.md, docs/knowledge-base/index.md,
+    docs/recommendations.md, src/lib/nats/manager.ts, src/lib/server-action.ts,
+    src/types/nats.ts, src/features/*/actions.ts, src/app routing, Dockerfile,
     next.config.ts, package.json, and tests/*.spec.ts.
 
     If GithubSearchTool is available, cross-check the remote repo for recent

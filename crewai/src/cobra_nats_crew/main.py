@@ -10,6 +10,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from cobra_nats_crew.llm import apply_llm_env, describe_llm, model_name, using_openrouter
 from cobra_nats_crew.paths import CREW_ROOT, OUTPUT_DIR, ensure_output_dir, repo_root, repo_url
 
 ROADMAP_ITEMS = (
@@ -22,15 +23,21 @@ ROADMAP_ITEMS = (
 def _load_env() -> None:
     load_dotenv(CREW_ROOT / ".env")
     load_dotenv(repo_root() / ".env", override=False)
+    apply_llm_env()
 
 
-def default_inputs() -> dict[str, str]:
-    return {
+def default_inputs(*, implement: bool = False) -> dict[str, str]:
+    inputs = {
         "repo_path": str(repo_root()),
         "repo_url": repo_url(),
         "current_version": os.getenv("COBRA_NATS_VERSION", "0.6.0"),
         "roadmap_items": ROADMAP_ITEMS,
+        "skip_item": "2",
     }
+    if implement:
+        inputs["mode"] = "implement"
+        inputs["brief_path"] = "crewai/knowledge/implement_brief.md"
+    return inputs
 
 
 def _write_run_summary(raw: str, task_outputs: list[str]) -> Path:
@@ -58,55 +65,96 @@ def _write_run_summary(raw: str, task_outputs: list[str]) -> Path:
     return path
 
 
-def check() -> int:
+def _print_check(label: str, crew_app: object, built: object) -> None:
+    agents = getattr(built, "agents", [])
+    tasks = getattr(built, "tasks", [])
+    agent_roles = [agent.role.strip().split("\n")[0] for agent in agents]
+    task_names = [getattr(task, "name", None) or task.description[:48] for task in tasks]
+    tools_fn = getattr(crew_app, "tools", lambda: [])
+    tools = tools_fn()
+
+    print(f"cobra-nats crew check OK ({label})")
+    print(f"  crew root : {CREW_ROOT}")
+    print(f"  repo root : {repo_root()}")
+    print(f"  repo url  : {repo_url()}")
+    print(f"  process   : {getattr(built, 'process', '?')}")
+    print(f"  agents    : {len(agents)}")
+    for role in agent_roles:
+        print(f"    - {role}")
+    print(f"  tasks     : {len(tasks)}")
+    for name in task_names:
+        print(f"    - {name}")
+    print(f"  tools     : {len(tools)}")
+    for tool in tools:
+        print(f"    - {getattr(tool, 'name', type(tool).__name__)}")
+
+
+def check(*, implement: bool = False) -> int:
     """Load YAML, build the crew, and exit without calling an LLM."""
     _load_env()
     os.environ["CREW_CHECK"] = "true"
     os.environ.setdefault("CREW_MEMORY", "false")
     os.environ.setdefault("CREW_PLANNING", "false")
 
+    if implement:
+        from cobra_nats_crew.implement_crew import CobraNatsImplementCrew
+
+        crew_app = CobraNatsImplementCrew()
+        _print_check("implement", crew_app, crew_app.crew())
+        return 0
+
     from cobra_nats_crew.crew import CobraNatsCrew
 
     crew_app = CobraNatsCrew()
-    built = crew_app.crew()
-    agent_roles = [agent.role.strip().split("\n")[0] for agent in built.agents]
-    task_names = [getattr(task, "name", None) or task.description[:48] for task in built.tasks]
-
-    print("cobra-nats crew check OK")
-    print(f"  crew root : {CREW_ROOT}")
-    print(f"  repo root : {repo_root()}")
-    print(f"  repo url  : {repo_url()}")
-    print(f"  process   : {built.process}")
-    print(f"  agents    : {len(built.agents)}")
-    for role in agent_roles:
-        print(f"    - {role}")
-    print(f"  tasks     : {len(built.tasks)}")
-    for name in task_names:
-        print(f"    - {name}")
-    print(f"  tools     : {len(crew_app.tools())}")
-    for tool in crew_app.tools():
-        print(f"    - {getattr(tool, 'name', type(tool).__name__)}")
+    _print_check("analyze", crew_app, crew_app.crew())
     return 0
 
 
-def run() -> int:
+def run(*, implement: bool = False) -> int:
     _load_env()
     ensure_output_dir()
-    os.chdir(CREW_ROOT)
+    # FileReadTool / DirectoryReadTool sandbox against cwd unless base_dir is set.
+    # Work from the cobra-nats checkout so relative paths like README.md resolve.
+    os.chdir(repo_root())
 
-    if not os.getenv("OPENAI_API_KEY") and not os.getenv("MODEL"):
+    has_llm_key = any(
+        os.getenv(name, "").strip()
+        for name in (
+            "OPENROUTER_API_KEY",
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "GROQ_API_KEY",
+        )
+    )
+    if not has_llm_key:
         print(
-            "Set OPENAI_API_KEY (or MODEL plus the matching provider key) in crewai/.env. "
+            "Set OPENROUTER_API_KEY in crewai/.env (or another provider key). "
             "See crewai/.env.example.",
             file=sys.stderr,
         )
         return 2
 
-    from cobra_nats_crew.crew import CobraNatsCrew
+    if implement:
+        from cobra_nats_crew.implement_crew import CobraNatsImplementCrew
 
-    inputs = default_inputs()
-    print(f"Starting cobra-nats crew against {inputs['repo_path']} ({inputs['repo_url']})")
-    result = CobraNatsCrew().crew().kickoff(inputs=inputs)
+        crew_app = CobraNatsImplementCrew()
+        mode = "implement (actions 1,3-10; skip 2)"
+    else:
+        from cobra_nats_crew.crew import CobraNatsCrew
+
+        crew_app = CobraNatsCrew()
+        mode = "analyze"
+
+    inputs = default_inputs(implement=implement)
+    provider = "openrouter" if using_openrouter() else "llm"
+    print(
+        f"Starting cobra-nats crew [{mode}] against {inputs['repo_path']} ({inputs['repo_url']})"
+    )
+    print(f"cwd: {Path.cwd()}")
+    print(f"LLM: {describe_llm()} ({provider}, model={model_name()})")
+    if implement:
+        print("Skip: action 2 (credential trust model). No git commit/push/PR.")
+    result = crew_app.crew().kickoff(inputs=inputs)
 
     raw = getattr(result, "raw", None) or str(result)
     extras: list[str] = []
@@ -123,15 +171,24 @@ def run() -> int:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Run the cobra-nats CrewAI development crew (analysis only)."
+        description="Run the cobra-nats CrewAI development crew."
     )
     parser.add_argument(
         "--check",
         action="store_true",
         help="Validate config and imports without calling an LLM.",
     )
+    parser.add_argument(
+        "--implement",
+        action="store_true",
+        help="Run the implementation crew (actions 1, 3–10; skip 2). Writes source, never git commit/push.",
+    )
     args = parser.parse_args(argv)
-    code = check() if args.check else run()
+    code = (
+        check(implement=args.implement)
+        if args.check
+        else run(implement=args.implement)
+    )
     raise SystemExit(code)
 
 

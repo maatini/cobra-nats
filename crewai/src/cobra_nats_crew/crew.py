@@ -8,15 +8,13 @@ from typing import Any
 from crewai import Agent, Crew, LLM, Process, Task
 from crewai.project import CrewBase, agent, crew, task
 
+from cobra_nats_crew.llm import build_llm
+from cobra_nats_crew.paths import OUTPUT_DIR
 from cobra_nats_crew.tools.factory import build_agent_tools
 
 
-def _model_name() -> str:
-    return os.getenv("MODEL") or os.getenv("OPENAI_MODEL") or "gpt-4o"
-
-
 def _llm() -> LLM:
-    return LLM(model=_model_name())
+    return build_llm()
 
 
 def _truthy(name: str, default: str = "true") -> bool:
@@ -53,7 +51,7 @@ class CobraNatsCrew:
             llm=_llm(),
             verbose=True,
             allow_delegation=False,
-            max_iter=20,
+            max_iter=25,
         )
 
     @agent
@@ -112,13 +110,17 @@ class CobraNatsCrew:
 
     @task
     def architecture_analysis(self) -> Task:
-        return Task(config=self.tasks_config["architecture_analysis"])
+        return Task(
+            config=self.tasks_config["architecture_analysis"],
+            output_file=str(OUTPUT_DIR / "01-architecture.md"),
+        )
 
     @task
     def documentation_improvements(self) -> Task:
         return Task(
             config=self.tasks_config["documentation_improvements"],
             context=[self.architecture_analysis()],
+            output_file=str(OUTPUT_DIR / "02-documentation.md"),
         )
 
     @task
@@ -126,6 +128,7 @@ class CobraNatsCrew:
         return Task(
             config=self.tasks_config["test_coverage_expansion"],
             context=[self.architecture_analysis()],
+            output_file=str(OUTPUT_DIR / "03-tests.md"),
         )
 
     @task
@@ -133,6 +136,7 @@ class CobraNatsCrew:
         return Task(
             config=self.tasks_config["performance_optimizations"],
             context=[self.architecture_analysis()],
+            output_file=str(OUTPUT_DIR / "04-performance.md"),
         )
 
     @task
@@ -145,6 +149,7 @@ class CobraNatsCrew:
                 self.test_coverage_expansion(),
                 self.performance_optimizations(),
             ],
+            output_file=str(OUTPUT_DIR / "05-feature-plan.md"),
         )
 
     @task
@@ -158,6 +163,7 @@ class CobraNatsCrew:
                 self.performance_optimizations(),
                 self.feature_planning(),
             ],
+            output_file=str(OUTPUT_DIR / "00-consolidated-report.md"),
         )
 
     def _worker_agents(self) -> list[Agent]:
@@ -174,12 +180,15 @@ class CobraNatsCrew:
             memory = False
             planning = False
 
+        llm = _llm()
         common: dict[str, Any] = {
             "tasks": self.tasks,
             "verbose": not check_mode,
             "memory": memory,
             "planning": planning,
+            "planning_llm": llm if planning else None,
             "cache": True,
+            "tracing": False,
         }
 
         if process is Process.hierarchical:
@@ -187,7 +196,7 @@ class CobraNatsCrew:
                 agents=self._worker_agents(),
                 process=Process.hierarchical,
                 manager_agent=self.manager(),
-                manager_llm=_llm(),
+                manager_llm=llm,
                 **common,
             )
 

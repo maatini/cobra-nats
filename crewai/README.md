@@ -2,7 +2,10 @@
 
 Analysis-only crew for [cobra-nats](https://github.com/maatini/cobra-nats): architecture, docs, Playwright coverage, performance, and roadmap planning.
 
-The crew **does not** commit, push, or open pull requests. It writes markdown into `crewai/output/`.
+The crew **does not** commit, push, or open pull requests. The default analysis
+run writes markdown into `crewai/output/`. Implementation mode
+(`mise run crew:implement`) may also edit application source; git writes stay
+off.
 
 ## What it does
 
@@ -17,7 +20,7 @@ The crew **does not** commit, push, or open pull requests. It writes markdown in
 
 Default process is `Process.hierarchical` (set `CREW_PROCESS=sequential` to fall back). Memory and planning are on unless you disable them.
 
-The crew works against the **local checkout** (file tools) and, when `GITHUB_TOKEN` is set, the **remote repo** (`GithubSearchTool`).
+The crew works against the **local checkout** (file tools sandboxed to `REPO_PATH`, default: parent of `crewai/`) and, when `GITHUB_TOKEN` is set, the **remote repo** (`GithubSearchTool`). Use `read_repo_file` with paths like `src/lib/nats/manager.ts`.
 
 ## Setup
 
@@ -41,7 +44,7 @@ Python **≥ 3.10 and < 3.14** is required (CrewAI). mise pins 3.12.
 
 ## Configure
 
-Copy `.env.example` to `.env` and set at least one LLM key:
+Copy `.env.example` to `.env` and set `OPENROUTER_API_KEY` ([openrouter.ai/keys](https://openrouter.ai/keys)):
 
 ```bash
 cp crewai/.env.example crewai/.env
@@ -49,22 +52,28 @@ cp crewai/.env.example crewai/.env
 
 | Variable | Purpose |
 |----------|---------|
-| `OPENAI_API_KEY` / `OPENAI_MODEL` | Default LLM |
-| `MODEL` | LiteLLM id (`anthropic/…`, `groq/…`, `ollama/…`) |
+| `OPENROUTER_API_KEY` | Default LLM via [OpenRouter](https://openrouter.ai) |
+| `OPENROUTER_API_BASE` | `https://openrouter.ai/api/v1` |
+| `MODEL` | LiteLLM id, e.g. `openrouter/openai/gpt-4o` |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / … | Direct providers (optional) |
 | `GITHUB_TOKEN` | Enables `GithubSearchTool` against `GITHUB_REPO` |
-| `REPO_PATH` | Override local checkout (defaults to repo root) |
+| `REPO_PATH` | Checkout the file tools may read (defaults to parent of `crewai/`) |
 | `CREW_PROCESS` | `hierarchical` (default) or `sequential` |
 | `CREW_MEMORY` / `CREW_PLANNING` | `true` / `false` |
 
-Memory uses OpenAI embeddings by default. If you only have a non-OpenAI LLM, set `CREW_MEMORY=false`.
+Memory uses OpenAI embeddings. Leave `CREW_MEMORY=false` on OpenRouter-only setups.
+
+Do not set `OPENAI_API_KEY` for OpenRouter. The crew points CrewAI's leftover OpenAI defaults (planning agent) at OpenRouter automatically.
 
 ## Run
 
 From the repo root:
 
 ```bash
-mise run crew:check    # syntax / wiring, no LLM
-mise run crew          # full run (needs API keys)
+mise run crew:check              # syntax / wiring, no LLM
+mise run crew                    # analysis run (needs API keys)
+mise run crew:implement-check    # implementation crew wiring
+mise run crew:implement          # apply ranked actions 1, 3–10 (skip 2)
 ```
 
 From `crewai/`:

@@ -6,7 +6,14 @@ import os
 from typing import Any
 
 from cobra_nats_crew.paths import repo_root, repo_url
-from cobra_nats_crew.tools.repo_tools import ListRepoTreeTool, WriteOutputMarkdownTool
+from cobra_nats_crew.tools.command_tool import RunAllowedCommandTool
+from cobra_nats_crew.tools.repo_tools import (
+    GrepRepoTool,
+    ListRepoTreeTool,
+    ReadRepoFileTool,
+    WriteOutputMarkdownTool,
+)
+from cobra_nats_crew.tools.write_tools import SearchReplaceRepoFileTool, WriteRepoFileTool
 
 
 def _safe_tool(factory, label: str) -> Any | None:
@@ -44,20 +51,33 @@ def build_agent_tools() -> list[Any]:
     """File tools for the local checkout plus optional GitHub search."""
     from crewai_tools import DirectoryReadTool, DirectorySearchTool, FileReadTool
 
-    root = repo_root()
+    root = repo_root().resolve()
+    print(f"[cobra-nats-crew] File tools sandbox: {root}")
     tools: list[Any] = [
         ListRepoTreeTool(),
-        FileReadTool(),
-        DirectoryReadTool(directory=str(root)),
+        ReadRepoFileTool(),
+        GrepRepoTool(),
+        FileReadTool(base_dir=str(root)),
+        DirectoryReadTool(directory=str(root / "src") if (root / "src").is_dir() else str(root)),
         WriteOutputMarkdownTool(),
     ]
 
-    # Semantic search over application source only (skip node_modules / .next).
+    # Semantic search needs OpenAI embeddings, not an OpenRouter-aliased key.
     search_root = str(root / "src") if (root / "src").is_dir() else str(root)
-    search = _safe_tool(
-        lambda: DirectorySearchTool(directory=search_root),
-        "DirectorySearchTool",
-    )
+    openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+    openrouter_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    openai_only = bool(openai_key) and openai_key != openrouter_key
+    search = None
+    if openai_only:
+        search = _safe_tool(
+            lambda: DirectorySearchTool(directory=search_root),
+            "DirectorySearchTool",
+        )
+    else:
+        print(
+            "[cobra-nats-crew] DirectorySearchTool skipped "
+            "(needs a real OPENAI_API_KEY for embeddings)."
+        )
     if search is not None:
         tools.append(search)
 
@@ -65,4 +85,18 @@ def build_agent_tools() -> list[Any]:
     if github is not None:
         tools.append(github)
 
+    return tools
+
+
+def build_implement_tools() -> list[Any]:
+    """Read, write, and allowlisted-command tools for implementation mode."""
+    tools = build_agent_tools()
+    tools.extend(
+        [
+            WriteRepoFileTool(),
+            SearchReplaceRepoFileTool(),
+            RunAllowedCommandTool(),
+        ]
+    )
+    print("[cobra-nats-crew] Implementation tools enabled (write + allowlisted commands).")
     return tools
