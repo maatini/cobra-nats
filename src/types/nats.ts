@@ -95,7 +95,8 @@ export interface OsBucketInfo {
     storage: string;
     replicas: number;
     sealed: boolean;
-    objectCount: number;
+    /** Available when a full object listing was already performed. */
+    objectCount?: number;
 }
 
 /** Serializable Object Store object info returned from server actions. */

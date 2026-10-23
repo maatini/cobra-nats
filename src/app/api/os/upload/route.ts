@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getErrorMessage } from "@/lib/server-action";
-import type { NatsConnectionConfig } from "@/types/nats";
+import { MAX_OS_UPLOAD_BYTES, NatsConnectionConfigWithoutIdSchema, UploadMetadataSchema } from "@/lib/validation/nats";
 import { connectWithConfig } from "@/lib/nats/connect-options";
 
 export const dynamic = "force-dynamic";
@@ -18,13 +18,27 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: NextRequest) {
     try {
+        const contentLength = Number(request.headers.get("content-length"));
+        // Multipart framing adds a small overhead beyond the file bytes.
+        if (Number.isFinite(contentLength) && contentLength > MAX_OS_UPLOAD_BYTES + 1_048_576) {
+            return NextResponse.json(
+                { success: false, error: `Upload exceeds the ${MAX_OS_UPLOAD_BYTES} byte limit` },
+                { status: 413 },
+            );
+        }
+
         const formData = await request.formData();
 
-        const bucket = formData.get("bucket") as string;
-        const connectionRaw = formData.get("connection") as string;
-        const objectName = (formData.get("name") as string | null)?.trim();
-        const metadataRaw = formData.get("metadata") as string | null;
-        const file = formData.get("file") as File | null;
+        const bucketValue = formData.get("bucket");
+        const connectionValue = formData.get("connection");
+        const bucket = typeof bucketValue === "string" ? bucketValue.trim() : "";
+        const connectionRaw = typeof connectionValue === "string" ? connectionValue : "";
+        const nameValue = formData.get("name");
+        const metadataValue = formData.get("metadata");
+        const objectName = typeof nameValue === "string" ? nameValue.trim() : undefined;
+        const metadataRaw = typeof metadataValue === "string" ? metadataValue : null;
+        const fileValue = formData.get("file");
+        const file = typeof File !== "undefined" && fileValue instanceof File ? fileValue : null;
 
         if (!bucket || !connectionRaw || !file) {
             return NextResponse.json(
@@ -32,21 +46,38 @@ export async function POST(request: NextRequest) {
                 { status: 400 },
             );
         }
+        if (file.size > MAX_OS_UPLOAD_BYTES) {
+            return NextResponse.json(
+                { success: false, error: `File exceeds the ${MAX_OS_UPLOAD_BYTES} byte upload limit` },
+                { status: 413 },
+            );
+        }
 
-        const config: Omit<NatsConnectionConfig, "id"> = JSON.parse(connectionRaw);
+        let connectionInput: unknown;
+        try {
+            connectionInput = JSON.parse(connectionRaw) as unknown;
+        } catch {
+            return NextResponse.json({ success: false, error: "Invalid connection JSON" }, { status: 400 });
+        }
+        const parsedConnection = NatsConnectionConfigWithoutIdSchema.safeParse(connectionInput);
+        if (!parsedConnection.success) {
+            return NextResponse.json({ success: false, error: "Invalid connection configuration" }, { status: 400 });
+        }
+        const config = parsedConnection.data;
+        if (!objectName && !file.name.trim()) {
+            return NextResponse.json({ success: false, error: "Object name is required" }, { status: 400 });
+        }
         let metadata: Record<string, string> | undefined;
         if (metadataRaw) {
             try {
                 const parsed = JSON.parse(metadataRaw) as unknown;
-                if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-                    metadata = Object.fromEntries(
-                        Object.entries(parsed as Record<string, unknown>)
-                            .filter(([, v]) => typeof v === "string")
-                            .map(([k, v]) => [k, v as string])
-                    );
+                const validatedMetadata = UploadMetadataSchema.safeParse(parsed);
+                if (!validatedMetadata.success) {
+                    return NextResponse.json({ success: false, error: "Invalid object metadata" }, { status: 400 });
                 }
+                metadata = validatedMetadata.data;
             } catch {
-                // ignore invalid metadata JSON
+                return NextResponse.json({ success: false, error: "Invalid object metadata JSON" }, { status: 400 });
             }
         }
 

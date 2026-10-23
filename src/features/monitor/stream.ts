@@ -28,9 +28,13 @@ export function createMonitorStream({
 
     return new ReadableStream({
         async start(controller) {
-            let nc: NatsConnection | undefined;
+            let heartbeat: ReturnType<typeof setInterval> | undefined;
+            let subscription: ReturnType<NatsConnection["subscribe"]> | undefined;
+            let settled = false;
+            let shutdownPromise: Promise<void> | undefined;
 
             const send = (event: string, data: string) => {
+                if (settled) return;
                 try {
                     controller.enqueue(encoder.encode(`event: ${event}\ndata: ${data}\n\n`));
                 } catch {
@@ -38,48 +42,77 @@ export function createMonitorStream({
                 }
             };
 
-            try {
-                nc = await natsManager.getConnection({
-                    ...config,
-                    id: monitorConnectionId,
-                    name: `Monitor - ${subject}`,
-                });
-
-                const sub = nc.subscribe(subject);
-
-                send("connected", JSON.stringify({ subject }));
-
-                const heartbeat = setInterval(() => {
-                    send("ping", String(Date.now()));
-                }, 15000);
-
-                const shutdown = async () => {
-                    clearInterval(heartbeat);
+            const shutdown = (error?: unknown): Promise<void> => {
+                if (shutdownPromise) return shutdownPromise;
+                shutdownPromise = (async () => {
+                    if (heartbeat) clearInterval(heartbeat);
                     try {
-                        sub.unsubscribe();
+                        subscription?.unsubscribe();
                     } catch {
                         // already unsubscribed
                     }
                     try {
                         await natsManager.closeConnection(monitorConnectionId);
-                    } catch (e) {
-                        console.error("Error closing monitor connection:", e);
+                    } catch (closeError) {
+                        console.error("Error closing monitor connection:", closeError);
                     }
-                    try {
-                        controller.close();
-                    } catch {
-                        // already closed
+                    if (!settled) {
+                        settled = true;
+                        try {
+                            if (error !== undefined) controller.error(error);
+                            else controller.close();
+                        } catch {
+                            // Controller was already closed by the stream consumer.
+                        }
                     }
-                };
+                })();
+                return shutdownPromise;
+            };
 
-                (async () => {
-                    for await (const msg of sub) {
-                        if (signal.aborted) break;
+            const onAbort = () => {
+                void shutdown();
+            };
+            signal.addEventListener("abort", onAbort, { once: true });
+
+            try {
+                if (signal.aborted) {
+                    await shutdown();
+                    return;
+                }
+
+                const nc = await natsManager.getConnection({
+                    ...config,
+                    id: monitorConnectionId,
+                    name: `Monitor - ${subject}`,
+                });
+                if (signal.aborted) {
+                    await shutdown();
+                    return;
+                }
+
+                subscription = nc.subscribe(subject);
+                send("connected", JSON.stringify({ subject }));
+                heartbeat = setInterval(() => send("ping", String(Date.now())), 15000);
+
+                const iterator = subscription[Symbol.asyncIterator]();
+                let resolveAbort!: () => void;
+                const aborted = new Promise<null>((resolve) => {
+                    resolveAbort = () => resolve(null);
+                });
+                const onIteratorAbort = () => resolveAbort();
+                if (signal.aborted) resolveAbort();
+                else signal.addEventListener("abort", onIteratorAbort, { once: true });
+
+                try {
+                    while (!signal.aborted) {
+                        const next = await Promise.race([iterator.next(), aborted]);
+                        if (next === null || next.done) break;
+                        const msg = next.value;
                         let headers: Record<string, string> | undefined;
                         if (msg.headers) {
                             headers = {};
-                            for (const [k, v] of msg.headers) {
-                                headers[k] = v[0] || "";
+                            for (const [key, values] of msg.headers) {
+                                headers[key] = values[0] || "";
                             }
                         }
                         send(
@@ -93,26 +126,20 @@ export function createMonitorStream({
                             })
                         );
                     }
-                })().catch((err) => {
+                    await shutdown();
+                } catch (err: unknown) {
                     console.error("Monitor subscription error:", err);
-                });
-
-                signal.addEventListener("abort", () => {
-                    void shutdown();
-                });
+                    send("error", getErrorMessage(err));
+                    await shutdown(err);
+                } finally {
+                    signal.removeEventListener("abort", onIteratorAbort);
+                }
             } catch (err: unknown) {
                 console.error("SSE NATS Error:", err);
                 send("error", getErrorMessage(err));
-                try {
-                    await natsManager.closeConnection(monitorConnectionId);
-                } catch {
-                    // ignore cleanup errors
-                }
-                try {
-                    controller.close();
-                } catch {
-                    // ignore
-                }
+                await shutdown(err);
+            } finally {
+                signal.removeEventListener("abort", onAbort);
             }
         },
     });

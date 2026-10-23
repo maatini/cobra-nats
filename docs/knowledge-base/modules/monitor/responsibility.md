@@ -11,7 +11,7 @@
 - Full auth is taken from the `NatsConnectionConfig` (same modes as the pool). **Never** hardcodes `authType: "none"`.
 - Sends 15-second heartbeat `ping` events to keep the SSE connection alive.
 - Subscribes with a wildcard subject (e.g., `orders.>`).
-- Closes the NATS connection + subscription when the client aborts (`signal.addEventListener("abort", ...)`).
+- Closes the NATS connection + subscription when the client aborts (`signal.addEventListener("abort", ...)`), when the iterator fails, and when startup fails. Shutdown is idempotent (heartbeat, unsubscribe, pool close, controller settle once). Abort races the pending iterator read so the worker does not hang.
 - Error messages use `getErrorMessage()` from `lib/server-action.ts` for user-friendly output.
 
 **SSE Events**:
@@ -32,7 +32,7 @@
 | `config` | yes | Full `NatsConnectionConfig` (servers + auth) |
 | `subject` | no (default `>`) | Subject pattern to subscribe to |
 
-**Invariants**: Uses `force-dynamic` to prevent static generation. Rejects missing/invalid config with 400.
+**Invariants**: Uses `force-dynamic` to prevent static generation. Parses the JSON body with `MonitorRequestSchema` and rejects missing/invalid config with 400.
 
 ## Monitor UI (`monitor-view.tsx`)
 

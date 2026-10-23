@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { seedConnection } from './helpers';
-import path from 'node:path';
-import fs from 'node:fs';
+import { seedConnection, createUniqueTempFile, uniqueNatsName } from './helpers';
+import { unlink } from 'node:fs/promises';
 
 test.describe('Functional Object Store CRUD', () => {
     test.beforeEach(async ({ page }) => {
@@ -9,8 +8,8 @@ test.describe('Functional Object Store CRUD', () => {
         await page.goto('/');
     });
 
-    test('should create a bucket, upload a file, and delete', async ({ page }) => {
-        const bucketName = `TEST_OS_${Date.now()}`;
+    test('should create a bucket, upload a file, and delete', async ({ page }, testInfo) => {
+        const bucketName = uniqueNatsName('TEST_OS', testInfo);
 
         // Navigate to OS page directly — sidebar link click races with hydration
         // when the suite runs multiple workers in parallel.
@@ -61,10 +60,11 @@ test.describe('Functional Object Store CRUD', () => {
         await expect(page.getByRole('heading', { name: bucketName, exact: true })).toBeVisible({ timeout: 10000 });
 
         // Create a temporary test file to upload
-        const tmpDir = path.join(__dirname, '..', 'tmp');
-        if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-        const testFilePath = path.join(tmpDir, 'test-upload.txt');
-        fs.writeFileSync(testFilePath, 'Hello from E2E test!');
+        const testFilePath = await createUniqueTempFile(
+            testInfo,
+            'test-upload.txt',
+            'Hello from E2E test!'
+        );
 
         // Upload an object via the dialog
         await page.getByRole('button', { name: 'Upload' }).click();
@@ -98,12 +98,11 @@ test.describe('Functional Object Store CRUD', () => {
         await expect(deletedToast).toBeVisible({ timeout: 10000 });
         await expect(page).toHaveURL(/\/os/);
 
-        // Cleanup temp file
-        if (fs.existsSync(testFilePath)) fs.unlinkSync(testFilePath);
+        await unlink(testFilePath).catch(() => undefined);
     });
 
-    test('should preview an uploaded text file in the slide-in sheet', async ({ page }) => {
-        const bucketName = `TEST_OS_PREVIEW_${Date.now()}`;
+    test('should preview an uploaded text file in the slide-in sheet', async ({ page }, testInfo) => {
+        const bucketName = uniqueNatsName('TEST_OS_PREVIEW', testInfo);
 
         // --- Create bucket ---
         await page.goto('/os');
@@ -127,11 +126,11 @@ test.describe('Functional Object Store CRUD', () => {
         await expect(page.getByRole('heading', { name: bucketName, exact: true })).toBeVisible({ timeout: 10000 });
 
         // --- Upload a JSON file for syntax highlighting verification ---
-        const tmpDir = path.join(__dirname, '..', 'tmp');
-        if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-        const jsonPath = path.join(tmpDir, 'preview-test.json');
-        const jsonContent = '{"name":"test","value":42,"enabled":true}';
-        fs.writeFileSync(jsonPath, jsonContent);
+        const jsonPath = await createUniqueTempFile(
+            testInfo,
+            'preview-test.json',
+            '{"name":"test","value":42,"enabled":true}'
+        );
 
         await page.getByRole('button', { name: 'Upload' }).click();
         await expect(page.getByRole('heading', { name: 'Upload Object' })).toBeVisible();
@@ -176,12 +175,11 @@ test.describe('Functional Object Store CRUD', () => {
         await confirmDialog.getByRole('button', { name: 'Delete Bucket' }).click();
         await expect(page.getByText('Bucket deleted')).toBeVisible({ timeout: 10000 });
 
-        // Cleanup
-        if (fs.existsSync(jsonPath)) fs.unlinkSync(jsonPath);
+        await unlink(jsonPath).catch(() => undefined);
     });
 
-    test('should preview an object with a non-json extension but json content', async ({ page }) => {
-        const bucketName = `TEST_OS_DETECT_${Date.now()}`;
+    test('should preview an object with a non-json extension but json content', async ({ page }, testInfo) => {
+        const bucketName = uniqueNatsName('TEST_OS_DETECT', testInfo);
 
         // --- Create bucket ---
         await page.goto('/os');
@@ -200,10 +198,11 @@ test.describe('Functional Object Store CRUD', () => {
         await bucketLink.click();
 
         // --- Upload a file with no extension but JSON content ---
-        const tmpDir = path.join(__dirname, '..', 'tmp');
-        if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-        const noExtPath = path.join(tmpDir, 'config-without-extension');
-        fs.writeFileSync(noExtPath, '{"services":{"nats":4222}}');
+        const noExtPath = await createUniqueTempFile(
+            testInfo,
+            'config-without-extension',
+            '{"services":{"nats":4222}}'
+        );
 
         await page.getByRole('button', { name: 'Upload' }).click();
         await expect(page.getByRole('heading', { name: 'Upload Object' })).toBeVisible();
@@ -235,11 +234,11 @@ test.describe('Functional Object Store CRUD', () => {
         await confirmDialog.getByRole('button', { name: 'Delete Bucket' }).click();
         await expect(page.getByText('Bucket deleted')).toBeVisible({ timeout: 10000 });
 
-        if (fs.existsSync(noExtPath)) fs.unlinkSync(noExtPath);
+        await unlink(noExtPath).catch(() => undefined);
     });
 
-    test('should upload and preview a file larger than the old 1 MB body limit', async ({ page }) => {
-        const bucketName = `TEST_OS_LARGE_${Date.now()}`;
+    test('should upload and preview a file larger than the old 1 MB body limit', async ({ page }, testInfo) => {
+        const bucketName = uniqueNatsName('TEST_OS_LARGE', testInfo);
 
         // --- Create bucket ---
         await page.goto('/os');
@@ -257,12 +256,9 @@ test.describe('Functional Object Store CRUD', () => {
         await expect(page.getByRole('heading', { name: bucketName, exact: true })).toBeVisible({ timeout: 10000 });
 
         // --- Generate a ~1.1 MB file (> old 1 MB server-action body limit) ---
-        const tmpDir = path.join(__dirname, '..', 'tmp');
-        if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-        const largePath = path.join(tmpDir, 'large-file.bin');
         const size = Math.round(1.1 * 1024 * 1024);
         const buf = Buffer.alloc(size, 0x41); // fill with 'A' for fast allocation
-        fs.writeFileSync(largePath, buf);
+        const largePath = await createUniqueTempFile(testInfo, 'large-file.bin', buf);
 
         // --- Upload ---
         await page.getByRole('button', { name: 'Upload' }).click();
@@ -298,7 +294,7 @@ test.describe('Functional Object Store CRUD', () => {
         await confirmDialog.getByRole('button', { name: 'Delete Bucket' }).click();
         await expect(page.getByText('Bucket deleted')).toBeVisible({ timeout: 10000 });
 
-        if (fs.existsSync(largePath)) fs.unlinkSync(largePath);
+        await unlink(largePath).catch(() => undefined);
     });
 
     test('should show empty sheet state when clicking preview on missing object', async ({ page }) => {

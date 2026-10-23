@@ -10,7 +10,7 @@ All Object Store operations via `withJetStream`. Uses `js.views.os(bucket)` to g
 |---|---|---|---|
 | `listOSBuckets(config)` | `{buckets: OsBucketInfo[]}` | Discover OS buckets via `OBJ_` prefixed streams | `/os` |
 | `createOSBucket(config, name, opts)` | `OsBucketInfo` | Create OS bucket | `/os` (create dialog) |
-| `getOSBucket(config, name)` | `OsBucketInfo` | Status for a single bucket (incl. sealed) | `/os/[bucket]` |
+| `getOSBucket(config, name)` | `OsBucketInfo` | Status for a single bucket (sealed/size). Does not list objects; `objectCount` is omitted here so the detail view can call `listObjects` once. | `/os/[bucket]` |
 | `deleteOSBucket(config, name)` | `void` | Destroy bucket + all objects | `/os` (confirm) |
 | `sealOSBucket(config, name)` | `OsBucketInfo` | Seal bucket (irreversible read-only) | `/os/[bucket]` |
 | `listObjects(config, bucket)` | `{objects: OsObjectInfo[]}` | List all non-deleted objects with metadata | `/os/[bucket]` |
@@ -37,14 +37,14 @@ The nats.js `ObjectStoreImpl.init()` uses `Object.assign({}, opts)` to build the
 
 ## API Route — OS Upload (`src/app/api/os/upload/`)
 
-An API route exists for OS upload (in addition to the `uploadObject` Server Action). This handles multipart file uploads from the browser, streaming the body to NATS.
+An API route exists for OS upload (in addition to the `uploadObject` Server Action). This handles multipart file uploads from the browser.
 
-**Note**: This is a REST endpoint, not a Server Action. It exists because file uploads as Server Actions have size limitations.
+**Note**: This is a REST endpoint, not a Server Action. It exists because file uploads as Server Actions have size limitations. The handler rejects `Content-Length` above 20 MB (+ 1 MB multipart overhead) when the header is present, then rejects `file.size` above 20 MB after `formData()` parsing. Connection JSON is Zod-validated.
 
 ## API Route — OS Download (`src/app/api/os/download/`)
 
 Streams an Object Store object to the client without base64-encoding the entire payload in memory.
 
-Body JSON: `{ config: NatsConnectionConfig, bucket: string, name: string }`.
+Body JSON: `{ config: NatsConnectionConfig, bucket: string, name: string }` (Zod-validated; invalid JSON is 400).
 
-Used by the detail-view download button; prefer this path over the `downloadObject` Server Action for large objects.
+Used by the detail-view download button; prefer this path over the `downloadObject` Server Action for large objects. The request abort signal cancels the object reader; the short-lived NATS connection is closed on completion, failure, or cancel.

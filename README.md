@@ -181,6 +181,7 @@ mise run setup               # npm install + uv sync for crewai/
 | Playwright (Chromium) | `mise run test` |
 | CrewAI crew | `mise run crew` |
 | CrewAI config check (no LLM) | `mise run crew:check` |
+| CrewAI implementation crew | `mise run crew:implement` |
 
 `NEXT_TELEMETRY_DISABLED=1` is set automatically in mise-managed shells.
 
@@ -202,7 +203,7 @@ Open [http://localhost:3000](http://localhost:3000) — the dashboard will appea
 
 ## ⚙️ Configuration
 
-Cobra NATS is purely client-side for connection configuration. All settings are stored in your browser's `localStorage` under the key `cobra-nats-storage`.
+Connection profiles currently persist in browser `localStorage` under the key `cobra-nats-storage`. The stored profile includes the connection configuration entered by the user, including auth fields when configured. NATS connections are opened server-side; the monitor sends its config in a POST body rather than a URL. Do not treat browser persistence as a server-side secret store. 
 
 ### Adding a Connection
 
@@ -236,7 +237,8 @@ cobra-nats/
 │   │   │   ├── publish/             # Publish / Request-Reply
 │   │   │   ├── monitor/             # Live traffic monitor
 │   │   │   └── settings/            # Application settings
-│   │   └── api/monitor/route.ts     # SSE endpoint (only REST route)
+│   │   ├── api/monitor/route.ts     # Monitor SSE (POST JSON body)
+│   │   └── api/os/                  # Upload (multipart POST) + download (streaming POST)
 │   │
 │   ├── features/                    # Domain modules — everything per feature
 │   │   ├── connections/             # Zustand store, hook, actions, connect dialog
@@ -372,8 +374,10 @@ npx playwright test tests/functional-streams.spec.ts tests/functional-messaging.
 
 ## 🔒 Security Notes
 
-- NATS credentials are **never stored in the browser in plain text beyond the connection config** — all actual NATS client connections are created on the Next.js server side via Server Actions.
-- The `cobra-nats-storage` localStorage key stores only **connection metadata** (server URLs, auth type, name), not credentials in session memory form.
+- NATS client connections are created server-side via Server Actions or the three documented API routes; the `nats` client is not run in the browser.
+- Connection profiles currently persist in browser `localStorage` under `cobra-nats-storage`, including configured auth fields. Treat browser storage as client-accessible; this documentation makes no claim that secrets are absent from the browser.
+- Monitor connection config is sent in a POST body, not in the URL/query string.
+- HTTP monitoring permits local targets such as `http://localhost:8222`, while rejecting link-local and recognized cloud metadata hosts. It allows only HTTP(S), rejects URL credentials/query/fragments and redirects, and limits paths to the supported monitoring endpoints.
 - For production use, ensure your Next.js server is running in a secure, private network alongside your NATS cluster.
 
 ---
@@ -395,17 +399,19 @@ npx playwright test tests/functional-streams.spec.ts tests/functional-messaging.
 
 ## Development Tools / CrewAI
 
-`crewai/` is a CrewAI project that analyses this repository and writes markdown reports (architecture, docs, Playwright gaps, performance, roadmap slices). It does **not** commit or open pull requests.
+`crewai/` is a CrewAI project that analyses this repository and writes markdown reports (architecture, docs, Playwright gaps, performance, roadmap slices). Implementation mode can apply ranked follow-up actions to the local tree. It does **not** commit or open pull requests.
 
 ```bash
-mise run crew:check    # validate agents/tasks without an LLM
-mise run crew          # full run — needs keys in crewai/.env
+mise run crew:check         # validate agents/tasks without an LLM
+mise run crew               # analysis run — needs keys in crewai/.env
+mise run crew:implement     # apply actions 1, 3–10 from the executive brief (skip 2)
 ```
 
-Setup, agents, and output files: [crewai/README.md](./crewai/README.md). Copy [crewai/.env.example](./crewai/.env.example) to `crewai/.env` and set `OPENAI_API_KEY` (or another LiteLLM `MODEL`) plus an optional `GITHUB_TOKEN` for remote-repo search.
+Setup, agents, and output files: [crewai/README.md](./crewai/README.md). Copy [crewai/.env.example](./crewai/.env.example) to `crewai/.env` and set `OPENROUTER_API_KEY` (LiteLLM `MODEL=openrouter/…`) plus an optional `GITHUB_TOKEN` for remote-repo search.
 
 ---
 
 ## 📄 License
 
 MIT
+

@@ -87,7 +87,7 @@ export function OSBucketCard({ bucket, onDelete }: OSBucketCardProps) {
                             Objects
                         </div>
                         <div className="text-lg font-semibold text-foreground tabular-nums">
-                            {bucket.objectCount.toLocaleString()}
+                            {bucket.objectCount?.toLocaleString() ?? "—"}
                         </div>
                     </div>
                     <div className="flex flex-col gap-1 text-right">

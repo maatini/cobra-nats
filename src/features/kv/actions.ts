@@ -3,10 +3,13 @@
 import type { NatsConnectionConfig, KvEntryResult } from "@/types/nats";
 import type { KvOptions, KvStatus } from "nats";
 import { withJetStream, type ActionResponse } from "@/lib/server-action";
+import { parseNatsConnectionConfig } from "@/lib/validation/nats";
 
 /** Discover KV buckets by filtering JetStream streams on the `KV_` prefix. */
 export async function listKVBuckets(config: NatsConnectionConfig): Promise<ActionResponse<{ buckets: KvStatus[] }>> {
-    return withJetStream(config, "listKVBuckets", async ({ js, jsm }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "listKVBuckets", async ({ js, jsm }) => {
         // List all streams that start with "KV_" to discover KV buckets
         const bucketNames: string[] = [];
         const iter = await jsm.streams.list();
@@ -37,7 +40,9 @@ export async function listKVBuckets(config: NatsConnectionConfig): Promise<Actio
 
 /** Create a KV bucket. `kvConfig.bucket` is required; other fields map to `KvOptions`. */
 export async function createKVBucket(config: NatsConnectionConfig, kvConfig: Partial<KvOptions & { bucket: string }>): Promise<ActionResponse<{ status: KvStatus }>> {
-    return withJetStream(config, "createKVBucket", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "createKVBucket", async ({ js }) => {
         const { bucket, ...options } = kvConfig;
         const kv = await js.views.kv(bucket!, options as Partial<KvOptions>);
         const status = await kv.status();
@@ -57,7 +62,9 @@ export async function createKVBucket(config: NatsConnectionConfig, kvConfig: Par
 
 /** Destroy a KV bucket including all keys and history. Irreversible. */
 export async function deleteKVBucket(config: NatsConnectionConfig, bucket: string): Promise<ActionResponse<void>> {
-    return withJetStream(config, "deleteKVBucket", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "deleteKVBucket", async ({ js }) => {
         const kv = await js.views.kv(bucket);
         await kv.destroy();
     });
@@ -65,7 +72,9 @@ export async function deleteKVBucket(config: NatsConnectionConfig, bucket: strin
 
 /** List all keys currently in the bucket (excluding deleted entries). */
 export async function getKVKeys(config: NatsConnectionConfig, bucket: string): Promise<ActionResponse<{ keys: string[] }>> {
-    return withJetStream(config, "getKVKeys", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "getKVKeys", async ({ js }) => {
         const kv = await js.views.kv(bucket);
         const keys = await kv.keys();
         const keyList: string[] = [];
@@ -78,7 +87,9 @@ export async function getKVKeys(config: NatsConnectionConfig, bucket: string): P
 
 /** Fetch a single KV entry; serializes the NATS entry to `KvEntryResult` for client transport. */
 export async function getKVEntry(config: NatsConnectionConfig, bucket: string, key: string): Promise<ActionResponse<{ entry: KvEntryResult }>> {
-    return withJetStream(config, "getKVEntry", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "getKVEntry", async ({ js }) => {
         const kv = await js.views.kv(bucket);
         const entry = await kv.get(key);
         if (!entry) throw new Error("Entry not found");
@@ -98,7 +109,9 @@ export async function getKVEntry(config: NatsConnectionConfig, bucket: string, k
 
 /** Soft-delete a single KV entry (tombstone; history retained per bucket history). */
 export async function deleteKVEntry(config: NatsConnectionConfig, bucket: string, key: string): Promise<ActionResponse<void>> {
-    return withJetStream(config, "deleteKVEntry", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "deleteKVEntry", async ({ js }) => {
         const kv = await js.views.kv(bucket);
         await kv.delete(key);
     });
@@ -113,7 +126,9 @@ export async function purgeKVEntry(
     bucket: string,
     key: string
 ): Promise<ActionResponse<void>> {
-    return withJetStream(config, "purgeKVEntry", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "purgeKVEntry", async ({ js }) => {
         const kv = await js.views.kv(bucket);
         await kv.purge(key);
     });
@@ -121,7 +136,9 @@ export async function purgeKVEntry(
 
 /** Upsert a KV entry. Returns the new revision number. */
 export async function putKVEntry(config: NatsConnectionConfig, bucket: string, key: string, value: string): Promise<ActionResponse<{ revision: number }>> {
-    return withJetStream(config, "putKVEntry", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "putKVEntry", async ({ js }) => {
         const kv = await js.views.kv(bucket);
         const revision = await kv.put(key, value);
         return { revision };
@@ -137,7 +154,9 @@ export async function getKVHistory(
     bucket: string,
     key: string
 ): Promise<ActionResponse<{ entries: KvEntryResult[] }>> {
-    return withJetStream(config, "getKVHistory", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "getKVHistory", async ({ js }) => {
         const kv = await js.views.kv(bucket);
         const iter = await kv.history({ key });
         const entries: KvEntryResult[] = [];

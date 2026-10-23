@@ -1,6 +1,7 @@
 import type { NatsConnection, JetStreamClient, JetStreamManager } from "nats";
 import { natsManager } from "@/lib/nats/manager";
 import type { NatsConnectionConfig, ActionResponse } from "@/types/nats";
+import { parseNatsConnectionConfig } from "@/lib/validation/nats";
 
 export type { ActionResponse };
 
@@ -52,8 +53,11 @@ export async function withNatsConnection<T>(
     operationName: string,
     operation: (nc: NatsConnection) => Promise<T>
 ): Promise<ActionResponse<T>> {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+
     try {
-        const nc = await natsManager.getConnection(config);
+        const nc = await natsManager.getConnection(parsedConfig.data);
         const result = await operation(nc);
         return { success: true, data: result };
     } catch (err: unknown) {
@@ -71,8 +75,11 @@ export async function withJetStream<T>(
     operationName: string,
     operation: (params: { js: JetStreamClient; jsm: JetStreamManager }) => Promise<T>
 ): Promise<ActionResponse<T>> {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+
     try {
-        const nc = await natsManager.getConnection(config);
+        const nc = await natsManager.getConnection(parsedConfig.data);
         const jsm = await natsManager.getJetStreamManager(config);
         const result = await operation({ js: nc.jetstream(), jsm });
         return { success: true, data: result };

@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { getErrorMessage } from "@/lib/server-action";
-import type { NatsConnectionConfig } from "@/types/nats";
+import { OsDownloadRequestSchema } from "@/lib/validation/nats";
 import { connectWithConfig } from "@/lib/nats/connect-options";
 
 export const dynamic = "force-dynamic";
@@ -17,14 +17,17 @@ export async function POST(request: NextRequest) {
     let nc: Awaited<ReturnType<typeof connectWithConfig>> | undefined;
 
     try {
-        const body = await request.json();
-        const config = body?.config as NatsConnectionConfig | undefined;
-        const bucket = body?.bucket as string | undefined;
-        const name = body?.name as string | undefined;
-
-        if (!config?.servers || !bucket || !name) {
-            return new Response("Missing config, bucket, or name", { status: 400 });
+        let body: unknown;
+        try {
+            body = await request.json();
+        } catch {
+            return new Response("Invalid JSON body", { status: 400 });
         }
+        const parsed = OsDownloadRequestSchema.safeParse(body);
+        if (!parsed.success) {
+            return new Response("Missing or invalid config, bucket, or name", { status: 400 });
+        }
+        const { config, bucket, name } = parsed.data;
 
         nc = await connectWithConfig(config, {
             name: "Cobra NATS - OS download",
@@ -44,39 +47,76 @@ export async function POST(request: NextRequest) {
         }
 
         const connection = nc;
-        nc = undefined; // ownership transferred to stream cancel
-
-        const stream = new ReadableStream<Uint8Array>({
-            async start(controller) {
-                const reader = result.data.getReader();
-                try {
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        if (value) controller.enqueue(value);
-                    }
-                    controller.close();
-                } catch (err) {
-                    controller.error(err);
-                } finally {
+        nc = undefined; // stream owns and closes this connection
+        let cleanupPromise: Promise<void> | undefined;
+        const cleanup = () => {
+            if (!cleanupPromise) {
+                cleanupPromise = (async () => {
                     try {
                         await connection.close();
                     } catch {
-                        // ignore
+                        // ignore cleanup errors
                     }
+                })();
+            }
+            return cleanupPromise;
+        };
+
+        const reader = result.data.getReader();
+        const stream = new ReadableStream<Uint8Array>({
+            async start(controller) {
+                let settled = false;
+                const onAbort = () => {
+                    void (async () => {
+                        try {
+                            await reader.cancel(request.signal.reason);
+                        } catch {
+                            // Reader may already be closed.
+                        }
+                        if (!settled) {
+                            settled = true;
+                            try {
+                                controller.error(request.signal.reason);
+                            } catch {
+                                // Stream may already be canceled.
+                            }
+                        }
+                        await cleanup();
+                    })();
+                };
+
+                request.signal.addEventListener("abort", onAbort, { once: true });
+                try {
+                    if (request.signal.aborted) {
+                        onAbort();
+                        return;
+                    }
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done || request.signal.aborted) break;
+                        if (value) controller.enqueue(value);
+                    }
+                    if (!settled) {
+                        settled = true;
+                        controller.close();
+                    }
+                } catch (err) {
+                    if (!settled) {
+                        settled = true;
+                        controller.error(err);
+                    }
+                } finally {
+                    request.signal.removeEventListener("abort", onAbort);
+                    await cleanup();
                 }
             },
-            async cancel() {
+            async cancel(reason) {
                 try {
-                    await result.data.cancel();
+                    await reader.cancel(reason);
                 } catch {
-                    // ignore
+                    // ignore cancellation errors
                 }
-                try {
-                    await connection.close();
-                } catch {
-                    // ignore
-                }
+                await cleanup();
             },
         });
 

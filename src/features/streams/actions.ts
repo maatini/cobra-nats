@@ -18,6 +18,7 @@ import type {
 } from "nats";
 import { withJetStream, type ActionResponse } from "@/lib/server-action";
 import { serializeStreamInfo, serializeConsumerInfo } from "@/lib/nats/serialize";
+import { StreamMessagesOptionsSchema, parseNatsConnectionConfig } from "@/lib/validation/nats";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Streams
@@ -157,15 +158,22 @@ export async function getStreamMessages(
     streamName: string,
     opts: GetStreamMessagesOptions = {}
 ): Promise<ActionResponse<{ messages: StreamMessage[]; hasMore: boolean }>> {
-    return withJetStream(config, "getStreamMessages", async ({ jsm }) => {
-        const batchSize = opts.batchSize ?? 25;
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    const parsedOptions = StreamMessagesOptionsSchema.safeParse(opts);
+    if (!parsedOptions.success) {
+        return { success: false, error: parsedOptions.error.issues.map((issue) => issue.message).join("; ") };
+    }
+    return withJetStream(parsedConfig.data, "getStreamMessages", async ({ jsm }) => {
+        const validatedOptions = parsedOptions.data;
+        const batchSize = validatedOptions.batchSize ?? 25;
 
         const info = await jsm.streams.info(streamName);
         const firstSeq = info.state.first_seq;
         const lastSeq = info.state.last_seq;
 
-        const startSeq = opts.startSeq ?? firstSeq;
-        const endSeq = opts.endSeq ?? lastSeq;
+        const startSeq = validatedOptions.startSeq ?? firstSeq;
+        const endSeq = validatedOptions.endSeq ?? lastSeq;
 
         if (startSeq > lastSeq || endSeq < firstSeq) {
             return { messages: [], hasMore: false };
@@ -178,7 +186,7 @@ export async function getStreamMessages(
             try {
                 const msg = await jsm.streams.getMessage(streamName, { seq: currentSeq });
 
-                if (opts.subjectFilter && !subjectMatches(msg.subject, opts.subjectFilter)) {
+                if (validatedOptions.subjectFilter && !subjectMatches(msg.subject, validatedOptions.subjectFilter)) {
                     currentSeq++;
                     continue;
                 }

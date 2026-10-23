@@ -6,8 +6,10 @@
 
 **Invariants**:
 - Exactly one `NatsManager` instance exists (private constructor + `getInstance()`).
-- One `NatsConnection` per `config.id`; stale closed connections are replaced on next `getConnection()`.
-- `JetStreamManager` is cached per `config.id`; cache is invalidated when the connection is closed.
+- One `NatsConnection` per `config.id`; concurrent `getConnection` for the same id shares one in-flight connect.
+- Each id has a generation. `closeConnection` increments it so a late connect is closed and rejected instead of re-entering the pool.
+- `JetStreamManager` is cached only for the live `NatsConnection` that created it; a closed/replaced connection drops the cache.
+- Pool size is capped at 32 live or connecting ids. New ids are rejected when the cap is reached.
 - `JetStreamClient` is NOT cached (created fresh via `nc.jetstream()` on each call — cheap).
 
 **Entry points**:
@@ -26,8 +28,17 @@
 
 **Invariants**:
 - Every action MUST use `withNatsConnection` (core NATS ops like publish/request) or `withJetStream` (JetStream ops like stream/consumer/KV/OS management).
+- Wrappers parse `NatsConnectionConfig` with Zod (`src/lib/validation/nats.ts`) before touching the pool. Invalid input returns `ActionResponse` error, not an exception.
 - Errors are caught within the wrapper and returned as `ActionResponse<T>` — never thrown across the Server Action boundary.
 - `getErrorMessage()` maps raw NATS/Node.js errors to user-friendly strings (DNS, connection refused, TLS, auth errors).
+
+## Runtime validation (`src/lib/validation/nats.ts`)
+
+**What it owns**: Server-only Zod schemas for connection config, stream message batch options, monitor/OS API bodies, and the 20 MB Object Store upload cap. Do not import this module from client components.
+
+## HTTP monitoring URL policy (`src/lib/server/monitoring-url-policy.ts`)
+
+**What it owns**: Server-only SSRF policy for `fetchHttpMonitoring`. Allows `http:`/`https:` including `localhost`; rejects credentials, query/fragment, redirects, link-local addresses, and known cloud-metadata hosts. Final path is only `/varz`, `/jsz`, or `/connz`.
 
 **Entry points**:
 | Export | Purpose |

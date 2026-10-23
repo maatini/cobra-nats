@@ -3,6 +3,7 @@
 import type { NatsConnectionConfig, OsBucketInfo, OsObjectInfo } from "@/types/nats";
 import type { ObjectStoreOptions, ObjectInfo } from "nats";
 import { withJetStream, type ActionResponse } from "@/lib/server-action";
+import { parseNatsConnectionConfig } from "@/lib/validation/nats";
 
 /**
  * Serialize a NATS ObjectInfo into a plain OsObjectInfo for client transport.
@@ -25,7 +26,9 @@ function serializeObjectInfo(o: ObjectInfo): OsObjectInfo {
 export async function listOSBuckets(
     config: NatsConnectionConfig
 ): Promise<ActionResponse<{ buckets: OsBucketInfo[] }>> {
-    return withJetStream(config, "listOSBuckets", async ({ js, jsm }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "listOSBuckets", async ({ js, jsm }) => {
         // Discover OS buckets via OBJ_ stream prefix
         const bucketNames: string[] = [];
         const iter = await jsm.streams.list();
@@ -63,7 +66,9 @@ export async function createOSBucket(
     name: string,
     opts?: Partial<ObjectStoreOptions>
 ): Promise<ActionResponse<OsBucketInfo>> {
-    return withJetStream(config, "createOSBucket", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "createOSBucket", async ({ js }) => {
         // Workaround for nats.js client bug: ObjectStoreImpl.init() uses
         // Object.assign({}, opts) which copies ALL enumerable properties into the
         // raw stream config. The NATS server rejects the unknown "replicas" field
@@ -102,7 +107,9 @@ export async function deleteOSBucket(
     config: NatsConnectionConfig,
     name: string
 ): Promise<ActionResponse<void>> {
-    return withJetStream(config, "deleteOSBucket", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "deleteOSBucket", async ({ js }) => {
         const os = await js.views.os(name);
         await os.destroy();
     });
@@ -115,7 +122,9 @@ export async function sealOSBucket(
     config: NatsConnectionConfig,
     name: string
 ): Promise<ActionResponse<OsBucketInfo>> {
-    return withJetStream(config, "sealOSBucket", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "sealOSBucket", async ({ js }) => {
         const os = await js.views.os(name);
         const status = await os.seal();
         const objects = await os.list();
@@ -138,10 +147,11 @@ export async function getOSBucket(
     config: NatsConnectionConfig,
     name: string
 ): Promise<ActionResponse<OsBucketInfo>> {
-    return withJetStream(config, "getOSBucket", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "getOSBucket", async ({ js }) => {
         const os = await js.views.os(name);
         const status = await os.status();
-        const objects = await os.list();
         return {
             bucket: status.bucket,
             description: status.description,
@@ -149,7 +159,6 @@ export async function getOSBucket(
             storage: String(status.storage),
             replicas: status.replicas,
             sealed: status.sealed,
-            objectCount: objects.filter((o) => !o.deleted).length,
         };
     });
 }
@@ -161,7 +170,9 @@ export async function listObjects(
     config: NatsConnectionConfig,
     bucket: string
 ): Promise<ActionResponse<{ objects: OsObjectInfo[] }>> {
-    return withJetStream(config, "listObjects", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "listObjects", async ({ js }) => {
         const os = await js.views.os(bucket);
         const items = await os.list();
 
@@ -181,7 +192,9 @@ export async function getObjectInfo(
     bucket: string,
     name: string
 ): Promise<ActionResponse<OsObjectInfo>> {
-    return withJetStream(config, "getObjectInfo", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "getObjectInfo", async ({ js }) => {
         const os = await js.views.os(bucket);
         const info = await os.info(name);
         if (!info) throw new Error(`Object "${name}" not found`);
@@ -200,7 +213,9 @@ export async function uploadObject(
     base64Data: string,
     metadata?: Record<string, string>
 ): Promise<ActionResponse<OsObjectInfo>> {
-    return withJetStream(config, "uploadObject", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "uploadObject", async ({ js }) => {
         const os = await js.views.os(bucket);
         // Decode base64 to Uint8Array
         const binaryString = atob(base64Data);
@@ -225,7 +240,9 @@ export async function updateObjectMeta(
     name: string,
     meta: { name?: string; description?: string; metadata?: Record<string, string> }
 ): Promise<ActionResponse<OsObjectInfo>> {
-    return withJetStream(config, "updateObjectMeta", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "updateObjectMeta", async ({ js }) => {
         const os = await js.views.os(bucket);
         await os.update(name, meta);
         const info = await os.info(meta.name || name);
@@ -243,7 +260,9 @@ export async function downloadObject(
     bucket: string,
     name: string
 ): Promise<ActionResponse<{ data: string; name: string }>> {
-    return withJetStream(config, "downloadObject", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "downloadObject", async ({ js }) => {
         const os = await js.views.os(bucket);
         const blob = await os.getBlob(name);
         if (!blob) throw new Error(`Object "${name}" not found or empty`);
@@ -268,7 +287,9 @@ export async function getObjectContent(
     bucket: string,
     name: string
 ): Promise<ActionResponse<{ text: string; binary: boolean; size: number }>> {
-    return withJetStream(config, "getObjectContent", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "getObjectContent", async ({ js }) => {
         const os = await js.views.os(bucket);
         const blob = await os.getBlob(name);
         if (!blob) throw new Error(`Object "${name}" not found or empty`);
@@ -298,7 +319,9 @@ export async function deleteObject(
     bucket: string,
     name: string
 ): Promise<ActionResponse<void>> {
-    return withJetStream(config, "deleteObject", async ({ js }) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withJetStream(parsedConfig.data, "deleteObject", async ({ js }) => {
         const os = await js.views.os(bucket);
         await os.delete(name);
     });

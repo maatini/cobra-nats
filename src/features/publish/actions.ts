@@ -3,6 +3,7 @@
 import type { NatsConnectionConfig } from "@/types/nats";
 import { headers, JSONCodec, type PublishOptions } from "nats";
 import { withNatsConnection, type ActionResponse } from "@/lib/server-action";
+import { parseNatsConnectionConfig } from "@/lib/validation/nats";
 
 /** Publish a message to a subject. Tries JSON-parse first; falls back to raw string. */
 export async function publishMessage(
@@ -11,7 +12,9 @@ export async function publishMessage(
     payload: string,
     msgHeaders?: Record<string, string>
 ): Promise<ActionResponse<void>> {
-    return withNatsConnection(config, "publishMessage", async (nc) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withNatsConnection(parsedConfig.data, "publishMessage", async (nc) => {
         const jc = JSONCodec();
 
         const opts: PublishOptions = {};
@@ -41,7 +44,9 @@ export async function requestMessage(
     payload: string,
     timeout: number = 5000
 ): Promise<ActionResponse<{ reply: { subject: string; data: string; headers?: Record<string, string> } }>> {
-    return withNatsConnection(config, "requestMessage", async (nc) => {
+    const parsedConfig = parseNatsConnectionConfig(config);
+    if (!parsedConfig.success) return parsedConfig.error;
+    return withNatsConnection(parsedConfig.data, "requestMessage", async (nc) => {
         const jc = JSONCodec();
 
         // Attempt to parse JSON if possible, otherwise use as string

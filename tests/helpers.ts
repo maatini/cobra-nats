@@ -1,7 +1,36 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Page, type TestInfo } from "@playwright/test";
+import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 /** localStorage key used by the Zustand connection store (must match production). */
 export const CONNECTIONS_STORAGE_KEY = "cobra-nats-storage";
+
+/** Return a NATS-safe, collision-resistant name scoped to this Playwright test. */
+export function uniqueNatsName(prefix: string, testInfo: TestInfo): string {
+    const worker = testInfo.workerIndex.toString(36);
+    const testId = testInfo.testId.replace(/[^a-zA-Z0-9]/g, "").slice(-8) || randomUUID().slice(0, 8);
+    return `${prefix}_${worker}_${Date.now().toString(36)}_${testId}`.slice(0, 48);
+}
+
+/** Materialize a uniquely named upload file in the OS temp directory. */
+export async function createUniqueTempFile(
+    testInfo: TestInfo,
+    fileName: string,
+    content: string | Buffer
+): Promise<string> {
+    const dir = await mkdtempForTest(testInfo);
+    const filePath = path.join(dir, path.basename(fileName));
+    await writeFile(filePath, content);
+    return filePath;
+}
+
+async function mkdtempForTest(testInfo: TestInfo): Promise<string> {
+    const dir = path.join(os.tmpdir(), "cobra-nats-playwright", `${testInfo.workerIndex}-${randomUUID()}`);
+    await mkdir(dir, { recursive: true });
+    return dir;
+}
 
 export type SeedConnectionOptions = {
     id?: string;

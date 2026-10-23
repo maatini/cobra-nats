@@ -10,6 +10,7 @@
 - First connection added automatically becomes active if none is active.
 - Removing the active connection sets `activeConnectionId` to `null`.
 - Playwright tests reference `CONNECTIONS_STORAGE_KEY` to seed state.
+- Profiles, including configured auth fields, persist in the browser. This is a local-admin store, not a server-side secret vault.
 
 **Entry points**:
 | Method | Purpose |
@@ -41,9 +42,10 @@
 
 | Action | Returns | Purpose |
 |---|---|---|
-| `testConnection(config)` | `ActionResponse<{serverInfo}>` | Throwaway connection probe (Connect Dialog "Test" button); opens + closes immediately |
+| `testConnection(config)` | `ActionResponse<{serverInfo}>` | Throwaway connection probe (Connect Dialog "Test" button); always closes the temp pool id in `finally` |
 | `pingConnection(config)` | `ActionResponse<{rttMs}>` | Lightweight health probe with fast-fail options (no reconnect, 5s timeout) |
 | `getServerInfo(config)` | `ActionResponse<{info}>` | Get server info from an active pooled connection |
+| `fetchHttpMonitoring(url, endpoint)` | `ActionResponse<{endpoint, data}>` | Server-side GET of varz/jsz/connz after `monitoring-url-policy` checks |
 
 ## Connect Dialog (`components/connect-dialog.tsx`)
 

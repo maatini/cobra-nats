@@ -21,7 +21,7 @@ Client → Server Action | intentional API → withJetStream / withNatsConnectio
 | `src/features/<domain>/` | Domain module: `actions.ts` (or `stream.ts`), `components/`, optional store/hooks |
 | `src/components/ui/` | shadcn primitives — add via CLI, do not hand-author replacements |
 | `src/components/layout/` | App chrome (sidebar, topbar, command palette, shortcuts, …) |
-| `src/lib/` | `nats/manager.ts` pool + `server-action.ts` wrappers |
+| `src/lib/` | `nats/manager.ts` pool, `server-action.ts` wrappers, Zod validation, monitoring URL policy |
 | `src/types/nats.ts` | Shared domain types (keep NATS enums browser-safe) |
 | `src/hooks/` | App-wide hooks |
 | `tests/*.spec.ts` | Flat Playwright E2E |
@@ -31,12 +31,12 @@ Feature folders today: `connections`, `dashboard`, `streams`, `kv`, `os`, `publi
 ## Core rules (mandatory)
 
 1. **All NATS ops on the server** — Server Actions in `src/features/<domain>/actions.ts` (or dedicated API routes for SSE/binary). Never ship credentials or import `nats` on the client.
-2. **Wrappers always** — `withNatsConnection` / `withJetStream` from `@/lib/server-action`; return `ActionResponse<T>`. First arg is always `NatsConnectionConfig`.
+2. **Wrappers always** — `withNatsConnection` / `withJetStream` from `@/lib/server-action`; return `ActionResponse<T>`. First arg is always `NatsConnectionConfig`. Wrappers validate that config with Zod at runtime.
 3. **Feature isolation** — UI + actions for a domain live under `src/features/<domain>/`. No cross-feature imports without a reason.
 4. **Types stay central** — domain types in `src/types/nats.ts`, not scattered per feature.
 5. **shadcn/ui only** — New York style; new primitives via `npx shadcn@latest add …`. No custom Button/Input variants.
 6. **Forms** — React Hook Form + Zod next to the component; English UI strings.
-7. **Tests** — Playwright under `tests/*.spec.ts` (flat) for new user-facing features.
+7. **Tests** — Playwright under `tests/*.spec.ts` (flat) for new user-facing features. Unit tests (`vitest`, `src/**/*.test.ts`) cover pool lifecycle, schemas, and URL policy.
 
 ## Doc map (read by need)
 
