@@ -27,12 +27,12 @@ Central glossary of `@tag:xxx` concepts used throughout the codebase and knowled
 
 | Tag | Meaning |
 |---|---|
-| `@tag:streams` | JetStream stream CRUD, consumer management, and message browsing |
-| `@tag:kv` | Key-Value bucket discovery and CRUD |
+| `@tag:streams` | JetStream stream CRUD, consumers, message browsing, same-stream comparison, JSON config import |
+| `@tag:kv` | Key-Value bucket discovery, CRUD, and live watch |
 | `@tag:os` | Object Store bucket discovery, upload/download, content preview |
 | `@tag:publish` | Message publishing and request-reply |
 | `@tag:monitor` | Live subject monitoring via SSE (dedicated NATS connection; not Server Actions) |
-| `@tag:dashboard` | Landing page aggregation — no own actions |
+| `@tag:dashboard` | Landing aggregation + in-memory time series — no own actions |
 
 ## Patterns
 
@@ -42,7 +42,8 @@ Central glossary of `@tag:xxx` concepts used throughout the codebase and knowled
 | `@tag:confirm-dialog` | `useConfirm()` hook → promise-based styled dialog with optional type-to-confirm |
 | `@tag:url-state` | `useUrlState` hook — local React state as source of truth, mirrored to URL |
 | `@tag:auto-refresh` | `useAutoRefresh` hook — periodic callback with localStorage-persisted interval |
-| `@tag:sse-monitor` | The SSE-based live monitor pattern — REST route + ReadableStream + EventSource client |
+| `@tag:sse-monitor` | Live monitor SSE — `POST /api/monitor` + ReadableStream + dedicated connection |
+| `@tag:sse-kv-watch` | Live KV watch SSE — `POST /api/kv/watch` + dedicated connection, JSON body |
 | `@tag:os-multipart-upload` | `POST /api/os/upload` multipart route — binary upload outside Server Actions (RSC payload limits) |
 
 ## Known issues / workarounds

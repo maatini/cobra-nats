@@ -52,6 +52,3 @@ Feature folders today: `connections`, `dashboard`, `streams`, `kv`, `os`, `publi
 | `.grok/skills/cobra-*` | Task skills: new-feature, new-action, e2e, verify-prompts (index in `AGENTS.md`) |
 
 Do **not** paste full patterns into this file — they live once in `.claude/rules.md`.
- (index in `AGENTS.md`) |
-
-Do **not** paste full patterns into this file — they live once in `.claude/rules.md`.

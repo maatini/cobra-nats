@@ -28,6 +28,7 @@ The client **never calls NATS directly**. It imports server actions (or hits a s
 | Route | Why not an action |
 |---|---|
 | `POST /api/monitor` | Long-lived SSE stream (config in body) |
+| `POST /api/kv/watch` | Long-lived KV watcher SSE (config + bucket in body; dedicated connection) |
 | `POST /api/os/upload` | Multipart binary; avoids RSC payload limits |
 | `POST /api/os/download` | Streaming binary download response |
 
@@ -38,6 +39,7 @@ The client **never calls NATS directly**. It imports server actions (or hits a s
 | `src/app/(dashboard)/<route>/page.tsx` | Thin user pages | `@nextjs-frontend-agent` |
 | `src/app/(dashboard)/layout.tsx` | Dashboard shell | `@nextjs-frontend-agent` |
 | `src/app/api/monitor/route.ts` | SSE live monitor | `@server-actions-agent` |
+| `src/app/api/kv/watch/route.ts` | SSE KV watch | `@server-actions-agent` |
 | `src/app/api/os/upload/route.ts` | Multipart OS upload | `@server-actions-agent` |
 | `src/app/api/os/download/route.ts` | Streaming OS download | `@server-actions-agent` |
 | `src/features/<domain>/actions.ts` | Server actions per feature | `@server-actions-agent` |

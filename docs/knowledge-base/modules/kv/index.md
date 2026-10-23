@@ -1,6 +1,6 @@
 # KV — Key-Value Store Management
 
-CRUD for KV buckets and key-value entries.
+CRUD for KV buckets and key-value entries, plus live watch over `POST /api/kv/watch`.
 
 ## Files
 

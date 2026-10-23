@@ -3,16 +3,16 @@
 **Owns**: product map (features, routes, NATS conventions, palette, setup).  
 **Does not own**: code patterns (→ `rules.md`), folder ownership (→ `architecture.md`).
 
-**Version**: 0.6.0 (truth is `package.json`)  
+**Version**: 0.7.0 (truth is `package.json`)  
 **Goal**: The fastest and most beautiful NATS/JetStream management UI.
 
 ## Features & routes
 
 | Feature | Route | Feature folder | Short description |
 |---|---|---|---|
-| Dashboard | `/` | `features/dashboard/` | Server info, overview, quick stats (UI only; reuses other features’ actions) |
-| Streams | `/streams`, `/streams/[name]` | `features/streams/` | JetStream streams + consumers + message browser |
-| KV | `/kv`, `/kv/[bucket]` | `features/kv/` | Key-Value buckets, browse keys, put/delete |
+| Dashboard | `/` | `features/dashboard/` | Server info, overview, in-memory time series (UI only; reuses other features’ actions) |
+| Streams | `/streams`, `/streams/[name]` | `features/streams/` | JetStream streams + consumers + message browser (up to four same-stream tabs; JSON config import creates an empty stream) |
+| KV | `/kv`, `/kv/[bucket]` | `features/kv/` + `api/kv/watch` SSE | Key-Value buckets, browse keys, put/delete, live watch |
 | Object Store | `/os`, `/os/[bucket]` | `features/os/` | OS buckets; upload via `POST /api/os/upload`, download via `POST /api/os/download`, seal via actions |
 | Publish | `/publish` | `features/publish/` | Publish + request-reply |
 | Monitor | `/monitor` | `features/monitor/` + `api/monitor` SSE | Live subject monitor (`stream.ts`, dedicated connection) |
@@ -51,7 +51,7 @@ shadcn/ui **New York** + Tailwind v4 (tokens in `src/app/globals.css`).
 
 ## App-wide UI features
 
-- **Command palette** — `components/layout/command-palette.tsx` (Cmd/Ctrl+K)
+- **Command palette** — `components/layout/command-palette.tsx` (Cmd/Ctrl+K): navigation plus New Connection, Publish, Purge/Delete with confirm
 - **Global shortcuts** — `components/layout/global-shortcuts.tsx`
 - **Auto-breadcrumbs** — `components/layout/auto-breadcrumbs.tsx`
 - **Help dialog** — `components/layout/help-dialog.tsx` (`?`)
@@ -70,9 +70,10 @@ shadcn/ui **New York** + Tailwind v4 (tokens in `src/app/globals.css`).
 | `nats` | 2.29 |
 | Tailwind | 4 |
 | Zustand | 5 |
-| TanStack Query / Table | 5 / 8 |
+| TanStack Table | 9 |
 | RHF + Zod | 7 / 4 |
 | Playwright | 1.6x |
+| Vitest | 5 |
 | shadcn CLI | 4 |
 | Sonner / cmdk | 2 / 1 |
 

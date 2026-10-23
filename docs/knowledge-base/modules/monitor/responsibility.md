@@ -1,6 +1,6 @@
 # Monitor — Responsibilities
 
-**Note**: The monitor does NOT use Server Actions. It uses a REST API route (`/api/monitor`) + SSE `ReadableStream`. There is no `actions.ts` — the server-side logic is in `stream.ts`. (Object Store multipart upload is a separate API route under `/api/os/upload`.)
+**Note**: The monitor does NOT use Server Actions. It uses `POST /api/monitor` + SSE `ReadableStream`. There is no `actions.ts` — the server-side logic is in `stream.ts`. Sibling exceptions: `POST /api/kv/watch` (KV SSE), `POST /api/os/upload` (multipart), `POST /api/os/download` (stream).
 
 ## SSE Stream (`stream.ts`)
 

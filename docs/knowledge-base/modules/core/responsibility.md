@@ -34,7 +34,7 @@
 
 ## Runtime validation (`src/lib/validation/nats.ts`)
 
-**What it owns**: Server-only Zod schemas for connection config, stream message batch options, monitor/OS API bodies, and the 20 MB Object Store upload cap. Do not import this module from client components.
+**What it owns**: Server-only Zod schemas for connection config, stream message batch options, monitor/KV-watch/OS API bodies, and the 20 MB Object Store upload cap. Do not import this module from client components.
 
 ## HTTP monitoring URL policy (`src/lib/server/monitoring-url-policy.ts`)
 
@@ -76,12 +76,13 @@
 | `useUrlState` | `use-url-state.ts` | Local state mirrored to URL as search params; local state is source of truth | No (URL only) |
 | `useKeyboardShortcuts` | `use-keyboard-shortcuts.ts` | Register global hotkeys; ignores inputs/textareas | No |
 | `useIsMobile` | `use-mobile.ts` | Window width breakpoint (768px) | No |
+| `useServerActionQuery` | `use-server-action-query.ts` | Load/reload list pages from a Server Action | No |
 
 ## shadcn/ui Primitives (`src/components/ui/`)
 
 **What it owns**: Generated UI primitives. **Never hand-edited** — created via `shadcn add <component>`.
 
-Contains: button, card, dialog, form, input, badge, select, table, tabs, sidebar, breadcrumb, command, dropdown-menu, sheet, popover, tooltip, scroll-area, separator, skeleton, sonner, and custom composite components (`data-table-skeleton`, `detail-skeleton`, `empty-state`, `code-viewer`, `copy-button`, `json-viewer`, `auto-refresh-select`, `pagination`).
+Contains: button, card, dialog, form, input, badge, select, table, tabs, sidebar, breadcrumb, command, dropdown-menu, sheet, popover, tooltip, scroll-area, separator, skeleton, sonner, and custom composite components (`data-table-skeleton`, `detail-skeleton`, `empty-state`, `code-viewer`, `copy-button`, `json-viewer`, `payload-viewer`, `auto-refresh-select`, `pagination`). `payload-viewer` is a hand-written viewer (JSON/CBOR/hex/protobuf), not a generated shadcn primitive.
 
 ## Utility (`src/lib/utils.ts`)
 

@@ -14,9 +14,11 @@ Every logical component in the system mapped to its responsibilities.
 | **Connection Actions** | `@server-actions-agent` | `testConnection` (throwaway probe), `pingConnection` (health), `getServerInfo` | `src/features/connections/actions.ts` |
 | **Connect Dialog** | `@nextjs-frontend-agent` | UI for adding/switching connections | `src/features/connections/components/connect-dialog.tsx` |
 | **Streams Actions** | `@server-actions-agent` | CRUD for streams + consumers + message fetching + consumer stats | `src/features/streams/actions.ts` |
-| **Streams UI** | `@nextjs-frontend-agent` / `@ui-shadcn-agent` | Stream list, detail, create dialog, consumer list, create consumer dialog, message browser | `src/features/streams/components/` |
+| **Streams UI** | `@nextjs-frontend-agent` / `@ui-shadcn-agent` | Stream list, detail, create/edit/purge, JSON config import, consumers, same-stream comparison tabs (max 4), message browser | `src/features/streams/components/` |
 | **KV Actions** | `@server-actions-agent` | CRUD for KV buckets + keys | `src/features/kv/actions.ts` |
-| **KV UI** | `@nextjs-frontend-agent` / `@ui-shadcn-agent` | Bucket list, bucket card, create dialog, put-entry dialog | `src/features/kv/components/` |
+| **KV Watch Stream** | `@server-actions-agent` | SSE `ReadableStream` using a dedicated NATS connection; closed on abort | `src/features/kv/stream.ts` |
+| **KV Watch API Route** | `@server-actions-agent` | `POST /api/kv/watch` — SSE; config+bucket in JSON body, validates `KVWatchRequestSchema` | `src/app/api/kv/watch/route.ts` |
+| **KV UI** | `@nextjs-frontend-agent` / `@ui-shadcn-agent` | Bucket list, bucket card, create dialog, put-entry dialog, live watch | `src/features/kv/components/` |
 | **OS Actions** | `@server-actions-agent` | CRUD for Object Stores + upload/download + content preview | `src/features/os/actions.ts` |
 | **OS UI** | `@nextjs-frontend-agent` / `@ui-shadcn-agent` | Bucket list, bucket card, create dialog, upload dialog, object list, preview sheet | `src/features/os/components/` |
 | **Publish Actions** | `@server-actions-agent` | `publishMessage` (with headers + auto-JSON), `requestMessage` (request-reply) | `src/features/publish/actions.ts` |
@@ -26,11 +28,12 @@ Every logical component in the system mapped to its responsibilities.
 | **Monitor API Route** | `@server-actions-agent` | `POST /api/monitor` — SSE endpoint; config+subject in JSON body (no secrets in query), delegates to `createMonitorStream` | `src/app/api/monitor/route.ts` |
 | **OS Upload API Route** | `@server-actions-agent` | `POST /api/os/upload` — multipart binary upload (avoids RSC payload limits) | `src/app/api/os/upload/route.ts` |
 | **OS Download API Route** | `@server-actions-agent` | `POST /api/os/download` — streaming binary download (avoids base64 in memory) | `src/app/api/os/download/route.ts` |
-| **Dashboard** | `@nextjs-frontend-agent` | Landing page: aggregates data from connections/streams/kv actions; displays stats + quick action links | `src/features/dashboard/dashboard-overview.tsx` |
+| **Dashboard** | `@nextjs-frontend-agent` | Landing page: aggregates stats, HTTP monitoring, in-memory time series (max 60 samples; missing metrics stay `null`) | `src/features/dashboard/dashboard-overview.tsx`, `sampler.ts`, `dashboard-time-series.tsx` |
+| **Payload Viewer** | `@nextjs-frontend-agent` | Shared payload inspection (JSON / CBOR / hex / protobuf-with-user-schema). Custom viewer in `components/ui`, not a generated shadcn primitive | `src/components/ui/payload-viewer.tsx`, `src/lib/payload-format.ts` |
 | **App Shell** | `@nextjs-frontend-agent` | Dashboard layout: Sidebar + Topbar + NoConnectionBanner + GlobalShortcuts | `src/app/(dashboard)/layout.tsx` |
 | **Sidebar** | `@nextjs-frontend-agent` | Navigation + connection switcher + new-connection entry | `src/components/layout/app-sidebar.tsx` |
 | **Topbar** | `@nextjs-frontend-agent` | Breadcrumbs + health indicator + theme toggle | `src/components/layout/topbar.tsx` |
-| **Command Palette** | `@nextjs-frontend-agent` | `Cmd/Ctrl+K` quick navigation across all features | `src/components/layout/command-palette.tsx` |
+| **Command Palette** | `@nextjs-frontend-agent` | `Cmd/Ctrl+K` navigation plus New Connection, Publish, Purge/Delete (confirm) | `src/components/layout/command-palette.tsx` |
 | **Global Shortcuts** | `@nextjs-frontend-agent` | Central keyboard shortcut registration + help dialog (`?`) | `src/components/layout/global-shortcuts.tsx` |
 | **Root Provider** | `@nextjs-frontend-agent` | Theme + Tooltip + Toaster + ConfirmProvider wrappers | `src/components/providers/root-provider.tsx` |
 | **Confirm Dialog** | `@nextjs-frontend-agent` | Promise-based `useConfirm()` hook for destructive action confirmation (with type-to-confirm) | `src/components/providers/confirm-provider.tsx` |

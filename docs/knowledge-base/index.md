@@ -25,12 +25,12 @@
 ### Modules (domains)
 - [modules/core/](./modules/core/) — Shared infrastructure: `lib/nats/`, `lib/server-action.ts`, `types/nats.ts`, `hooks/`, `components/ui/`
 - [modules/connections/](./modules/connections/) — NATS connection store, hook, actions, connect dialog
-- [modules/streams/](./modules/streams/) — JetStream streams + consumers + message browser
-- [modules/kv/](./modules/kv/) — Key-Value bucket management
+- [modules/streams/](./modules/streams/) — JetStream streams + consumers + message browser + comparison tabs
+- [modules/kv/](./modules/kv/) — Key-Value bucket management + live watch
 - [modules/os/](./modules/os/) — Object Store bucket management + upload/download
 - [modules/publish/](./modules/publish/) — Publish + request-reply actions
 - [modules/monitor/](./modules/monitor/) — Live subject monitor (SSE-based)
-- [modules/dashboard/](./modules/dashboard/) — Dashboard overview (pure UI aggregation)
+- [modules/dashboard/](./modules/dashboard/) — Dashboard overview + in-memory time series
 - [modules/layout/](./modules/layout/) — App chrome: sidebar, topbar, breadcrumbs, shortcuts, command palette
 - [modules/testing/](./modules/testing/) — Playwright E2E test suites
 

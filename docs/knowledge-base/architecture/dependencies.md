@@ -22,7 +22,8 @@ graph TD
         MGR["NatsManager<br/>src/lib/nats/manager.ts"]
         TYPES["Shared Types<br/>src/types/nats.ts"]
         SSE["Monitor SSE Stream<br/>src/features/monitor/stream.ts"]
-        API["Monitor API Route<br/>src/app/api/monitor/route.ts"]
+        KVW["KV Watch Stream<br/>src/features/kv/stream.ts"]
+        API["Monitor / KV-watch / OS API<br/>src/app/api/{monitor,kv/watch,os}"]
     end
 
     subgraph "External"
@@ -49,21 +50,23 @@ graph TD
     MGR -->|connects| NATS
 
     SSE -->|calls| MGR
+    KVW -->|calls| MGR
     API -->|creates| SSE
+    API -->|creates| KVW
 ```
 
 ## External dependencies (npm)
 
 | Package | Version | Purpose | Used in |
 |---|---|---|---|
-| `nats` | ^2.29.3 | Core NATS client (server-side only) | `lib/nats/manager.ts`, all `actions.ts`, `monitor/stream.ts` |
-| `next` | 16.2.7 | Framework (App Router) | Entire app |
-| `react` / `react-dom` | 19.2.7 | UI framework | All `*.tsx` components |
-| `zustand` | ^5.0.14 | State management | `features/connections/store.ts` |
-| `@tanstack/react-table` | ^8.21.3 | Data table logic | Stream table (`stream-table.tsx`) only |
-| `react-hook-form` + `zod` + `@hookform/resolvers` | ^7.78.0 / ^4.4.3 / ^5.4.0 | Form validation | All forms (stream create, KV put, publish, etc.) |
-| `sonner` | ^2.0.7 | Toast notifications | All client components post-action |
-| `lucide-react` | ^1.17.0 | Icon library | All UI components |
+| `nats` | ^2.29.3 | Core NATS client (server-side only) | `lib/nats/manager.ts`, all `actions.ts`, `monitor/stream.ts`, `kv/stream.ts` |
+| `next` | ^16.4.2 | Framework (App Router) | Entire app |
+| `react` / `react-dom` | ^19.3.1 | UI framework | All `*.tsx` components |
+| `zustand` | ^5.0.15 | State management | `features/connections/store.ts` |
+| `@tanstack/react-table` | ^9.3.1 | Data table logic | Stream table (`stream-table.tsx`) only |
+| `react-hook-form` + `zod` + `@hookform/resolvers` | ^7.90.0 / ^4.6.7 / ^5.9.1 | Form validation | All forms (stream create, KV put, publish, etc.) |
+| `sonner` | ^2.0.8 | Toast notifications | All client components post-action |
+| `lucide-react` | ^1.60.0 | Icon library | All UI components |
 | `cmdk` | ^1.1.1 | Command palette | `components/layout/command-palette.tsx` |
 | `next-themes` | ^0.4.6 | Dark/light mode | `providers/root-provider.tsx` |
 | `tailwind-merge` + `clsx` | ^3.6.0 / ^2.1.1 | CSS class merging | `lib/utils.ts` (`cn()`) |

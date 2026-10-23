@@ -1,6 +1,6 @@
 # Streams — JetStream stream & consumer management
 
-CRUD for streams and consumers, message browsing, and aggregated consumer statistics.
+CRUD for streams and consumers, message browsing, same-stream comparison tabs, JSON config import, and aggregated consumer statistics.
 
 ## Files
 

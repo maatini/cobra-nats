@@ -28,3 +28,7 @@ All KV operations via `withJetStream`. Uses `js.views.kv(bucket)` to get a KV cl
 | `kv-bucket-card.tsx` | Card showing bucket status (values, history, TTL, size); links to bucket detail |
 | `create-kv-dialog.tsx` | Form for new KV bucket (name, TTL, history, replicas, max_bytes) |
 | `put-entry-dialog.tsx` | Form for adding/editing a key-value entry |
+
+## Watch (`stream.ts` + `POST /api/kv/watch`)
+
+Live key updates are **not** a Server Action. `createKVWatchStream()` opens a dedicated NATS connection (`kv-watch-${id}-…`), validates the POST JSON body with `KVWatchRequestSchema`, and closes the connection when the request is aborted. Credentials stay in the POST body.

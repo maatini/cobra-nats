@@ -15,4 +15,5 @@
 |---|---|---|
 | `app/(dashboard)/kv/page.tsx` | `kv-bucket-card.tsx`, `create-kv-dialog.tsx` | KV bucket list page |
 | `app/(dashboard)/kv/[bucket]/page.tsx` | `actions.ts`, `put-entry-dialog.tsx` | Bucket detail page |
+| `app/api/kv/watch/route.ts` | `createKVWatchStream` | Live KV SSE |
 | `features/dashboard/dashboard-overview.tsx` | `listKVBuckets` | KV bucket count on dashboard |

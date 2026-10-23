@@ -77,7 +77,7 @@ Cobra NATS is a web-based administration dashboard for [NATS](https://nats.io), 
 - **Update** consumer settings (ack wait, max deliver, filter, max ack pending)
 - **Delete** consumers
 - **Browse** messages on a stream (JSON / CBOR / hex / protobuf-with-schema payload inspection)
-- **Compare** up to four independent browsers on the same stream
+- **Compare** messages in up to four independent tabs on the **same stream** (each tab has its own sequence and filter; this is not a diff view and not cross-stream)
 
 ### ⚡ Productivity
 - **Command Palette** (`Cmd/Ctrl+K`) — navigation plus New Connection, Publish, Purge/Delete
@@ -246,13 +246,14 @@ cobra-nats/
 │   │   │   ├── monitor/             # Live traffic monitor
 │   │   │   └── settings/            # Application settings
 │   │   ├── api/monitor/route.ts     # Monitor SSE (POST JSON body)
+│   │   ├── api/kv/watch/route.ts    # KV watch SSE (POST JSON body)
 │   │   └── api/os/                  # Upload (multipart POST) + download (streaming POST)
 │   │
 │   ├── features/                    # Domain modules — everything per feature
 │   │   ├── connections/             # Zustand store, hook, actions, connect dialog
-│   │   ├── dashboard/               # Dashboard overview component
+│   │   ├── dashboard/               # Dashboard overview + in-memory time series
 │   │   ├── streams/                 # Streams + consumers + message browser
-│   │   ├── kv/                      # KV bucket actions & UI
+│   │   ├── kv/                      # KV bucket actions, UI, watch SSE (stream.ts)
 │   │   ├── os/                      # Object Store actions & UI
 │   │   ├── publish/                 # Publish & request-reply actions & UI
 │   │   └── monitor/                 # Live monitor view + SSE client (stream.ts)
@@ -296,13 +297,14 @@ cobra-nats/
 | Styling | [Tailwind CSS v4](https://tailwindcss.com/) |
 | State Management | [Zustand](https://zustand-demo.pmnd.rs/) |
 | Forms | [React Hook Form](https://react-hook-form.com/) + [Zod](https://zod.dev/) |
-| Data Tables | [TanStack Table v8](https://tanstack.com/table) |
+| Data Tables | [TanStack Table v9](https://tanstack.com/table) |
 | Toast Notifications | [Sonner](https://sonner.emilkowal.ski/) |
 | E2E Testing | [Playwright](https://playwright.dev/) |
+| Unit Testing | [Vitest](https://vitest.dev/) |
 
 ### Server Action Pattern
 
-All NATS operations run as **Next.js Server Actions** under `src/features/<domain>/actions.ts`, keeping credentials and connection logic server-side. A unified wrapper in `src/lib/server-action.ts` handles error handling, operation naming and JSON serialization:
+Most NATS operations run as **Next.js Server Actions** under `src/features/<domain>/actions.ts`, keeping credentials and connection logic server-side. Four intentional API routes cover SSE and large binaries: `POST /api/monitor`, `POST /api/kv/watch`, `POST /api/os/upload`, and `POST /api/os/download`. A unified wrapper in `src/lib/server-action.ts` handles error handling, operation naming and JSON serialization:
 
 ```typescript
 // Standard response shape
@@ -336,11 +338,12 @@ if (!res.success) {
 
 ## 🧪 Testing
 
-Playwright is used for both UI smoke tests and functional E2E tests against a real NATS server.
+Playwright covers UI smoke tests and functional E2E tests against a real NATS server. Vitest covers unit tests next to source (`src/**/*.test.ts`).
 
 ### Run All Tests
 
 ```bash
+npm run test:unit
 npx playwright test
 ```
 
@@ -360,11 +363,16 @@ npx playwright test tests/functional-streams.spec.ts tests/functional-messaging.
 | `os.spec.ts` | Object Store page UI |
 | `messaging.spec.ts` | Publish page UI |
 | `settings.spec.ts` | Application settings and theme toggle UI |
+| `api-malformed-inputs.spec.ts` | Invalid API bodies (monitor, OS, KV watch) |
 | `functional-streams.spec.ts` | **Real** stream creation via NATS |
-| `functional-consumers-and-messages.spec.ts` | **Real** consumer + message browser flows |
+| `functional-consumers-and-messages.spec.ts` | **Real** consumer + same-stream message comparison |
+| `functional-stream-config-import.spec.ts` | **Real** stream config JSON import (empty stream) |
 | `functional-kv.spec.ts` | **Real** KV bucket operations via NATS |
 | `functional-os.spec.ts` | **Real** Object Store operations via NATS |
 | `functional-messaging.spec.ts` | **Real** publish and request-reply via NATS |
+| `functional-monitor.spec.ts` | **Real** live monitor SSE |
+| `functional-publish-replay.spec.ts` | **Real** replay-to-publish prefills |
+| `functional-dashboard-history.spec.ts` | Dashboard sparkline sampling (no NATS required) |
 
 ---
 
@@ -376,6 +384,7 @@ npx playwright test tests/functional-streams.spec.ts tests/functional-messaging.
 | `npm run build` | Build production bundle |
 | `npm run start` | Start production server |
 | `npm run lint` | Run ESLint |
+| `npm run test:unit` | Run Vitest unit tests |
 | `npx playwright test` | Run all E2E tests |
 
 ---
@@ -384,7 +393,7 @@ npx playwright test tests/functional-streams.spec.ts tests/functional-messaging.
 
 - NATS client connections are created server-side via Server Actions or the documented API routes; the `nats` client is not run in the browser.
 - Connection profiles currently persist in browser `localStorage` under `cobra-nats-storage`, including configured auth fields. Treat browser storage as client-accessible; this documentation makes no claim that secrets are absent from the browser.
-- Monitor connection config is sent in a POST body, not in the URL/query string.
+- Monitor and KV-watch connection config is sent in a POST body, not in the URL/query string.
 - HTTP monitoring permits local targets such as `http://localhost:8222`, while rejecting link-local and recognized cloud metadata hosts. It allows only HTTP(S), rejects URL credentials/query/fragments and redirects, and limits paths to the supported monitoring endpoints.
 - For production use, ensure your Next.js server is running in a secure, private network alongside your NATS cluster.
 
@@ -399,15 +408,15 @@ npx playwright test tests/functional-streams.spec.ts tests/functional-messaging.
 - [x] Stream edit / purge, consumer detail + update, KV history
 - [x] JetStream account storage overview on dashboard
 - [x] Monitor uses full connection auth (no credentials in query string)
-- [ ] Live dashboard charts / time series
-- [ ] NATS Cluster topology view
-- [ ] Multi-tab message comparison
+- [x] Live dashboard charts / time series (in-memory, 60 samples, per connection)
+- [x] Same-stream message comparison (up to four independent tabs)
+- [ ] NATS Cluster topology view (needs a verified discovery source; not inferred from `connect_urls`)
 
 ---
 
 ## Development Tools / CrewAI
 
-`crewai/` is a CrewAI project that analyses this repository and writes markdown reports (architecture, docs, Playwright gaps, performance, roadmap slices). Implementation mode can apply ranked follow-up actions to the local tree. It does **not** commit or open pull requests.
+`crewai/` is a CrewAI project that analyses this repository and can apply ranked follow-up work (implementation and product/hygiene modes). Analysis writes markdown reports; implement/product modes may edit the local tree. Crews do **not** commit or open pull requests.
 
 ```bash
 mise run crew:check         # validate agents/tasks without an LLM

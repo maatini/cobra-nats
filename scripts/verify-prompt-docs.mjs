@@ -40,9 +40,9 @@ const ts = String(pkg.devDependencies?.typescript ?? "");
 assert(ts.startsWith("^6") || ts.startsWith("6"), `package.json typescript major is 6 (got ${ts})`);
 assert(/TypeScript 6/.test(claude), "CLAUDE.md states TypeScript 6");
 assert(!/TypeScript 5/.test(claude + architecture + project + rules), "no TypeScript 5 in prompt docs");
-assert(String(pkg.dependencies?.next ?? "").startsWith("16"), "next major 16");
+assert(/^(?:\^|~)?16\b/.test(String(pkg.dependencies?.next ?? "")), "next major 16");
 assert(/Next\.js 16/.test(claude), "CLAUDE.md states Next.js 16");
-assert(String(pkg.dependencies?.react ?? "").startsWith("19"), "react major 19");
+assert(/^(?:\^|~)?19\b/.test(String(pkg.dependencies?.react ?? "")), "react major 19");
 assert(/React 19/.test(claude), "CLAUDE.md states React 19");
 assert(String(pkg.dependencies?.nats ?? "").includes("2.29"), "nats ~2.29");
 
@@ -187,7 +187,7 @@ if (existsSync(settingsPath)) {
   assert(/playwright|npm run/i.test(joined), "allow list covers npm/playwright workflows");
   assert(!/localhost:3005/.test(joined), "no stale localhost:3005 allow entry");
 } else {
-  fail.push("settings.local.json missing");
+  pass.push("settings.local.json absent (optional local Claude allow-list)");
 }
 
 

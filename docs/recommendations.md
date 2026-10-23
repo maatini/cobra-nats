@@ -9,7 +9,9 @@ Architecture constraints still apply: NATS only on the server; Server Actions + 
 
 ## Done (reference)
 
-P0–P4 checklist items (Monitor auth, stream update/purge, KV history, consumer detail, TLS/nkey/JWT/creds, OS seal/prefix/download, mirrors, dashboard, publish replay, monitor backpressure, DTOs, ESLint, E2E CI, …) are implemented. Details: commits on `main` and feature modules under `src/features/**`.
+P0–P4 checklist items (Monitor auth, stream update/purge, KV history, consumer detail, TLS/nkey/JWT/creds, OS seal/prefix/download, mirrors, dashboard, publish replay, monitor backpressure, DTOs, ESLint, E2E CI, …) are implemented.
+
+Also shipped in **v0.7.0**: dashboard time series (ADR-009), same-stream message comparison (ADR-010), stream config JSON import (ADR-011), KV watch SSE (ADR-012), command-palette actions (U4), payload inspection (JSON/CBOR/hex/protobuf), `date-fns` → Intl (Q2). Details: commits on `main` and feature modules under `src/features/**`.
 
 ---
 
@@ -17,16 +19,13 @@ P0–P4 checklist items (Monitor auth, stream update/purge, KV history, consumer
 
 | ID | Item | Priority | Effort | Notes |
 |---|---|---|---|---|
-| **U4** | Command palette: actions, not only navigation | Low–Med | M | e.g. “Purge stream X” |
 | **M4** | System subjects / `$JS.EVENT` advisory views | Low | M | Power-user |
-| **M5** | Consumer/Stream metrics charts | Low | L | Needs sampling/store |
-| **K3** | KV watch / live key updates | Low | M | If demanded |
-| **K4** | KV multi-get / bulk UX | Low | S–M | |
+| **M5** | Consumer/Stream metrics charts | Low | L | Dashboard already has **server-level** sparklines; this is per-stream/consumer |
+| **K4** | KV multi-get / bulk UX | Low | S–M | Live watch (K3) shipped in v0.7.0 |
 | **A4** | Connection profiles / env presets | Low | M | Deploy ergonomics |
-| **Q2** | Replace `date-fns` with `Intl` where possible | Low | S | Bundle polish |
 | **Q4** | App-level UI auth (shared deployment) | Low until needed | L | Not browser NATS |
-| **Q5** | Connection-pool limits / idle timeout UX | Low–Med | M | Long-running servers |
-| **P2** | Publish binary / schema UX polish | Low | S | |
+| **Q5** | Connection-pool limits / idle timeout UX | Low–Med | M | Pool cap 32 exists; no idle-timeout UX |
+| **P2** | Publish binary / schema UX polish | Low | S | Message/monitor payload viewer shipped; Publish still text-first |
 
 ---
 

@@ -47,6 +47,26 @@ sequenceDiagram
     API->>NATS: unsubscribe + close()
 ```
 
+## SSE flow: KV watch
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant API as /api/kv/watch (SSE)
+    participant NatsMgr as NatsManager (singleton)
+    participant NATS as NATS Server
+
+    Browser->>API: POST /api/kv/watch {config, bucket}
+    Note over Browser,API: JSON body validated with KVWatchRequestSchema
+    API->>NatsMgr: getConnection({...config, id: "kv-watch-X-ts"})
+    NatsMgr-->>API: Dedicated NatsConnection
+    API->>NATS: kv.watch()
+    NATS-->>API: put / delete / update
+    API-->>Browser: event: entry {key, operation, …}
+    Browser->>API: Abort signal
+    API->>NATS: stop watcher + close()
+```
+
 ## Connection lifecycle
 
 ```mermaid

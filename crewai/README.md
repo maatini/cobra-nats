@@ -1,11 +1,14 @@
 # cobra-nats CrewAI crew
 
-Analysis-only crew for [cobra-nats](https://github.com/maatini/cobra-nats): architecture, docs, Playwright coverage, performance, and roadmap planning.
+CrewAI project for [cobra-nats](https://github.com/maatini/cobra-nats): analysis
+(architecture, docs, Playwright, performance, roadmap) plus optional
+implementation and product/hygiene modes.
 
 The crew **does not** commit, push, or open pull requests. The default analysis
-run writes markdown into `crewai/output/`. Implementation mode
-(`mise run crew:implement`) may also edit application source; git writes stay
-off.
+run writes markdown into `crewai/output/`. Implementation and product modes
+may also edit application source; git writes stay off. Product/hygiene work
+for v0.7.0 already landed — see the status notes in
+`knowledge/product_hygiene_brief.md`.
 
 ## What it does
 
@@ -15,7 +18,7 @@ off.
 | `docs_writer` | README, ADRs, knowledge-base and inline docs |
 | `test_engineer` | Playwright gaps (Streams, KV, Object Store, Monitor, errors) |
 | `performance_optimizer` | Bundle, rendering, connection pool, Docker, memory |
-| `feature_planner` | Live charts, cluster topology, multi-tab comparison |
+| `feature_planner` | Remaining roadmap (cluster topology); charts and comparison shipped in v0.7.0 |
 | `manager` | Hierarchical coordination + consolidated report |
 
 Default process is `Process.hierarchical` (set `CREW_PROCESS=sequential` to fall back). Memory and planning are on unless you disable them.
@@ -110,7 +113,7 @@ pull; cluster topology requires a discovery spike before UI.
 
 | Agent | Focus |
 |-------|--------|
-| `hygiene_engineer` | Dependabot prod bumps, Dockerfile Node 22, README auth table, ADR-003, date-fns |
+| `hygiene_engineer` | Dependabot prod bumps, Dockerfile Node 22, README auth table, ADR-003, Intl dates |
 | `nats_client_engineer` | nats.js v2 → v3 go/no-go |
 | `frontend_engineer` | Dashboard charts, message comparison, payload formats, palette actions |
 | `backend_engineer` | KV watch, 2.12 flags, topology, Services API, backup/config import |

@@ -54,9 +54,11 @@ All Stream + Consumer operations via `withJetStream`. This is the largest consol
 | `stream-table.tsx` | Sortable/filterable stream list with TanStack Table | URL-synced filter via `useUrlState`, auto-refresh |
 | `stream-info-view.tsx` | Stream config/state display | Presentational |
 | `create-stream-dialog.tsx` | Form for new stream (retention, storage, limits, replicas) | React Hook Form + Zod |
+| `import-stream-config-dialog.tsx` | JSON config import → new **empty** stream (no message restore) | Validated config only |
 | `edit-stream-dialog.tsx` | Edit subjects/limits/discard/replicas (name immutable) | React Hook Form + Zod |
 | `purge-stream-dialog.tsx` | Purge with optional subject/seq/keep + typed confirm | React Hook Form + Zod |
 | `consumer-list.tsx` | Table of consumers; open detail / delete | Row click → detail sheet |
 | `consumer-detail-sheet.tsx` | Consumer stats + update form | `getConsumerInfo` / `updateConsumer` |
 | `create-consumer-dialog.tsx` | Form for new consumer (push/pull, durable, ack policy) | React Hook Form + Zod |
-| `message-browser.tsx` | Paginated message viewer with payload + header expansion | Calls `getStreamMessages`, pagination via seq range |
+| `message-browser.tsx` | Paginated message viewer with payload inspection (JSON / CBOR / hex / protobuf-with-schema) | Calls `getStreamMessages`, pagination via seq range |
+| `message-comparison-tabs.tsx` | Up to four independent browsers on the **current** stream | In-memory tabs; reset on connection/stream change |

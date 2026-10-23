@@ -4,6 +4,12 @@ Source: analysis of cobra-nats **0.6.0** (local checkout + README roadmap +
 `docs/roadmap-sequence.md` + `docs/recommendations.md` + NATS 2.12 docs +
 nats-nui / Qaze / Hyerix).
 
+**Status (v0.7.0):** executed on `main`. Landed: dashboard time series, same-stream
+comparison, payload formats, palette actions, KV watch, stream config import,
+hygiene (Dockerfile Node 22, Intl dates, README auth table, ADR-003). Skipped:
+nats.js v3, NATS 2.12 flags, cluster topology UI, Services API, credential
+trust. Do not re-run this brief as a greenfield implementation.
+
 This crew **implements** application, test, and documentation changes in the
 local checkout. It does **not** commit, push, merge GitHub PRs, or open pull
 requests.

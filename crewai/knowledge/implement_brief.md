@@ -2,6 +2,8 @@
 
 Source: CrewAI executive brief `crewai/output/run-20261023T082111Z.md` (Cobra NATS 0.6.0).
 
+**Status (v0.7.0):** executed on `main` (actions 1, 3–10). Action 2 (credential trust) remains skipped. Do not re-run this brief as a greenfield implementation.
+
 This crew **implements** application and documentation changes in the local checkout.
 It does **not** commit, push, or open pull requests.
 
@@ -20,7 +22,7 @@ Factual documentation that profiles (including credentials) currently live in
 
 - NATS never in the browser. No `import "nats"` from client components.
 - Server Actions in `src/features/<domain>/actions.ts`. First arg is `NatsConnectionConfig`. Return `ActionResponse<T>` via `withNatsConnection` / `withJetStream`.
-- Intentional API exceptions: `/api/monitor` SSE, `/api/os/upload` multipart, `/api/os/download` stream.
+- Intentional API exceptions: `/api/monitor` SSE, `/api/kv/watch` SSE, `/api/os/upload` multipart, `/api/os/download` stream.
 - Types in `src/types/nats.ts`. UI: shadcn/ui New York, English strings.
 - Tests: Playwright under `tests/*.spec.ts`; new unit tests may use Vitest next to source.
 - TypeScript strict, no `any`, no `@ts-ignore`.

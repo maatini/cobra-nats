@@ -1,6 +1,6 @@
 # Testing — Playwright E2E
 
-End-to-end tests against a real NATS server (via Docker Compose). Tests live flat in `tests/` — NOT under `tests/features/`.
+Playwright E2E (flat under `tests/`) plus Vitest unit tests next to source (`src/**/*.test.ts`). Functional specs need a real NATS server.
 
 ## Files
 
