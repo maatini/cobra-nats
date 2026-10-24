@@ -38,6 +38,10 @@ export function useServerActionQuery<T>(
     const connection = useActiveConnection();
     const { emptyValue, errorToast, enabled = true, deps = [] } = options;
 
+    // Serialized caller deps keep the callback identity tied to their contents,
+    // so inline `deps` arrays do not retrigger loads on every render.
+    const depsKey = JSON.stringify(deps);
+
     const [data, setData] = React.useState<T>(emptyValue);
     const [error, setError] = React.useState<string | null>(null);
     const [isLoading, setIsLoading] = React.useState(true);
@@ -74,8 +78,9 @@ export function useServerActionQuery<T>(
             }
         }
         setIsLoading(false);
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- deps is caller-controlled
-    }, [connection, enabled, ...deps]);
+        // depsKey is an identity token: it must retrigger the reload but is not read by the callback.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [connection, enabled, depsKey]);
 
     React.useEffect(() => {
         void reload();

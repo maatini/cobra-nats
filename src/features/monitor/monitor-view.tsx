@@ -81,10 +81,8 @@ export function MonitorView() {
     const maxBufferRef = React.useRef(maxBuffer);
     const rateLimitRef = React.useRef(rateLimit);
     const clientFilterRef = React.useRef(clientFilter);
-    const rateWindowRef = React.useRef<{ start: number; count: number }>({
-        start: Date.now(),
-        count: 0,
-    });
+    // Created lazily on the first rate-limited message (and reset on subscribe).
+    const rateWindowRef = React.useRef<{ start: number; count: number } | null>(null);
     const activeConnection = useActiveConnection();
 
     React.useEffect(() => {
@@ -146,7 +144,11 @@ export function MonitorView() {
         const limit = rateLimitRef.current;
         if (limit <= 0) return true;
         const now = Date.now();
-        const window = rateWindowRef.current;
+        let window = rateWindowRef.current;
+        if (!window) {
+            window = { start: now, count: 0 };
+            rateWindowRef.current = window;
+        }
         if (now - window.start >= 1000) {
             window.start = now;
             window.count = 0;

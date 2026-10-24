@@ -17,7 +17,6 @@ const WORKFLOWS_DIR = process.env.GHA_WORKFLOWS_DIR
   : join(ROOT, ".github/workflows");
 
 const SHA_RE = /^[0-9a-f]{40}$/;
-const USES_RE = /^uses:\s*(.+)$/;
 const WRITE_PERM_RE = /^(read-all|write-all|[a-z][a-z0-9-]*)\s*:\s*(write|write-all)\s*$/;
 
 const fail = [];

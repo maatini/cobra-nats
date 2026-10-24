@@ -13,6 +13,14 @@ const eslintConfig = defineConfig([
       },
     },
   },
+  {
+    rules: {
+      // React Compiler performance heuristic. This codebase intentionally adopts
+      // client-only values after mount (theme, media query, localStorage) and
+      // resets view state when the active connection changes.
+      "react-hooks/set-state-in-effect": "warn",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
