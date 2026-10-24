@@ -6,7 +6,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![Playwright](https://img.shields.io/badge/Playwright-E2E_Tests-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev/)
 [![Devbox](https://img.shields.io/badge/Devbox-reproducible_env-7C3AED?logo=nixos&logoColor=white)](https://www.jetpack.io/devbox/)
-[![mise](https://img.shields.io/badge/mise-Node_22_+_Python_3.12-yellow?logo=gnubash&logoColor=white)](https://mise.jdx.dev/)
+[![mise](https://img.shields.io/badge/mise-Node_22-yellow?logo=gnubash&logoColor=white)](https://mise.jdx.dev/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > **v0.7.0** — A modern, professional management UI for NATS and JetStream.
@@ -99,7 +99,7 @@ Cobra NATS is a web-based administration dashboard for [NATS](https://nats.io), 
 
 | Tool | Version |
 |------|---------|
-| Node.js | ≥ 20 |
+| Node.js | 22 |
 | NATS Server | ≥ 2.10 (with JetStream enabled) |
 | Docker (optional) | any |
 
@@ -128,7 +128,7 @@ Data is persisted in a Docker volume (`nats_data`).
 |---------|---------|
 | `nats-server` | NATS server with JetStream |
 | `natscli` | Official NATS CLI (`nats` command) |
-| `nodejs_20` | Node.js 20 runtime |
+| `nodejs_22` | Node.js 22 runtime |
 | `jq` | JSON processing |
 | `curl` | HTTP requests |
 
@@ -142,11 +142,11 @@ devbox shell                  # enter the environment
 
 | Command | Description |
 |---------|-------------|
-| `devbox run start-nats` | Start NATS server with JetStream on port 4222 |
-| `devbox run nats-info` | Show NATS server info via CLI |
-| `devbox run ui-dev` | Start Next.js dev server |
-| `devbox run ui-build` | Build production bundle |
-| `devbox run ui-start` | Start production server |
+| `devbox run nats:up` | Start NATS server with JetStream on port 4222 |
+| `devbox run nats:info` | Show NATS server info via CLI |
+| `devbox run ui:dev` | Start Next.js dev server |
+| `devbox run ui:build` | Build production bundle |
+| `devbox run ui:start` | Start production server |
 
 ### Option C: Manual NATS Server
 
@@ -158,7 +158,7 @@ nats-server -js -m 8222
 
 ## Development Environment (mise)
 
-[mise](https://mise.jdx.dev/) pins **Node.js 22** (Next.js 16 UI) and **Python 3.12** (CrewAI crew) so the toolchain matches across machines. It sits next to `devbox.json`: use Devbox when you need `nats-server` / `natscli`; use mise for language runtimes and project tasks.
+[mise](https://mise.jdx.dev/) pins **Node.js 22** (Next.js 16 UI) so the toolchain matches across machines. It sits next to `devbox.json`: use Devbox when you need `nats-server` / `natscli`; use mise for the Node runtime and project tasks.
 
 Install mise once (macOS Homebrew shown; see [mise install](https://mise.jdx.dev/getting-started.html) for other platforms):
 
@@ -169,24 +169,20 @@ brew install mise
 Then in this repository:
 
 ```bash
-mise install                 # download Node 22, Python 3.12, uv
+mise install                 # download Node 22
 eval "$(mise activate zsh)"  # activate in the current shell
-mise run setup               # npm install + uv sync for crewai/
+mise run setup               # npm install
 ```
 
-`mise activate` can also be added to `~/.zshrc`. After that, `node`, `python`, and `uv` in this directory are the pinned versions.
+`mise activate` can also be added to `~/.zshrc`. After that, `node` in this directory is the pinned version.
 
 | Task | Command |
 |------|---------|
-| Install JS + Python deps | `mise run setup` |
+| Install JS deps | `mise run setup` |
 | Next.js dev server | `mise run dev` |
 | Production build | `mise run build` |
 | ESLint | `mise run lint` |
 | Playwright (Chromium) | `mise run test` |
-| CrewAI crew | `mise run crew` |
-| CrewAI config check (no LLM) | `mise run crew:check` |
-| CrewAI implementation crew | `mise run crew:implement` |
-| CrewAI product+hygiene crew | `mise run crew:product` |
 
 `NEXT_TELEMETRY_DISABLED=1` is set automatically in mise-managed shells.
 
@@ -281,10 +277,9 @@ cobra-nats/
 │   └── types/nats.ts                # Shared domain types & enums
 │
 ├── tests/                           # Playwright E2E (flat, incl. functional-*)
-├── crewai/                          # CrewAI analysis crew (docs, tests, roadmap)
 ├── docker-compose.yml
-├── mise.toml                        # Node 22 + Python 3.12 toolchain
-└── devbox.json                      # Nix env (nats-server, natscli, nodejs_20)
+├── mise.toml                        # Node 22 toolchain
+└── devbox.json                      # Nix env (nats-server, natscli, nodejs_22)
 ```
 
 ### Key Technologies
@@ -358,10 +353,6 @@ npx playwright test tests/functional-streams.spec.ts tests/functional-messaging.
 | File | Description |
 |------|-------------|
 | `connections.spec.ts` | Connection creation and management UI |
-| `streams.spec.ts` | Stream list and table UI |
-| `kv.spec.ts` | KV store UI |
-| `os.spec.ts` | Object Store page UI |
-| `messaging.spec.ts` | Publish page UI |
 | `settings.spec.ts` | Application settings and theme toggle UI |
 | `api-malformed-inputs.spec.ts` | Invalid API bodies (monitor, OS, KV watch) |
 | `functional-streams.spec.ts` | **Real** stream creation via NATS |
@@ -411,21 +402,6 @@ npx playwright test tests/functional-streams.spec.ts tests/functional-messaging.
 - [x] Live dashboard charts / time series (in-memory, 60 samples, per connection)
 - [x] Same-stream message comparison (up to four independent tabs)
 - [ ] NATS Cluster topology view (needs a verified discovery source; not inferred from `connect_urls`)
-
----
-
-## Development Tools / CrewAI
-
-`crewai/` is a CrewAI project that analyses this repository and can apply ranked follow-up work (implementation and product/hygiene modes). Analysis writes markdown reports; implement/product modes may edit the local tree. Crews do **not** commit or open pull requests.
-
-```bash
-mise run crew:check         # validate agents/tasks without an LLM
-mise run crew               # analysis run — needs keys in crewai/.env
-mise run crew:implement     # apply actions 1, 3–10 from the executive brief (skip 2)
-mise run crew:product       # product (visible) + hygiene — see crewai/knowledge/product_hygiene_brief.md
-```
-
-Setup, agents, and output files: [crewai/README.md](./crewai/README.md). Copy [crewai/.env.example](./crewai/.env.example) to `crewai/.env` and set `OPENROUTER_API_KEY` (LiteLLM `MODEL=openrouter/…`) plus an optional `GITHUB_TOKEN` for remote-repo search.
 
 ---
 

@@ -45,4 +45,4 @@ You own **shared UI primitives** under `src/components/ui/`.
 
 ## Current primitives (snapshot)
 
-`alert`, `auto-refresh-select`, `badge`, `breadcrumb`, `button`, `card`, `checkbox`, `code-viewer`, `command`, `copy-button`, `data-table-skeleton`, `detail-skeleton`, `dialog`, `dropdown-menu`, `empty-state`, `form`, `input`, `json-viewer`, `label`, `pagination`, `popover`, `scroll-area`, `select`, `separator`, `sheet`, `sidebar`, `skeleton`, `sonner`, `table`, `tabs`, `tooltip`.
+`alert`, `auto-refresh-select`, `badge`, `breadcrumb`, `button`, `card`, `checkbox`, `code-viewer`, `command`, `copy-button`, `data-table-skeleton`, `detail-skeleton`, `dialog`, `dropdown-menu`, `empty-state`, `form`, `input`, `json-viewer`, `label`, `popover`, `scroll-area`, `select`, `separator`, `sheet`, `sidebar`, `skeleton`, `sonner`, `table`, `tabs`, `tooltip`.

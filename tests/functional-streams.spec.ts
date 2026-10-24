@@ -48,4 +48,33 @@ test.describe('Functional Stream Creation', () => {
         await expect(page.getByRole('heading', { name: 'JetStream Streams' })).toBeVisible();
         await expect(page.locator('table').getByText(streamName, { exact: true })).not.toBeVisible();
     });
+
+    test('should show create dialog defaults and accept a max age unit', async ({ page }) => {
+        await page.goto('/streams');
+        await expect(
+            page.getByRole('button', { name: 'Create Stream', exact: true })
+        ).toBeVisible({ timeout: 10000 });
+        await page.getByRole('button', { name: 'Create Stream', exact: true }).click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog.getByText('Create New Stream')).toBeVisible();
+
+        // Defaults from StreamFormValues: unlimited messages, no max age (Hours unit).
+        await expect(dialog.getByLabel('Max Messages')).toHaveValue('-1');
+        await expect(dialog.getByLabel('Max Age')).toHaveValue('0');
+        await expect(dialog.getByLabel('Unit')).toContainText('Hours');
+        await expect(
+            dialog.getByRole('button', { name: 'Create Stream', exact: true })
+        ).toBeEnabled();
+
+        // Unit is a Radix Select (rendered in a portal) — switch it to Days.
+        await dialog.getByLabel('Max Age').fill('7');
+        await dialog.getByLabel('Unit').click();
+        await page.getByRole('option', { name: 'Days' }).click();
+        await expect(dialog.getByLabel('Max Age')).toHaveValue('7');
+        await expect(dialog.getByLabel('Unit')).toContainText('Days');
+        await expect(
+            dialog.getByRole('button', { name: 'Create Stream', exact: true })
+        ).toBeEnabled();
+    });
 });

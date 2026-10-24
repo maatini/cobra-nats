@@ -8,10 +8,6 @@ These test the UI renders correctly and user interactions work at the DOM level.
 | File | What it tests |
 |---|---|
 | `connections.spec.ts` | Connection creation dialog, form validation, saving to localStorage |
-| `streams.spec.ts` | Stream list table rendering, sort/filter UI |
-| `kv.spec.ts` | KV bucket list UI |
-| `os.spec.ts` | Object Store page UI |
-| `messaging.spec.ts` | Publish page form UI |
 | `settings.spec.ts` | Settings page, theme toggle |
 
 ### Functional E2E Tests (against real NATS server)
@@ -44,4 +40,4 @@ These create, operate on, and delete real NATS resources. Require `nats-server` 
 ## Prerequisites
 
 - NATS server with JetStream: `docker-compose up -d` (exposes `4222` for clients, `8222` for monitoring)
-- Or: `devbox run start-nats`
+- Or: `devbox run nats:up`

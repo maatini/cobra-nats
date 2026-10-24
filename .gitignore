@@ -42,17 +42,6 @@ yarn-error.log*
 !.env.example
 !**/.env.example
 
-# python / CrewAI
-**/__pycache__/
-*.py[cod]
-*.egg-info/
-.venv/
-crewai/.venv/
-crewai/.crewai/
-crewai/.checkpoints/
-crewai/output/*
-!crewai/output/.gitkeep
-
 # mise local overrides (mise.toml is committed)
 mise.local.toml
 .mise.local.toml

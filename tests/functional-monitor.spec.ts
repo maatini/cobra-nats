@@ -71,4 +71,20 @@ test.describe("Functional Live Monitor", () => {
         await expect(page.getByPlaceholder("orders.new")).toHaveValue(subject);
         await expect(page.locator("textarea")).toHaveValue(payload);
     });
+
+    test("shows the idle empty state and subscription controls", async ({ page }) => {
+        await seedConnection(page, { name: "Real NATS" });
+        await page.goto("/monitor");
+
+        await expect(
+            page.getByRole("heading", { name: "Live Subject Monitor" })
+        ).toBeVisible();
+        await expect(page.getByRole("button", { name: "Subscribe" })).toBeVisible();
+        await expect(page.getByPlaceholder(/Subject or pattern/)).toHaveValue(">");
+        await expect(page.getByText("Buffer size", { exact: true })).toBeVisible();
+        await expect(page.getByText("Rate limit", { exact: true })).toBeVisible();
+        await expect(
+            page.getByText("Subscribe to a subject to start monitoring")
+        ).toBeVisible();
+    });
 });

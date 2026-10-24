@@ -3,7 +3,7 @@
   "packages": [
     "nats-server@latest",
     "natscli@latest",
-    "nodejs_20@latest",
+    "nodejs_22@latest",
     "jq@latest",
     "curl@latest"
   ],

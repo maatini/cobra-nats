@@ -112,4 +112,15 @@ test.describe('Functional KV Stores', () => {
         await expect(deleteSuccessToast).toBeVisible({ timeout: 10000 });
         await expect(page).toHaveURL(/\/kv/);
     });
+
+    test('should show empty state when filter matches nothing', async ({ page }) => {
+        await page.goto('/kv');
+        // Wait for the success branch of the loading ternary before filtering.
+        await expect(page.getByPlaceholder('Search buckets...')).toBeVisible({ timeout: 10000 });
+
+        // Impossible name keeps the empty state deterministic regardless of
+        // buckets already present on the server.
+        await page.getByPlaceholder('Search buckets...').fill('___does_not_exist___');
+        await expect(page.getByText('No buckets found')).toBeVisible();
+    });
 });

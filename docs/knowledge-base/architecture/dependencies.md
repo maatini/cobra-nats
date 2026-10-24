@@ -67,13 +67,13 @@ graph TD
 | `react-hook-form` + `zod` + `@hookform/resolvers` | ^7.90.0 / ^4.6.7 / ^5.9.1 | Form validation | All forms (stream create, KV put, publish, etc.) |
 | `sonner` | ^2.0.8 | Toast notifications | All client components post-action |
 | `lucide-react` | ^1.60.0 | Icon library | All UI components |
-| `cmdk` | ^1.1.1 | Command palette | `components/layout/command-palette.tsx` |
+| `cmdk` | ^1.1.1 | Command palette | `components/ui/command.tsx` (consumed by `layout/command-palette.tsx`) |
 | `next-themes` | ^0.4.6 | Dark/light mode | `providers/root-provider.tsx` |
-| `tailwind-merge` + `clsx` | ^3.6.0 / ^2.1.1 | CSS class merging | `lib/utils.ts` (`cn()`) |
+| `tailwind-merge` + `clsx` | ^3.7.0 / ^2.1.1 | CSS class merging | `lib/utils.ts` (`cn()`) |
 | `class-variance-authority` | ^0.7.1 | Variant-based component styling | shadcn/ui components |
 | `Intl` via `src/lib/date-format.ts` | platform | Relative and absolute date display | Stream, consumer, KV, monitor UI |
-| `marked` | ^18.0.5 | Markdown rendering | Help/popup content |
-| `shiki` | ^4.2.0 | Syntax highlighting | `components/ui/code-viewer.tsx` |
+| `marked` | ^18.1.1 | Markdown rendering | `features/os/components/object-preview-sheet.tsx` |
+| `shiki` | ^4.5.0 | Syntax highlighting | `components/ui/code-viewer.tsx` |
 
 ## Internal dependency rules
 

@@ -82,7 +82,7 @@
 
 **What it owns**: Generated UI primitives. **Never hand-edited** — created via `shadcn add <component>`.
 
-Contains: button, card, dialog, form, input, badge, select, table, tabs, sidebar, breadcrumb, command, dropdown-menu, sheet, popover, tooltip, scroll-area, separator, skeleton, sonner, and custom composite components (`data-table-skeleton`, `detail-skeleton`, `empty-state`, `code-viewer`, `copy-button`, `json-viewer`, `payload-viewer`, `auto-refresh-select`, `pagination`). `payload-viewer` is a hand-written viewer (JSON/CBOR/hex/protobuf), not a generated shadcn primitive.
+Contains: button, card, dialog, form, input, badge, select, table, tabs, sidebar, breadcrumb, command, dropdown-menu, sheet, popover, tooltip, scroll-area, separator, skeleton, sonner, and custom composite components (`data-table-skeleton`, `detail-skeleton`, `empty-state`, `code-viewer`, `copy-button`, `json-viewer`, `payload-viewer`, `auto-refresh-select`). `payload-viewer` is a hand-written viewer (JSON/CBOR/hex/protobuf), not a generated shadcn primitive.
 
 ## Utility (`src/lib/utils.ts`)
 
