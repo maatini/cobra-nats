@@ -29,6 +29,12 @@ import { useConfirm } from "@/components/providers/confirm-provider";
 import { DetailSkeleton } from "@/components/ui/detail-skeleton";
 import Link from "next/link";
 
+type StreamSnapshot = {
+    key: string;
+    info?: StreamInfoDto;
+    consumers?: ConsumerInfoDto[];
+};
+
 export function StreamDetailView() {
     const { name } = useParams();
     const router = useRouter();
@@ -37,35 +43,47 @@ export function StreamDetailView() {
 
     const [streamInfo, setStreamInfo] = React.useState<StreamInfoDto | null>(null);
     const [consumers, setConsumers] = React.useState<ConsumerInfoDto[]>([]);
-    const [isLoading, setIsLoading] = React.useState(true);
+    const [loadedFor, setLoadedFor] = React.useState<string | null>(null);
     const [selectedConsumer, setSelectedConsumer] = React.useState<string | null>(null);
     const [consumerSheetOpen, setConsumerSheetOpen] = React.useState(false);
 
-    const fetchData = React.useCallback(async () => {
-        if (!activeConnection || !name) return;
+    const loadKey = activeConnection && name ? `${activeConnection.id}:${String(name)}` : null;
+    // Loading until data for this connection + stream route has been applied.
+    const isLoading = loadKey !== null && loadedFor !== loadKey;
 
-        setIsLoading(true);
+    const loadStream = React.useCallback(async (): Promise<StreamSnapshot | null> => {
+        if (!activeConnection || !name) return null;
+
         const [infoResult, consumersResult] = await Promise.all([
             getStreamInfo(activeConnection, name as string),
             listConsumers(activeConnection, name as string)
         ]);
 
-        if (infoResult.success) {
-            setStreamInfo(infoResult.data!);
-        } else {
+        if (!infoResult.success) {
             toast.error("Failed to load stream info");
         }
 
-        if (consumersResult.success) {
-            setConsumers(consumersResult.data.consumers || []);
-        }
-
-        setIsLoading(false);
+        return {
+            key: `${activeConnection.id}:${String(name)}`,
+            info: infoResult.success ? infoResult.data! : undefined,
+            consumers: consumersResult.success ? consumersResult.data.consumers || [] : undefined,
+        };
     }, [activeConnection, name]);
 
+    const applyStream = React.useCallback((snapshot: StreamSnapshot | null) => {
+        if (!snapshot) return;
+        if (snapshot.info) setStreamInfo(snapshot.info);
+        if (snapshot.consumers) setConsumers(snapshot.consumers);
+        setLoadedFor(snapshot.key);
+    }, []);
+
+    const refresh = React.useCallback(() => {
+        void loadStream().then(applyStream);
+    }, [loadStream, applyStream]);
+
     React.useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        refresh();
+    }, [refresh]);
 
     const handleDeleteStream = async () => {
         if (!activeConnection || !name) return;
@@ -99,7 +117,7 @@ export function StreamDetailView() {
         const result = await deleteConsumer(activeConnection, name as string, consumerName);
         if (result.success) {
             toast.success("Consumer deleted");
-            fetchData();
+            refresh();
         } else {
             toast.error("Failed to delete consumer");
         }
@@ -129,9 +147,9 @@ export function StreamDetailView() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <EditStreamDialog info={streamInfo} onUpdated={fetchData} />
-                    <PurgeStreamDialog streamName={name as string} onPurged={fetchData} />
-                    <Button variant="outline" size="sm" onClick={fetchData} className="bg-card border-border text-foreground/80">
+                    <EditStreamDialog info={streamInfo} onUpdated={refresh} />
+                    <PurgeStreamDialog streamName={name as string} onPurged={refresh} />
+                    <Button variant="outline" size="sm" onClick={refresh} className="bg-card border-border text-foreground/80">
                         <RefreshCcw className="size-4 mr-2" /> Refresh
                     </Button>
                     <Button variant="destructive" size="sm" onClick={handleDeleteStream}>
@@ -161,13 +179,13 @@ export function StreamDetailView() {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-lg font-medium text-foreground">Processing Consumers</h3>
-                            <CreateConsumerDialog streamName={name as string} onCreated={fetchData} />
+                            <CreateConsumerDialog streamName={name as string} onCreated={refresh} />
                         </div>
                         <ConsumerList
                             consumers={consumers}
                             streamName={name as string}
                             onDelete={handleDeleteConsumer}
-                            onCreated={fetchData}
+                            onCreated={refresh}
                             onSelect={(consumerName) => {
                                 setSelectedConsumer(consumerName);
                                 setConsumerSheetOpen(true);
@@ -192,7 +210,7 @@ export function StreamDetailView() {
                 consumerName={selectedConsumer}
                 open={consumerSheetOpen}
                 onOpenChange={setConsumerSheetOpen}
-                onUpdated={fetchData}
+                onUpdated={refresh}
             />
         </div>
     );

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
@@ -116,6 +116,12 @@ function buildConfigFields(values: FormValues): Omit<NatsConnectionConfig, "id">
     return config;
 }
 
+function newConnectionId(): string {
+    return typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
 interface ConnectDialogProps {
     trigger?: React.ReactNode;
     editingConfig?: NatsConnectionConfig;
@@ -149,8 +155,8 @@ export function ConnectDialog({ trigger, editingConfig, open: controlledOpen, on
         },
     });
 
-    const authType = form.watch("authType");
-    const tlsEnabled = form.watch("tlsEnabled");
+    const authType = useWatch({ control: form.control, name: "authType" });
+    const tlsEnabled = useWatch({ control: form.control, name: "tlsEnabled" });
 
     const handleOpenChange = (newOpen: boolean) => {
         setInternalOpen(newOpen);
@@ -180,11 +186,7 @@ export function ConnectDialog({ trigger, editingConfig, open: controlledOpen, on
     }
 
     function onSubmit(values: FormValues) {
-        const id =
-            editingConfig?.id ||
-            (typeof crypto !== "undefined" && crypto.randomUUID
-                ? crypto.randomUUID()
-                : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`);
+        const id = editingConfig?.id || newConnectionId();
         const config: NatsConnectionConfig = { id, ...buildConfigFields(values) };
 
         if (editingConfig) {

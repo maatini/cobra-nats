@@ -19,51 +19,75 @@ import { NoConnectionAlert } from "@/components/layout/no-connection-alert";
 import { ErrorAlert } from "@/components/layout/error-alert";
 import { toast } from "sonner";
 
+type StreamsSnapshot =
+    | { ok: true; connectionId: string; streams: StreamInfoDto[]; stats?: Record<string, ConsumerStats> }
+    | { ok: false; connectionId: string; error: string };
+
 export function StreamsListView() {
     const [streams, setStreams] = React.useState<StreamInfoDto[]>([]);
     const [consumerStats, setConsumerStats] = React.useState<
         Record<string, ConsumerStats> | undefined
     >();
-    const [isLoading, setIsLoading] = React.useState(true);
+    const [loadedFor, setLoadedFor] = React.useState<string | null>(null);
+    const [isFetching, setIsFetching] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
     const activeConnection = useActiveConnection();
     const confirm = useConfirm();
 
-    const fetchStreams = React.useCallback(async () => {
-        if (!activeConnection) {
-            setStreams([]);
-            setConsumerStats(undefined);
-            setIsLoading(false);
-            setError(null);
-            return;
-        }
+    const connectionId = activeConnection?.id ?? null;
+    // Loading while a fetch is in flight or while the rows on screen belong to another connection.
+    const isLoading = isFetching || loadedFor !== connectionId;
 
-        setIsLoading(true);
-        setError(null);
-        setConsumerStats(undefined);
+    const fetchStreams = React.useCallback(async (): Promise<StreamsSnapshot | null> => {
+        if (!activeConnection) return null;
+
         const result = await listStreams(activeConnection);
 
-        if (result.success) {
-            const streamData = result.data || [];
-            setStreams(streamData);
-
-            if (streamData.length > 0) {
-                const names = streamData.map((s) => s.config.name);
-                const statsResult = await getStreamConsumerStats(activeConnection, names);
-                if (statsResult.success && statsResult.data) {
-                    setConsumerStats(statsResult.data);
-                }
-            }
-        } else {
-            setError(result.error || "Failed to fetch streams");
+        if (!result.success) {
             toast.error("Failed to load streams", { description: result.error });
+            return {
+                ok: false,
+                connectionId: activeConnection.id,
+                error: result.error || "Failed to fetch streams",
+            };
         }
-        setIsLoading(false);
+
+        const streamData = result.data || [];
+        let stats: Record<string, ConsumerStats> | undefined;
+        if (streamData.length > 0) {
+            const names = streamData.map((s) => s.config.name);
+            const statsResult = await getStreamConsumerStats(activeConnection, names);
+            if (statsResult.success && statsResult.data) {
+                stats = statsResult.data;
+            }
+        }
+
+        return { ok: true, connectionId: activeConnection.id, streams: streamData, stats };
     }, [activeConnection]);
 
+    const applyStreams = React.useCallback((snapshot: StreamsSnapshot | null) => {
+        if (!snapshot) return;
+        if (snapshot.ok) {
+            setStreams(snapshot.streams);
+            setConsumerStats(snapshot.stats);
+            setError(null);
+        } else {
+            setError(snapshot.error);
+            setConsumerStats(undefined);
+        }
+        setIsFetching(false);
+        setLoadedFor(snapshot.connectionId);
+    }, []);
+
+    const refresh = React.useCallback(() => {
+        if (!activeConnection) return;
+        setIsFetching(true);
+        void fetchStreams().then(applyStreams);
+    }, [activeConnection, fetchStreams, applyStreams]);
+
     React.useEffect(() => {
-        void fetchStreams();
-    }, [fetchStreams]);
+        void fetchStreams().then(applyStreams);
+    }, [fetchStreams, applyStreams]);
 
     async function handleDelete(name: string) {
         if (!activeConnection) return;
@@ -82,7 +106,7 @@ export function StreamsListView() {
             success: () => `Stream ${name} deleted`,
             error: "Failed to delete stream",
         });
-        if (result.success) await fetchStreams();
+        if (result.success) refresh();
     }
 
     return (
@@ -98,8 +122,8 @@ export function StreamsListView() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <ImportStreamConfigDialog onImported={fetchStreams} />
-                    <CreateStreamDialog onCreated={fetchStreams} />
+                    <ImportStreamConfigDialog onImported={refresh} />
+                    <CreateStreamDialog onCreated={refresh} />
                 </div>
             </div>
 
@@ -113,7 +137,7 @@ export function StreamsListView() {
                         data={streams}
                         consumerStats={consumerStats}
                         onDelete={handleDelete}
-                        onRefresh={fetchStreams}
+                        onRefresh={refresh}
                         isLoading={isLoading}
                     />
                 </React.Suspense>

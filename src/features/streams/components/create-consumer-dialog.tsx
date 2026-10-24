@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
@@ -102,7 +102,7 @@ export function CreateConsumerDialog({ streamName, onCreated, trigger }: CreateC
         },
     });
 
-    const mode = form.watch("mode");
+    const mode = useWatch({ control: form.control, name: "mode" });
     const [showAdvanced, setShowAdvanced] = React.useState(false);
 
     async function onSubmit(values: ConsumerFormValues) {

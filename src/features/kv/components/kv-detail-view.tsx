@@ -55,7 +55,8 @@ export function KVDetailView() {
 
     const [keys, setKeys] = React.useState<string[]>([]);
     const [filter, setFilter] = React.useState("");
-    const [isLoading, setIsLoading] = React.useState(true);
+    /** Connection/bucket the listed keys belong to (set after a fetch resolves). */
+    const [loadedScope, setLoadedScope] = React.useState<string | null>(null);
     const [selectedEntry, setSelectedEntry] = React.useState<KvEntryResult | null>(null);
     const [history, setHistory] = React.useState<KvEntryResult[]>([]);
     const [isFetchingHistory, setIsFetchingHistory] = React.useState(false);
@@ -70,22 +71,40 @@ export function KVDetailView() {
         watchPausedRef.current = isWatchPaused;
     }, [isWatchPaused]);
 
-    const fetchKeys = React.useCallback(async () => {
-        if (!activeConnection || !bucket) return;
+    const bucketName = typeof bucket === "string" ? bucket : null;
+    const dataScope = activeConnection && bucketName ? `${activeConnection.id}/${bucketName}` : null;
+    // Keys are stale until the fetch for the current connection/bucket resolves.
+    const isLoading = dataScope !== null && loadedScope !== dataScope;
 
-        setIsLoading(true);
+    /** Fetch the key list for the current connection/bucket. Performs no state updates. */
+    const loadKeys = React.useCallback(async () => {
+        if (!activeConnection || !bucket) return null;
+        const scope = `${activeConnection.id}/${bucket as string}`;
         const result = await getKVKeys(activeConnection, bucket as string);
-        if (result.success) {
-            setKeys(result.data.keys || []);
-        } else {
-            toast.error("Failed to load keys");
-        }
-        setIsLoading(false);
+        return { scope, keys: result.success ? result.data.keys || [] : null };
     }, [activeConnection, bucket]);
 
+    const applyKeys = React.useCallback((payload: { scope: string; keys: string[] | null }) => {
+        if (payload.keys) setKeys(payload.keys);
+        else toast.error("Failed to load keys");
+        setLoadedScope(payload.scope);
+    }, []);
+
+    const fetchKeys = React.useCallback(async () => {
+        const payload = await loadKeys();
+        if (payload) applyKeys(payload);
+    }, [loadKeys, applyKeys]);
+
     React.useEffect(() => {
-        fetchKeys();
-    }, [fetchKeys]);
+        let cancelled = false;
+        loadKeys().then((payload) => {
+            if (cancelled || !payload) return;
+            applyKeys(payload);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [loadKeys, applyKeys]);
 
     const applyWatchEntry = React.useCallback((entry: KvEntryResult) => {
         if (entry.operation === "PUT") {

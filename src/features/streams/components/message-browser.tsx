@@ -46,9 +46,15 @@ export function MessageBrowser({ config, streamName, firstSeq, lastSeq }: Messag
     const [hasMore, setHasMore] = React.useState(false);
     const [loadError, setLoadError] = React.useState<string | null>(null);
     const [expanded, setExpanded] = React.useState<Set<number>>(new Set());
-    const [focusedSeq, setFocusedSeq] = React.useState<number | null>(null);
+    const [focusedSeqInput, setFocusedSeq] = React.useState<number | null>(null);
     const [deletingSeq, setDeletingSeq] = React.useState<number | null>(null);
     const listRef = React.useRef<HTMLDivElement | null>(null);
+
+    // Stored focus can point at a message that was reloaded away or deleted; fall back to the first row.
+    const focusedSeq =
+        focusedSeqInput != null && messages.some(m => m.seq === focusedSeqInput)
+            ? focusedSeqInput
+            : (messages[0]?.seq ?? null);
 
     const handleDeleteMessage = async (seq: number) => {
         const ok = await confirm({
@@ -128,14 +134,6 @@ export function MessageBrowser({ config, streamName, firstSeq, lastSeq }: Messag
             return next;
         });
     };
-
-    React.useEffect(() => {
-        if (messages.length === 0) {
-            setFocusedSeq(null);
-        } else if (focusedSeq == null || !messages.some(m => m.seq === focusedSeq)) {
-            setFocusedSeq(messages[0].seq);
-        }
-    }, [messages, focusedSeq]);
 
     const handleListKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
         if (messages.length === 0) return;

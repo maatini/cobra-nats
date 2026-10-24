@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
@@ -206,7 +206,7 @@ export function CreateStreamDialog({ onCreated }: CreateStreamDialogProps) {
         defaultValues: DEFAULTS,
     });
 
-    const topology = form.watch("topology");
+    const topology = useWatch({ control: form.control, name: "topology" });
 
     function applyImportJson() {
         try {

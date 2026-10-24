@@ -64,83 +64,10 @@ const MIME_MAP: Record<string, string> = {
 };
 
 export function ObjectPreviewSheet({ bucket, object, open, onOpenChange }: ObjectPreviewSheetProps) {
-    const activeConnection = useActiveConnection();
-    const [content, setContent] = React.useState<{ text: string; binary: boolean } | null>(null);
-    const [imageUrl, setImageUrl] = React.useState<string | null>(null);
-    const [loading, setLoading] = React.useState(false);
-    const [error, setError] = React.useState<string | null>(null);
-    const [tooLarge, setTooLarge] = React.useState(false);
-    const fileType = object ? detectType(object.name) : "code";
-
-    React.useEffect(() => {
-        if (!open || !object || !activeConnection) {
-            setContent(null);
-            setImageUrl(null);
-            setError(null);
-            return;
-        }
-
-        let cancelled = false;
-        setLoading(true);
-        setError(null);
-        setContent(null);
-        setImageUrl(null);
-
-        if (object.size > PREVIEW_SIZE_LIMIT) {
-            setTooLarge(true);
-            setLoading(false);
-            return;
-        }
-        setTooLarge(false);
-
-        if (fileType === "image") {
-            // Fetch as base64 → blob URL for <img>
-            downloadObject(activeConnection, bucket, object.name)
-                .then((result) => {
-                    if (cancelled) return;
-                    if (result.success) {
-                        const ext = object.name.split(".").pop()?.toLowerCase() ?? "png";
-                        const mime = MIME_MAP[ext] || "image/png";
-                        setImageUrl(base64ToBlobUrl(result.data.data, mime));
-                    } else {
-                        setError(result.error || "Failed to load image");
-                    }
-                    setLoading(false);
-                })
-                .catch((err) => {
-                    if (cancelled) return;
-                    setError(err instanceof Error ? err.message : "Unknown error");
-                    setLoading(false);
-                });
-        } else {
-            // Text-based: use getObjectContent
-            getObjectContent(activeConnection, bucket, object.name)
-                .then((result) => {
-                    if (cancelled) return;
-                    if (result.success) {
-                        setContent({ text: result.data.text, binary: result.data.binary });
-                    } else {
-                        setError(result.error || "Failed to load content");
-                    }
-                    setLoading(false);
-                })
-                .catch((err) => {
-                    if (cancelled) return;
-                    setError(err instanceof Error ? err.message : "Unknown error");
-                    setLoading(false);
-                });
-        }
-
-        return () => {
-            cancelled = true;
-            // Revoke blob URL on cleanup
-            if (imageUrl) URL.revokeObjectURL(imageUrl);
-        };
-    }, [open, object?.name, bucket, activeConnection, fileType]);
-
     if (!object) return null;
 
     const ext = object.name.split(".").pop()?.toLowerCase() ?? "";
+    const fileType = detectType(object.name);
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -175,101 +102,186 @@ export function ObjectPreviewSheet({ bucket, object, open, onOpenChange }: Objec
 
                 {/* Content area */}
                 <div className="flex-1 min-h-0 overflow-auto px-6 py-4">
-                    {loading ? (
-                        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
-                            <Loader2 className="size-8 animate-spin text-cyan-500/60" />
-                            <span className="text-sm">Loading content…</span>
-                        </div>
-                    ) : tooLarge ? (
-                        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-4">
-                            <HardDrive className="size-12 text-amber-400/40" />
-                            <div className="text-center space-y-2 max-w-sm">
-                                <h3 className="text-sm font-medium text-foreground">
-                                    File too large to preview
-                                </h3>
-                                <p className="text-xs text-muted-foreground">
-                                    This file is {formatBytes(object.size)}. Previews are limited to {formatBytes(PREVIEW_SIZE_LIMIT)}.
-                                    Use the download button to inspect the file locally.
-                                </p>
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={async () => {
-                                    if (!activeConnection) return;
-                                    const result = await downloadObject(activeConnection, bucket, object.name);
-                                    if (result.success) {
-                                        const binary = atob(result.data.data);
-                                        const bytes = new Uint8Array(binary.length);
-                                        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-                                        const blob = new Blob([bytes]);
-                                        const url = URL.createObjectURL(blob);
-                                        const a = document.createElement("a");
-                                        a.href = url;
-                                        a.download = object.name;
-                                        document.body.appendChild(a);
-                                        a.click();
-                                        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
-                                    }
-                                }}
-                                className="text-xs"
-                            >
-                                <Download className="size-3.5 mr-1.5" />
-                                Download instead
-                            </Button>
-                        </div>
-                    ) : error ? (
-                        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
-                            <AlertTriangle className="size-8 text-rose-400/60" />
-                            <span className="text-sm">{error}</span>
-                        </div>
-                    ) : fileType === "image" && imageUrl ? (
-                        <div className="flex items-center justify-center min-h-[300px] bg-[#0d1117] rounded-md border border-border">
-                            <img
-                                src={imageUrl}
-                                alt={object.name}
-                                className="max-w-full max-h-[calc(100vh-200px)] object-contain"
-                            />
-                        </div>
-                    ) : content?.binary ? (
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
-                                <AlertTriangle className="size-3.5 shrink-0" />
-                                <span>Binary content — showing hex dump (first 4 KB)</span>
-                            </div>
-                            <CodeViewer
-                                value={content.text}
-                                fileName="hex.txt"
-                                maxHeight="calc(100vh - 200px)"
-                            />
-                        </div>
-                    ) : content && fileType === "markdown" ? (
-                        <ScrollArea className="flex-1" style={{ maxHeight: "calc(100vh - 160px)" }}>
-                            <div
-                                className="prose prose-sm prose-invert max-w-none dark:prose-invert
-                                    prose-headings:text-foreground prose-p:text-foreground/80
-                                    prose-a:text-cyan-400 prose-strong:text-foreground
-                                    prose-code:text-amber-400 prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-                                    prose-pre:bg-[#0d1117] prose-pre:border prose-pre:border-border
-                                    prose-li:text-foreground/80
-                                    prose-table:border prose-table:border-border
-                                    prose-th:bg-muted prose-th:text-foreground prose-th:p-2
-                                    prose-td:border-border prose-td:p-2"
-                                dangerouslySetInnerHTML={{
-                                    __html: marked.parse(content.text, { async: false }) as string,
-                                }}
-                            />
-                        </ScrollArea>
-                    ) : content ? (
-                        <CodeViewer
-                            value={content.text}
-                            fileName={object.name}
-                            maxHeight="calc(100vh - 160px)"
-                        />
-                    ) : null}
+                    <PreviewBody
+                        key={`${bucket}/${object.name}/${open}`}
+                        bucket={bucket}
+                        name={object.name}
+                        size={object.size}
+                    />
                 </div>
             </SheetContent>
         </Sheet>
+    );
+}
+
+interface PreviewBodyProps {
+    bucket: string;
+    name: string;
+    size: number;
+}
+
+/**
+ * Preview content for one object. Remounted via key so every object starts with fresh
+ * content/loading/error state instead of resetting it inside the effect.
+ */
+function PreviewBody({ bucket, name, size }: PreviewBodyProps) {
+    const activeConnection = useActiveConnection();
+    const [content, setContent] = React.useState<{ text: string; binary: boolean } | null>(null);
+    const [imageUrl, setImageUrl] = React.useState<string | null>(null);
+    const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
+    const fileType = detectType(name);
+    const tooLarge = size > PREVIEW_SIZE_LIMIT;
+
+    React.useEffect(() => {
+        if (!activeConnection || size > PREVIEW_SIZE_LIMIT) return;
+
+        let cancelled = false;
+        let blobUrl: string | null = null;
+
+        if (detectType(name) === "image") {
+            // Fetch as base64 → blob URL for <img>
+            downloadObject(activeConnection, bucket, name)
+                .then((result) => {
+                    if (cancelled) return;
+                    if (result.success) {
+                        const extension = name.split(".").pop()?.toLowerCase() ?? "png";
+                        blobUrl = base64ToBlobUrl(result.data.data, MIME_MAP[extension] || "image/png");
+                        setImageUrl(blobUrl);
+                    } else {
+                        setError(result.error || "Failed to load image");
+                    }
+                    setLoading(false);
+                })
+                .catch((err) => {
+                    if (cancelled) return;
+                    setError(err instanceof Error ? err.message : "Unknown error");
+                    setLoading(false);
+                });
+        } else {
+            // Text-based: use getObjectContent
+            getObjectContent(activeConnection, bucket, name)
+                .then((result) => {
+                    if (cancelled) return;
+                    if (result.success) {
+                        setContent({ text: result.data.text, binary: result.data.binary });
+                    } else {
+                        setError(result.error || "Failed to load content");
+                    }
+                    setLoading(false);
+                })
+                .catch((err) => {
+                    if (cancelled) return;
+                    setError(err instanceof Error ? err.message : "Unknown error");
+                    setLoading(false);
+                });
+        }
+
+        return () => {
+            cancelled = true;
+            // Revoke the exact URL created by this effect run.
+            if (blobUrl) URL.revokeObjectURL(blobUrl);
+        };
+    }, [activeConnection, bucket, name, size]);
+
+    if (!activeConnection) return null;
+
+    return (
+        <>
+            {tooLarge ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-4">
+                    <HardDrive className="size-12 text-amber-400/40" />
+                    <div className="text-center space-y-2 max-w-sm">
+                        <h3 className="text-sm font-medium text-foreground">
+                            File too large to preview
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                            This file is {formatBytes(size)}. Previews are limited to {formatBytes(PREVIEW_SIZE_LIMIT)}.
+                            Use the download button to inspect the file locally.
+                        </p>
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                            if (!activeConnection) return;
+                            const result = await downloadObject(activeConnection, bucket, name);
+                            if (result.success) {
+                                const binary = atob(result.data.data);
+                                const bytes = new Uint8Array(binary.length);
+                                for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                                const blob = new Blob([bytes]);
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = name;
+                                document.body.appendChild(a);
+                                a.click();
+                                setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
+                            }
+                        }}
+                        className="text-xs"
+                    >
+                        <Download className="size-3.5 mr-1.5" />
+                        Download instead
+                    </Button>
+                </div>
+            ) : loading ? (
+                <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
+                    <Loader2 className="size-8 animate-spin text-cyan-500/60" />
+                    <span className="text-sm">Loading content…</span>
+                </div>
+            ) : error ? (
+                <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
+                    <AlertTriangle className="size-8 text-rose-400/60" />
+                    <span className="text-sm">{error}</span>
+                </div>
+            ) : fileType === "image" && imageUrl ? (
+                <div className="flex items-center justify-center min-h-[300px] bg-[#0d1117] rounded-md border border-border">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- blob: URLs from the object store cannot be routed through the Next.js image optimizer */}
+                    <img
+                        src={imageUrl}
+                        alt={name}
+                        className="max-w-full max-h-[calc(100vh-200px)] object-contain"
+                    />
+                </div>
+            ) : content?.binary ? (
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
+                        <AlertTriangle className="size-3.5 shrink-0" />
+                        <span>Binary content — showing hex dump (first 4 KB)</span>
+                    </div>
+                    <CodeViewer
+                        value={content.text}
+                        fileName="hex.txt"
+                        maxHeight="calc(100vh - 200px)"
+                    />
+                </div>
+            ) : content && fileType === "markdown" ? (
+                <ScrollArea className="flex-1" style={{ maxHeight: "calc(100vh - 160px)" }}>
+                    <div
+                        className="prose prose-sm prose-invert max-w-none dark:prose-invert
+                            prose-headings:text-foreground prose-p:text-foreground/80
+                            prose-a:text-cyan-400 prose-strong:text-foreground
+                            prose-code:text-amber-400 prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+                            prose-pre:bg-[#0d1117] prose-pre:border prose-pre:border-border
+                            prose-li:text-foreground/80
+                            prose-table:border prose-table:border-border
+                            prose-th:bg-muted prose-th:text-foreground prose-th:p-2
+                            prose-td:border-border prose-td:p-2"
+                        dangerouslySetInnerHTML={{
+                            __html: marked.parse(content.text, { async: false }) as string,
+                        }}
+                    />
+                </ScrollArea>
+            ) : content ? (
+                <CodeViewer
+                    value={content.text}
+                    fileName={name}
+                    maxHeight="calc(100vh - 160px)"
+                />
+            ) : null}
+        </>
     );
 }
 

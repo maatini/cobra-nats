@@ -33,7 +33,7 @@ import { DashboardTimeSeries } from "@/features/dashboard/dashboard-time-series"
 import {
     EMPTY_DASHBOARD_HISTORY,
     recordDashboardSample,
-    resetDashboardHistory,
+    type DashboardSample,
     type DashboardSampleHistory,
 } from "@/features/dashboard/sampler";
 
@@ -65,6 +65,28 @@ const EMPTY_STATS: DashboardStats = {
     account: null,
 };
 
+/** Latest dashboard result, tagged with the connection it was fetched for. */
+interface DashboardSnapshot {
+    connectionId: string;
+    stats: DashboardStats;
+    error: string | null;
+}
+
+interface DashboardSampleInput {
+    sample: DashboardSample;
+    monitoringEndpoint: string | null;
+}
+
+/** Async dashboard payload; committed to state by `applyDashboardResult` once it resolves. */
+interface DashboardFetchResult {
+    generation: number;
+    connectionId: string;
+    /** null when the request threw before producing a payload; previous values stay rendered. */
+    stats: DashboardStats | null;
+    error: string | null;
+    sample: DashboardSampleInput | null;
+}
+
 function formatBytes(bytes: number): string {
     if (bytes < 0) return "∞";
     if (bytes === 0) return "0 B";
@@ -77,17 +99,24 @@ function formatBytes(bytes: number): string {
 export function DashboardOverview() {
     const activeConnection = useActiveConnection();
     const { connections } = useNatsStore();
-    const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
     const [history, setHistory] = useState<DashboardSampleHistory>(EMPTY_DASHBOARD_HISTORY);
     const requestGeneration = useRef(0);
     const monitoringEndpoint = "varz" as const;
 
-    const fetchDashboardData = useCallback(async (connection: NatsConnectionConfig) => {
+    const connectionId = activeConnection?.id;
+    const snapshotIsCurrent = snapshot !== null && snapshot.connectionId === connectionId;
+    // Render nothing connection-specific until the snapshot belongs to the selected connection.
+    const stats = snapshotIsCurrent ? snapshot.stats : EMPTY_STATS;
+    const error = snapshotIsCurrent ? snapshot.error : null;
+    const loading = connectionId !== undefined && !snapshotIsCurrent;
+    const historyForConnection =
+        activeConnection !== undefined && history.connectionId === activeConnection.id
+            ? history
+            : EMPTY_DASHBOARD_HISTORY;
+
+    const fetchDashboardData = useCallback(async (connection: NatsConnectionConfig): Promise<DashboardFetchResult | null> => {
         const generation = requestGeneration.current;
-        setLoading(true);
-        setError(null);
 
         try {
             const [serverResult, streamsResult, kvResult, osResult, accountResult] =
@@ -135,8 +164,8 @@ export function DashboardOverview() {
                 next.consumerTotal = null;
             }
 
-            if (generation !== requestGeneration.current) return;
-            setStats(next);
+            if (generation !== requestGeneration.current) return null;
+
             const hasSuccessfulSource =
                 (streamsResult.status === "fulfilled" && streamsResult.value.success) ||
                 (accountResult.status === "fulfilled" && accountResult.value.success);
@@ -145,50 +174,73 @@ export function DashboardOverview() {
                     ? fetchHttpMonitoring(connection.monitoringUrl.trim(), monitoringEndpoint)
                     : null).then((result) => result === null ? null : ({ status: "fulfilled" as const, value: result })).catch(() => null)
                 : null;
-            if (hasSuccessfulSource || monitoringResult?.value.success) {
-                setHistory((current) => recordDashboardSample(current, connection.id, {
-                    sampledAt: Date.now(),
-                    streamCount: next.streamCount,
-                    consumers: next.consumerTotal,
-                    storageBytes: next.account ? next.account.storage : null,
-                    serverConnections:
-                        monitoringResult?.status === "fulfilled" && monitoringResult.value.success &&
-                        typeof monitoringResult.value.data.data.connections === "number"
-                            ? monitoringResult.value.data.data.connections
-                            : null,
-                    inboundMessages:
-                        monitoringResult?.status === "fulfilled" && monitoringResult.value.success &&
-                        typeof monitoringResult.value.data.data.in_msgs === "number"
-                            ? monitoringResult.value.data.data.in_msgs
-                            : null,
-                    outboundMessages:
-                        monitoringResult?.status === "fulfilled" && monitoringResult.value.success &&
-                        typeof monitoringResult.value.data.data.out_msgs === "number"
-                            ? monitoringResult.value.data.data.out_msgs
-                            : null,
-                }, connection.monitoringUrl?.trim() ? monitoringEndpoint : null));
-            }
+            const sample: DashboardSampleInput | null =
+                hasSuccessfulSource || monitoringResult?.value.success
+                    ? {
+                        sample: {
+                            sampledAt: Date.now(),
+                            streamCount: next.streamCount,
+                            consumers: next.consumerTotal,
+                            storageBytes: next.account ? next.account.storage : null,
+                            serverConnections:
+                                monitoringResult?.status === "fulfilled" && monitoringResult.value.success &&
+                                typeof monitoringResult.value.data.data.connections === "number"
+                                    ? monitoringResult.value.data.data.connections
+                                    : null,
+                            inboundMessages:
+                                monitoringResult?.status === "fulfilled" && monitoringResult.value.success &&
+                                typeof monitoringResult.value.data.data.in_msgs === "number"
+                                    ? monitoringResult.value.data.data.in_msgs
+                                    : null,
+                            outboundMessages:
+                                monitoringResult?.status === "fulfilled" && monitoringResult.value.success &&
+                                typeof monitoringResult.value.data.data.out_msgs === "number"
+                                    ? monitoringResult.value.data.data.out_msgs
+                                    : null,
+                        },
+                        monitoringEndpoint: connection.monitoringUrl?.trim() ? monitoringEndpoint : null,
+                    }
+                    : null;
+
+            return { generation, connectionId: connection.id, stats: next, error: null, sample };
         } catch {
-            if (generation === requestGeneration.current) setError("Failed to fetch dashboard data");
-        } finally {
-            if (generation === requestGeneration.current) setLoading(false);
+            return {
+                generation,
+                connectionId: connection.id,
+                stats: null,
+                error: "Failed to fetch dashboard data",
+                sample: null,
+            };
+        }
+    }, []);
+
+    const applyDashboardResult = useCallback((result: DashboardFetchResult | null) => {
+        if (!result || result.generation !== requestGeneration.current) return;
+
+        setSnapshot((current) => ({
+            connectionId: result.connectionId,
+            // Keep the last values for this connection; the error banner explains the gap.
+            stats: result.stats ?? (current?.connectionId === result.connectionId ? current.stats : EMPTY_STATS),
+            error: result.error,
+        }));
+
+        const sample = result.sample;
+        if (sample) {
+            setHistory((current) =>
+                recordDashboardSample(current, result.connectionId, sample.sample, sample.monitoringEndpoint)
+            );
         }
     }, []);
 
     useEffect(() => {
         requestGeneration.current += 1;
-        if (activeConnection) {
-            setHistory((current) => current.connectionId === activeConnection.id ? current : resetDashboardHistory());
-            void fetchDashboardData(activeConnection);
-        } else {
-            setStats(EMPTY_STATS);
-            setHistory(resetDashboardHistory());
-        }
-    }, [activeConnection?.id, fetchDashboardData]);
+        if (!activeConnection) return;
+        void fetchDashboardData(activeConnection).then(applyDashboardResult);
+    }, [activeConnection, fetchDashboardData, applyDashboardResult]);
 
     const { interval, setInterval } = useAutoRefresh(
         () => {
-            if (activeConnection) fetchDashboardData(activeConnection);
+            if (activeConnection) void fetchDashboardData(activeConnection).then(applyDashboardResult);
         },
         { storageKey: "nats-ui:dashboard:refresh-interval" }
     );
@@ -532,7 +584,7 @@ export function DashboardOverview() {
                 </Card>
             </div>
 
-            {activeConnection && <DashboardTimeSeries samples={history.connectionId === activeConnection.id ? history.samples : []} />}
+            {activeConnection && <DashboardTimeSeries samples={historyForConnection.samples} />}
 
             {activeConnection && <HttpMonitoringCard connection={activeConnection} />}
         </div>

@@ -288,16 +288,6 @@ export function MonitorView() {
         toast.success("Copied to clipboard");
     };
 
-    // When buffer shrinks, trim immediately.
-    React.useEffect(() => {
-        setMessages((prev) => {
-            if (prev.length <= maxBuffer) return prev;
-            const overflow = prev.length - maxBuffer;
-            setDroppedCount((d) => d + overflow);
-            return prev.slice(0, maxBuffer);
-        });
-    }, [maxBuffer]);
-
     const filteredMessages = React.useMemo(() => {
         if (!clientFilter.trim()) return messages;
         return messages.filter((m) => subjectMatchesFilter(m.subject, clientFilter));
@@ -436,7 +426,15 @@ export function MonitorView() {
                     </Label>
                     <select
                         value={maxBuffer}
-                        onChange={(e) => setMaxBuffer(Number(e.target.value))}
+                        onChange={(e) => {
+                            const nextMax = Number(e.target.value);
+                            setMaxBuffer(nextMax);
+                            // Shrinking the buffer drops the oldest messages right away.
+                            if (messages.length > nextMax) {
+                                setDroppedCount((d) => d + messages.length - nextMax);
+                                setMessages(messages.slice(0, nextMax));
+                            }
+                        }}
                         className="h-9 w-full rounded-md border border-border bg-background px-2 text-xs text-foreground"
                     >
                         {BUFFER_OPTIONS.map((n) => (

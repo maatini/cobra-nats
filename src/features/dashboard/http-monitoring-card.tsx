@@ -21,6 +21,12 @@ interface HttpMonitoringCardProps {
     connection: NatsConnectionConfig;
 }
 
+/** Successful (or failed) monitoring payload tagged with the URL + endpoint it belongs to. */
+interface MonitoringSnapshot {
+    key: string;
+    data: Record<string, unknown> | null;
+}
+
 function pickSummary(endpoint: HttpMonitoringEndpoint, data: Record<string, unknown>) {
     if (endpoint === "varz") {
         return [
@@ -65,26 +71,45 @@ function pickSummary(endpoint: HttpMonitoringEndpoint, data: Record<string, unkn
 
 export function HttpMonitoringCard({ connection }: HttpMonitoringCardProps) {
     const [endpoint, setEndpoint] = React.useState<HttpMonitoringEndpoint>("varz");
-    const [loading, setLoading] = React.useState(false);
-    const [data, setData] = React.useState<Record<string, unknown> | null>(null);
+    const [snapshot, setSnapshot] = React.useState<MonitoringSnapshot | null>(null);
+    const [manualRefresh, setManualRefresh] = React.useState(false);
+    const requestGeneration = React.useRef(0);
     const monitoringUrl = connection.monitoringUrl?.trim();
+    const requestKey = monitoringUrl ? `${monitoringUrl}|${endpoint}` : null;
+    // Data and loading are derived from the request key, so switching URL/endpoint
+    // shows a pending state without writing state from the effect body.
+    const data = requestKey !== null && snapshot?.key === requestKey ? snapshot.data : null;
+    const loading = manualRefresh || (requestKey !== null && snapshot?.key !== requestKey);
 
-    const load = React.useCallback(async () => {
+    const applyResult = React.useCallback(
+        (
+            key: string,
+            generation: number,
+            result: Awaited<ReturnType<typeof fetchHttpMonitoring>>
+        ) => {
+            if (generation !== requestGeneration.current) return;
+            setManualRefresh(false);
+            if (!result.success) {
+                toast.error("Monitoring fetch failed", { description: result.error });
+                setSnapshot({ key, data: null });
+                return;
+            }
+            setSnapshot({ key, data: result.data.data });
+        },
+        []
+    );
+
+    const load = React.useCallback(() => {
         if (!monitoringUrl) return;
-        setLoading(true);
-        const result = await fetchHttpMonitoring(monitoringUrl, endpoint);
-        setLoading(false);
-        if (!result.success) {
-            toast.error("Monitoring fetch failed", { description: result.error });
-            setData(null);
-            return;
-        }
-        setData(result.data.data);
-    }, [monitoringUrl, endpoint]);
+        const key = `${monitoringUrl}|${endpoint}`;
+        const generation = requestGeneration.current + 1;
+        requestGeneration.current = generation;
+        void fetchHttpMonitoring(monitoringUrl, endpoint).then((result) => applyResult(key, generation, result));
+    }, [monitoringUrl, endpoint, applyResult]);
 
     React.useEffect(() => {
-        if (monitoringUrl) void load();
-        else setData(null);
+        if (!monitoringUrl) return;
+        load();
     }, [monitoringUrl, load]);
 
     if (!monitoringUrl) {
@@ -135,7 +160,10 @@ export function HttpMonitoringCard({ connection }: HttpMonitoringCardProps) {
                             variant="outline"
                             size="sm"
                             className="h-8"
-                            onClick={() => void load()}
+                            onClick={() => {
+                                setManualRefresh(true);
+                                load();
+                            }}
                             disabled={loading}
                         >
                             {loading ? (

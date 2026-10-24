@@ -18,6 +18,9 @@ type HealthState = {
     error: string | null;
 };
 
+/** Health tagged with the connection it was measured on, so results never leak across connections. */
+type ConnectionHealth = HealthState & { connectionId: string };
+
 const DISCONNECTED: HealthState = { status: "disconnected", rttMs: null, error: null };
 const CHECKING: HealthState = { status: "checking", rttMs: null, error: null };
 
@@ -27,7 +30,7 @@ const CHECKING: HealthState = { status: "checking", rttMs: null, error: null };
  */
 export function useConnectionHealth(): HealthState {
     const activeConnection = useActiveConnection();
-    const [pingHealth, setPingHealth] = useState<HealthState>(CHECKING);
+    const [health, setHealth] = useState<ConnectionHealth | null>(null);
     const mountedRef = useRef(true);
     const connectionId = activeConnection?.id;
 
@@ -35,30 +38,31 @@ export function useConnectionHealth(): HealthState {
         if (!activeConnection) return;
 
         mountedRef.current = true;
-        setPingHealth(CHECKING);
 
+        const config = activeConnection;
         let timer: ReturnType<typeof setTimeout>;
 
         async function check() {
             const result = await pingConnection({
-                name: activeConnection!.name,
-                servers: activeConnection!.servers,
-                authType: activeConnection!.authType,
-                user: activeConnection!.user,
-                pass: activeConnection!.pass,
-                token: activeConnection!.token,
-                nkeySeed: activeConnection!.nkeySeed,
-                jwt: activeConnection!.jwt,
-                creds: activeConnection!.creds,
-                tls: activeConnection!.tls,
+                name: config.name,
+                servers: config.servers,
+                authType: config.authType,
+                user: config.user,
+                pass: config.pass,
+                token: config.token,
+                nkeySeed: config.nkeySeed,
+                jwt: config.jwt,
+                creds: config.creds,
+                tls: config.tls,
             });
 
             if (!mountedRef.current) return;
 
             if (result.success) {
-                setPingHealth({ status: "connected", rttMs: result.data.rttMs, error: null });
+                setHealth({ connectionId: config.id, status: "connected", rttMs: result.data.rttMs, error: null });
             } else {
-                setPingHealth({
+                setHealth({
+                    connectionId: config.id,
                     status: "disconnected",
                     rttMs: null,
                     error: result.error || null,
@@ -80,5 +84,6 @@ export function useConnectionHealth(): HealthState {
     }, [connectionId]);
 
     if (!activeConnection) return DISCONNECTED;
-    return pingHealth;
+    if (!health || health.connectionId !== activeConnection.id) return CHECKING;
+    return health;
 }

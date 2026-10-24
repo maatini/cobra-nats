@@ -5,11 +5,17 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 
+const subscribeToMount = () => () => {};
+const getMountedSnapshot = () => true;
+const getServerMountedSnapshot = () => false;
+
 export function ThemeToggle() {
     const { resolvedTheme, setTheme } = useTheme();
-    const [mounted, setMounted] = React.useState(false);
-
-    React.useEffect(() => setMounted(true), []);
+    const mounted = React.useSyncExternalStore(
+        subscribeToMount,
+        getMountedSnapshot,
+        getServerMountedSnapshot
+    );
 
     const isDark = mounted && resolvedTheme === "dark";
 

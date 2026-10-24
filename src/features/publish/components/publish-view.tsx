@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
@@ -43,12 +43,13 @@ type PublishFormValues = z.infer<typeof publishSchema>;
 export function PublishView() {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [reply, setReply] = React.useState<{data: string, headers?: Record<string, string>} | null>(null);
-    const [replayBanner, setReplayBanner] = React.useState(false);
     const activeConnection = useActiveConnection();
     const { push: pushSubject } = useSubjectHistory();
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
+    // Frozen at mount; the one-shot effect below applies the same replay prefill.
+    const [replayBanner] = React.useState(() => parsePublishReplayParams(searchParams) !== null);
 
     const form = useForm<PublishFormValues>({
         resolver: zodResolver(publishSchema),
@@ -65,6 +66,8 @@ export function PublishView() {
         name: "headers",
     });
 
+    const isRequest = useWatch({ control: form.control, name: "isRequest" });
+
     // Prefill from Message Browser / Monitor "Replay" query params (once).
     React.useEffect(() => {
         const prefill = parsePublishReplayParams(searchParams);
@@ -75,7 +78,6 @@ export function PublishView() {
             headers: prefill.headers,
             isRequest: false,
         });
-        setReplayBanner(true);
         router.replace(pathname, { scroll: false });
         // Only apply on mount / first URL with replay params
         // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional one-shot prefill
@@ -249,7 +251,7 @@ export function PublishView() {
                                     {isSubmitting ? (
                                         <Loader2 className="size-4 mr-2 animate-spin" />
                                     ) : (
-                                        form.watch("isRequest") ? "Send Request" : "Publish Message"
+                                        isRequest ? "Send Request" : "Publish Message"
                                     )}
                                 </Button>
                             </CardContent>

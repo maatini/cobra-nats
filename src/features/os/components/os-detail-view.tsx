@@ -36,7 +36,9 @@ export function OSDetailView() {
     const confirm = useConfirm();
 
     const [objects, setObjects] = React.useState<OsObjectInfo[]>([]);
-    const [isLoading, setIsLoading] = React.useState(true);
+    /** Connection/bucket the listed objects belong to (set after a fetch resolves). */
+    const [loadedScope, setLoadedScope] = React.useState<string | null>(null);
+    const [isRefreshing, setIsRefreshing] = React.useState(false);
     const [previewObject, setPreviewObject] = React.useState<OsObjectInfo | null>(null);
     const [previewOpen, setPreviewOpen] = React.useState(false);
     const [sealed, setSealed] = React.useState(false);
@@ -44,30 +46,70 @@ export function OSDetailView() {
     const [prefixParts, setPrefixParts] = React.useState<string[]>([]);
     const [prefixFilter, setPrefixFilter] = React.useState("");
 
-    const fetchObjects = React.useCallback(async () => {
-        if (!activeConnection || !bucket) return;
+    const bucketName = typeof bucket === "string" ? bucket : null;
+    const dataScope = activeConnection && bucketName ? `${activeConnection.id}/${bucketName}` : null;
+    // Objects are stale until the fetch for the current connection/bucket resolves.
+    const isLoading = isRefreshing || (dataScope !== null && loadedScope !== dataScope);
 
-        setIsLoading(true);
+    /** Fetch objects + bucket status. Performs no state updates. */
+    const loadObjects = React.useCallback(async () => {
+        if (!activeConnection || !bucket) return null;
+        const scope = `${activeConnection.id}/${bucket as string}`;
         const [objectsResult, bucketResult] = await Promise.all([
             listObjects(activeConnection, bucket as string),
             getOSBucket(activeConnection, bucket as string),
         ]);
-        if (objectsResult.success) {
-            setObjects(objectsResult.data.objects || []);
-        } else {
-            toast.error("Failed to load objects", {
-                description: objectsResult.error,
-            });
-        }
-        if (bucketResult.success) {
-            setSealed(bucketResult.data.sealed);
-        }
-        setIsLoading(false);
+        return {
+            scope,
+            objects: objectsResult.success ? objectsResult.data.objects || [] : null,
+            error: objectsResult.success ? null : objectsResult.error,
+            sealed: bucketResult.success ? bucketResult.data.sealed : null,
+        };
     }, [activeConnection, bucket]);
 
+    const applyObjects = React.useCallback(
+        (payload: {
+            scope: string;
+            objects: OsObjectInfo[] | null;
+            error: string | null;
+            sealed: boolean | null;
+        }) => {
+            if (payload.objects) {
+                setObjects(payload.objects);
+            } else {
+                toast.error("Failed to load objects", {
+                    description: payload.error ?? undefined,
+                });
+            }
+            if (payload.sealed !== null) setSealed(payload.sealed);
+            setLoadedScope(payload.scope);
+            setIsRefreshing(false);
+        },
+        []
+    );
+
+    const fetchObjects = React.useCallback(async () => {
+        const payload = await loadObjects();
+        if (payload) applyObjects(payload);
+    }, [loadObjects, applyObjects]);
+
+    /** Manual reload from an event handler (refresh button, mutations). */
+    const refreshObjects = () => {
+        if (!activeConnection || !bucket) return;
+        setIsRefreshing(true);
+        void fetchObjects();
+    };
+
     React.useEffect(() => {
-        fetchObjects();
-    }, [fetchObjects]);
+        let cancelled = false;
+        loadObjects().then((payload) => {
+            if (cancelled || !payload) return;
+            applyObjects(payload);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [loadObjects, applyObjects]);
 
     /** Stream download via POST /api/os/download (avoids base64 in memory). */
     const handleDownload = async (name: string) => {
@@ -138,7 +180,7 @@ export function OSDetailView() {
         const result = await deleteObject(activeConnection, bucket as string, name);
         if (result.success) {
             toast.success(`Object "${name}" deleted`);
-            fetchObjects();
+            refreshObjects();
         } else {
             toast.error(`Failed to delete object: ${result.error}`);
         }
@@ -159,7 +201,7 @@ export function OSDetailView() {
         if (result.success) {
             toast.success(`Bucket "${bucket}" sealed`);
             setSealed(true);
-            fetchObjects();
+            refreshObjects();
         } else {
             toast.error("Failed to seal bucket", { description: result.error });
         }
@@ -235,13 +277,13 @@ export function OSDetailView() {
                     {!sealed && (
                         <UploadObjectDialog
                             bucket={bucket as string}
-                            onUploaded={fetchObjects}
+                            onUploaded={refreshObjects}
                         />
                     )}
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={fetchObjects}
+                        onClick={refreshObjects}
                         className="bg-card border-border text-foreground/80"
                     >
                         <RefreshCcw

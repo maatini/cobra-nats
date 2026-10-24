@@ -47,6 +47,10 @@ const updateSchema = z.object({
 
 type UpdateFormValues = z.infer<typeof updateSchema>;
 
+type ConsumerSnapshot =
+    | { ok: true; key: string; info: ConsumerInfoDto }
+    | { ok: false; key: string; error: string };
+
 interface ConsumerDetailSheetProps {
     streamName: string;
     consumerName: string | null;
@@ -88,8 +92,15 @@ export function ConsumerDetailSheet({
 }: ConsumerDetailSheetProps) {
     const activeConnection = useActiveConnection();
     const [info, setInfo] = React.useState<ConsumerInfoDto | null>(null);
-    const [loading, setLoading] = React.useState(false);
+    const [loadedFor, setLoadedFor] = React.useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+    const loadKey =
+        activeConnection && consumerName
+            ? `${activeConnection.id}:${streamName}:${consumerName}`
+            : null;
+    // Only the consumer whose details were actually fetched counts as loaded.
+    const isLoading = loadKey !== null && loadedFor !== loadKey;
 
     const form = useForm<UpdateFormValues>({
         resolver: zodResolver(updateSchema),
@@ -105,16 +116,24 @@ export function ConsumerDetailSheet({
         },
     });
 
-    const load = React.useCallback(async () => {
-        if (!activeConnection || !consumerName || !open) return;
-        setLoading(true);
+    const load = React.useCallback(async (): Promise<ConsumerSnapshot | null> => {
+        if (!activeConnection || !consumerName || !open) return null;
+        const key = `${activeConnection.id}:${streamName}:${consumerName}`;
         const result = await getConsumerInfo(activeConnection, streamName, consumerName);
-        setLoading(false);
         if (!result.success) {
-            toast.error("Failed to load consumer", { description: result.error });
+            return { ok: false, key, error: result.error };
+        }
+        return { ok: true, key, info: result.data.info };
+    }, [activeConnection, consumerName, open, streamName]);
+
+    const applyLoaded = React.useCallback((snapshot: ConsumerSnapshot | null) => {
+        if (!snapshot) return;
+        setLoadedFor(snapshot.key);
+        if (!snapshot.ok) {
+            toast.error("Failed to load consumer", { description: snapshot.error });
             return;
         }
-        const c = result.data.info;
+        const c = snapshot.info;
         setInfo(c);
         form.reset({
             ack_wait_seconds: c.config.ack_wait ? Math.round(Number(c.config.ack_wait) / 1e9) : 30,
@@ -128,11 +147,11 @@ export function ConsumerDetailSheet({
                 ? Math.round(Number(c.config.inactive_threshold) / 1e9)
                 : 0,
         });
-    }, [activeConnection, consumerName, open, streamName, form]);
+    }, [form]);
 
     React.useEffect(() => {
-        void load();
-    }, [load]);
+        void load().then(applyLoaded);
+    }, [load, applyLoaded]);
 
     async function onSubmit(values: UpdateFormValues) {
         if (!activeConnection || !consumerName) return;
@@ -175,7 +194,7 @@ export function ConsumerDetailSheet({
                     </SheetDescription>
                 </SheetHeader>
 
-                {loading && !info ? (
+                {isLoading && !info ? (
                     <div className="flex items-center justify-center py-16 text-muted-foreground">
                         <Loader2 className="size-5 animate-spin mr-2" /> Loading…
                     </div>
