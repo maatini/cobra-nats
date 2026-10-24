@@ -9,7 +9,7 @@
 [![mise](https://img.shields.io/badge/mise-Node_22-yellow?logo=gnubash&logoColor=white)](https://mise.jdx.dev/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **v0.7.0** — A modern, professional management UI for NATS and JetStream.
+> **v0.7.1** — A modern, professional management UI for NATS and JetStream.
 
 ![Cobra NATS](./cobra_nats.png)
 

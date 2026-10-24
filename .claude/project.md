@@ -3,7 +3,7 @@
 **Owns**: product map (features, routes, NATS conventions, palette, setup).  
 **Does not own**: code patterns (→ `rules.md`), folder ownership (→ `architecture.md`).
 
-**Version**: 0.7.0 (truth is `package.json`)  
+**Version**: 0.7.1 (truth is `package.json`)  
 **Goal**: The fastest and most beautiful NATS/JetStream management UI.
 
 ## Features & routes

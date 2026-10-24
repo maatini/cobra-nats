@@ -1,21 +1,21 @@
 # HANDOFF — Cobra NATS Altlasten-Cleanup
 
-**Stand:** 2026-10-24 (Cleanup, Lint-Sanierung und Warnungsbereinigung)
+**Stand:** 2026-10-24 (Cleanup, Lint-Sanierung, Release v0.7.1)
 **Branch:** `main`
-**Commits:** `dac07db` (Cleanup) · `ce8125d` (Lint/Typecheck) · `4d3fb5d` (HANDOFF)
-**Working tree:** 18 Dateien geändert, Warnungsbereinigung **nicht committet**
-**Produkt:** cobra-nats **0.7.0**
+**Commits:** `dac07db` (Cleanup) · `ce8125d` (Lint/Typecheck) · `270dd5a` (Warnungen) · `8814f86` (AGENTS.md)
+**Release:** `v0.7.1` (Tag + GitHub Release)
+**Working tree:** sauber
+**Produkt:** cobra-nats **0.7.1**
 
 ---
 
 ## Nächste Aufgabe
 
-Entscheiden, ob die Warnungsbereinigung committet wird (Vorschlag: `refactor: clear all lint warnings`). Kein Commit ohne User-Freigabe.
-
-Danach optional:
+Keine offene Pflicht. Optional:
 
 - CI-Job `npm run lint` + `npm run typecheck` neben `docker.yml` und `e2e.yml`.
 - Unit-Test für den neuen `useLocalStorage`-Snapshot-Cache (bräuchte `@testing-library/react` + jsdom als neue Dev-Dependency).
+- Nächstes fachliches Release: Cluster-Topologie oder KV-Bulk-UX (`docs/roadmap-sequence.md`, `docs/recommendations.md`).
 
 ---
 
@@ -50,7 +50,7 @@ Danach optional:
 - `scripts/verify-gha-security.mjs`: toter `USES_RE` entfernt; Parser liest `uses:` weiterhin über `mappingChildren`.
 - `package.json`: `"typecheck": "tsc --noEmit"` — löst die lokale TypeScript-Version auf.
 
-### Warnungsbereinigung (uncommitted, 18 Dateien)
+### Warnungsbereinigung (`270dd5a`, 18 Dateien)
 
 Alle 21 Warnungen sind beseitigt (`eslint .` → 0 Probleme). Muster:
 
@@ -62,6 +62,12 @@ Alle 21 Warnungen sind beseitigt (`eslint .` → 0 Probleme). Muster:
 - **Preview-Sheet:** Der Inhalt ist als `PreviewBody` mit `key` extrahiert; Blob-URLs werden pro Effektlauf erzeugt und exakt so wieder freigegeben (vorher Leak durch stale Closure). Ein dokumentierter `no-img-element`-Disable bleibt für Blob-URLs.
 
 Bewusste Verhaltensänderungen: kein Spinner-Flackern bei Hintergrund-Polls; Fehler und Daten sind pro Connection getrennt; ohne aktive Connection zeigt der Health-Badge `Disconnected` statt dauerhaft `Checking`; der manuelle Refresh der Monitoring-Karte zeigt weiterhin Spinner und deaktivierten Button (eigener `manualRefresh`-Flag).
+
+### Release v0.7.1
+
+- Versionsbump in `package.json` / `package-lock.json`, `README.md`, `.claude/project.md`, `docs/knowledge-base/index.md`.
+- Inhalt: CrewAI-Entfernung, Node 22, Lint-/Typecheck-Sanierung, Warnungsbereinigung, Doku-Konsolidierung (`CLAUDE.md` → `AGENTS.md`), Dependabot-Bumps. Keine funktionalen Produktänderungen.
+- Der Tag-Push lässt `docker.yml` die Semver-Tags `0.7.1`, `0.7` und `0.7.1` (sha) plus `latest` bauen.
 
 ---
 
