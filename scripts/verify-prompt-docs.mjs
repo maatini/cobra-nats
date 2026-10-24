@@ -29,7 +29,7 @@ function assert(cond, msg) {
 }
 
 const pkg = JSON.parse(read("package.json"));
-const claude = read("CLAUDE.md");
+const agentsMd = read("AGENTS.md");
 const architecture = read(".claude/architecture.md");
 const project = read(".claude/project.md");
 const rules = read(".claude/rules.md");
@@ -38,12 +38,12 @@ const tags = read("docs/knowledge-base/cross-cutting/tags.md");
 // --- Stack vs package.json ---
 const ts = String(pkg.devDependencies?.typescript ?? "");
 assert(ts.startsWith("^6") || ts.startsWith("6"), `package.json typescript major is 6 (got ${ts})`);
-assert(/TypeScript 6/.test(claude), "CLAUDE.md states TypeScript 6");
-assert(!/TypeScript 5/.test(claude + architecture + project + rules), "no TypeScript 5 in prompt docs");
+assert(/TypeScript 6/.test(agentsMd), "AGENTS.md states TypeScript 6");
+assert(!/TypeScript 5/.test(agentsMd + architecture + project + rules), "no TypeScript 5 in prompt docs");
 assert(/^(?:\^|~)?16\b/.test(String(pkg.dependencies?.next ?? "")), "next major 16");
-assert(/Next\.js 16/.test(claude), "CLAUDE.md states Next.js 16");
+assert(/Next\.js 16/.test(agentsMd), "AGENTS.md states Next.js 16");
 assert(/^(?:\^|~)?19\b/.test(String(pkg.dependencies?.react ?? "")), "react major 19");
-assert(/React 19/.test(claude), "CLAUDE.md states React 19");
+assert(/React 19/.test(agentsMd), "AGENTS.md states React 19");
 assert(String(pkg.dependencies?.nats ?? "").includes("2.29"), "nats ~2.29");
 
 // --- API routes exist and are documented ---
@@ -66,11 +66,11 @@ assert(
   `live api includes os/upload (found: ${apiRoutes.join(", ")})`
 );
 
-const promptBlob = claude + architecture + project;
+const promptBlob = agentsMd + architecture + project;
 assert(/api\/monitor|api\/.*monitor/.test(promptBlob), "prompts mention monitor API");
 assert(/os\/upload|api\/os/.test(promptBlob), "prompts mention os/upload API");
 const optimizedSurfaces =
-  claude +
+  agentsMd +
   architecture +
   project +
   rules +
@@ -105,12 +105,12 @@ const expectedFeatures = [
 for (const f of expectedFeatures) {
   assert(features.includes(f), `feature folder exists: ${f}`);
 }
-assert(/connections|streams|kv|os|publish|monitor|dashboard/.test(claude), "CLAUDE lists features");
+assert(/connections|streams|kv|os|publish|monitor|dashboard/.test(agentsMd), "AGENTS.md lists features");
 
 const tests = readdirSync(join(ROOT, "tests")).filter((n) => n.endsWith(".spec.ts"));
 assert(tests.length >= 5, `tests/*.spec.ts flat layout (count=${tests.length})`);
 assert(!existsSync(join(ROOT, "tests/features")), "no tests/features/ subfolder");
-assert(/tests\/\*\.spec\.ts/.test(claude + rules), "docs document flat tests layout");
+assert(/tests\/\*\.spec\.ts/.test(agentsMd + rules), "docs document flat tests layout");
 
 // --- Storage key ---
 const store = read("src/features/connections/store.ts");
@@ -193,7 +193,6 @@ if (existsSync(settingsPath)) {
 
 // --- Grok-native surfaces ---
 assert(existsSync(join(ROOT, "AGENTS.md")), "AGENTS.md exists (Grok entry)");
-const agentsMd = read("AGENTS.md");
 assert(/subagent_type|server-actions-agent|playwright-testing-agent/i.test(agentsMd), "AGENTS.md has subagent routing");
 assert(/api\/monitor|api\/os\/upload/.test(agentsMd), "AGENTS.md documents API exceptions");
 const grokRules = join(ROOT, ".grok/rules");

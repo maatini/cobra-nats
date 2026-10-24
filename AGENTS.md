@@ -1,6 +1,25 @@
 # AGENTS.md – Cobra NATS (Grok Build)
 
-Grok-native project entry. **Product rules** (stack, layout, hard coding laws) live in `CLAUDE.md` and are loaded with this file — do not restate them here.
+**What**: Web UI for NATS/JetStream (Streams, Consumers, KV, Object Store, Publish/Request, Live Monitor).
+**Stack**: Next.js 16 App Router · React 19 · TypeScript 6 strict · Tailwind v4 · shadcn/ui (New York) · Zustand · Playwright · `nats` v2.29.
+
+## Mental model
+
+```text
+Client → Server Action | intentional API → withJetStream / withNatsConnection → NatsManager → NATS
+```
+
+**Never:** `nats` in the browser · secrets in query strings · actions outside `src/features/<domain>/`.
+
+## Product rules (always on)
+
+1. **All NATS ops on the server** — Server Actions in `src/features/<domain>/actions.ts` (or dedicated API routes for SSE/binary). Never ship credentials or import `nats` on the client.
+2. **Wrappers always** — `withNatsConnection` / `withJetStream` from `@/lib/server-action`; return `ActionResponse<T>`. First arg is always `NatsConnectionConfig`. Wrappers validate that config with Zod at runtime.
+3. **Feature isolation** — UI + actions for a domain live under `src/features/<domain>/`. No cross-feature imports without a reason.
+4. **Types stay central** — domain types in `src/types/nats.ts`, not scattered per feature.
+5. **shadcn/ui only** — New York style; new primitives via `npx shadcn@latest add …`. No custom Button/Input variants.
+6. **Forms** — React Hook Form + Zod next to the component; English UI strings.
+7. **Tests** — Playwright under `tests/*.spec.ts` (flat) for new user-facing features. Unit tests (`vitest`, `src/**/*.test.ts`) cover pool lifecycle, schemas, and URL policy.
 
 ## Subagent routing
 
@@ -19,7 +38,7 @@ Built-ins still apply: `explore`, `plan`, `general-purpose`.
 | Need | Open |
 |---|---|
 | Mandatory code patterns | `.claude/rules.md` |
-| Where does X live? | `.claude/architecture.md` |
+| Where does X live? (folder map, blueprints) | `.claude/architecture.md` |
 | Routes / NATS conventions / palette | `.claude/project.md` |
 | Architecture, ADRs, modules | `docs/knowledge-base/` (start: `index.md`) |
 | Persona body | `.claude/agents/<name>.md` (also linked from `.grok/agents/`) |
@@ -35,8 +54,6 @@ Context compaction: `.grok/rules/00-context-management.md` (and global `~/.grok/
 | `cobra-new-action` | New or refactored Server Action / API boundary work |
 | `cobra-e2e` | Playwright specs, seed key, flaky E2E against real NATS |
 | `cobra-verify-prompts` | Prompt/agent docs drift vs live tree |
-
-Product invariants + mental model: `CLAUDE.md`.
 
 ## Server boundary (do not regress)
 

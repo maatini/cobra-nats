@@ -2,7 +2,7 @@
 name: cobra-verify-prompts
 description: >
   Verify Cobra NATS agent/prompt docs against the live repo tree. Use when editing
-  AGENTS.md, CLAUDE.md, .claude/* agent docs, .grok rules, stack versions, or when
+  AGENTS.md, .claude/* agent docs, .grok rules, stack versions, or when
   the user runs /cobra-verify-prompts or asks if prompt docs are in sync.
 ---
 
@@ -18,7 +18,7 @@ Exit `0` only when all structural checks pass. Fix every `FAIL` line before fini
 
 ## What it checks (high level)
 
-- Stack majors in `CLAUDE.md` vs `package.json` (Next 16, React 19, TypeScript 6, nats ~2.29)
+- Stack majors in `AGENTS.md` vs `package.json` (Next 16, React 19, TypeScript 6, nats ~2.29)
 - Live API routes (`monitor`, `os/upload`, …) documented; no false “only REST / every op is a Server Action” slogans
 - Feature folders + flat `tests/*.spec.ts`
 - Storage key `cobra-nats-storage` in store + docs
@@ -27,7 +27,7 @@ Exit `0` only when all structural checks pass. Fix every `FAIL` line before fini
 
 ## When editing prompts
 
-1. Keep **always-on** thin: `AGENTS.md` (routing/commands) + `CLAUDE.md` (invariants/layout/mental model).
+1. Keep **always-on** thin: `AGENTS.md` (what/stack, invariants, mental model, routing, commands).
 2. Patterns once in **`.claude/rules.md`** — never dump into `.grok/rules/*` (must stay short pointers).
 3. After any prompt/agent doc change, re-run the verifier.
 4. Optional product map: `.claude/project.md` (version should match `package.json`).
