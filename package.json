@@ -17,13 +17,13 @@
     "verify:gha-security:test": "node scripts/verify-gha-security.test.mjs"
   },
   "dependencies": {
-    "@hookform/resolvers": "^7.0.6",
+    "@hookform/resolvers": "^7.0.7",
     "@tanstack/react-table": "^9.3.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "lucide-react": "^1.72.0",
-    "marked": "^18.2.0",
+    "lucide-react": "^1.76.0",
+    "marked": "^18.2.1",
     "nats": "^2.29.3",
     "next": "^16.4.6",
     "next-themes": "^0.4.6",
